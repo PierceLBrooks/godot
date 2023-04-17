@@ -229,6 +229,9 @@ def configure(env: "Environment"):
     )
     env.Append(LIBS=["pthread", "z"])
 
+    if env.get("module_bluetooth_enabled"):
+        env.Append(LINKFLAGS=["-framework", "CoreBluetooth"])
+
     if env["opengl3"]:
         env.Append(CPPDEFINES=["GLES3_ENABLED"])
         env.Append(LINKFLAGS=["-framework", "OpenGL"])

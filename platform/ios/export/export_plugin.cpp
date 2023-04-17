@@ -185,6 +185,8 @@ void EditorExportPlatformIOS::get_export_options(List<ExportOption> *r_options) 
 
 	r_options->push_back(ExportOption(PropertyInfo(Variant::STRING, "privacy/camera_usage_description", PROPERTY_HINT_PLACEHOLDER_TEXT, "Provide a message if you need to use the camera"), ""));
 	r_options->push_back(ExportOption(PropertyInfo(Variant::DICTIONARY, "privacy/camera_usage_description_localized", PROPERTY_HINT_LOCALIZABLE_STRING), Dictionary()));
+r_options->push_back(ExportOption(PropertyInfo(Variant::STRING, "privacy/bluetooth_usage_description", PROPERTY_HINT_PLACEHOLDER_TEXT, "Provide a message if you need to use the bluetooth"), ""));
+	r_options->push_back(ExportOption(PropertyInfo(Variant::DICTIONARY, "privacy/bluetootth_usage_description_localized", PROPERTY_HINT_LOCALIZABLE_STRING), Dictionary()));
 	r_options->push_back(ExportOption(PropertyInfo(Variant::STRING, "privacy/microphone_usage_description", PROPERTY_HINT_PLACEHOLDER_TEXT, "Provide a message if you need to use the microphone"), ""));
 	r_options->push_back(ExportOption(PropertyInfo(Variant::DICTIONARY, "privacy/microphone_usage_description_localized", PROPERTY_HINT_LOCALIZABLE_STRING), Dictionary()));
 	r_options->push_back(ExportOption(PropertyInfo(Variant::STRING, "privacy/photolibrary_usage_description", PROPERTY_HINT_PLACEHOLDER_TEXT, "Provide a message if you need access to the photo library"), ""));
@@ -368,6 +370,9 @@ void EditorExportPlatformIOS::_fix_config_file(const Ref<EditorExportPreset> &p_
 		} else if (lines[i].find("$camera_usage_description") != -1) {
 			String description = p_preset->get("privacy/camera_usage_description");
 			strnew += lines[i].replace("$camera_usage_description", description) + "\n";
+		} else if (lines[i].find("$bluetooth_usage_description") != -1) {
+			String description = p_preset->get("privacy/bluetooth_usage_description");
+			strnew += lines[i].replace("$bluetooth_usage_description", description) + "\n";
 		} else if (lines[i].find("$microphone_usage_description") != -1) {
 			String description = p_preset->get("privacy/microphone_usage_description");
 			strnew += lines[i].replace("$microphone_usage_description", description) + "\n";
@@ -1670,6 +1675,7 @@ Error EditorExportPlatformIOS::export_project(const Ref<EditorExportPreset> &p_p
 
 	Dictionary appnames = GLOBAL_GET("application/config/name_localized");
 	Dictionary camera_usage_descriptions = p_preset->get("privacy/camera_usage_description_localized");
+	Dictionary bluetooth_usage_descriptions = p_preset->get("privacy/bluetooth_usage_description_localized");
 	Dictionary microphone_usage_descriptions = p_preset->get("privacy/microphone_usage_description_localized");
 	Dictionary photolibrary_usage_descriptions = p_preset->get("privacy/photolibrary_usage_description_localized");
 
@@ -1683,6 +1689,7 @@ Error EditorExportPlatformIOS::export_project(const Ref<EditorExportPreset> &p_p
 			f->store_line("");
 			f->store_line("CFBundleDisplayName = \"" + GLOBAL_GET("application/config/name").operator String() + "\";");
 			f->store_line("NSCameraUsageDescription = \"" + p_preset->get("privacy/camera_usage_description").operator String() + "\";");
+			f->store_line("NSBluetoothAlwaysUsageDescription = \"" + p_preset->get("privacy/bluetooth_usage_description").operator String() + "\";");
 			f->store_line("NSMicrophoneUsageDescription = \"" + p_preset->get("privacy/microphone_usage_description").operator String() + "\";");
 			f->store_line("NSPhotoLibraryUsageDescription = \"" + p_preset->get("privacy/photolibrary_usage_description").operator String() + "\";");
 		}
@@ -1706,6 +1713,9 @@ Error EditorExportPlatformIOS::export_project(const Ref<EditorExportPreset> &p_p
 			}
 			if (camera_usage_descriptions.has(lang)) {
 				f->store_line("NSCameraUsageDescription = \"" + camera_usage_descriptions[lang].operator String() + "\";");
+			}
+			if (bluetooth_usage_descriptions.has(lang)) {
+				f->store_line("NSBluetoothAlwaysUsageDescription = \"" + bluetooth_usage_descriptions[lang].operator String() + "\";");
 			}
 			if (microphone_usage_descriptions.has(lang)) {
 				f->store_line("NSMicrophoneUsageDescription = \"" + microphone_usage_descriptions[lang].operator String() + "\";");

@@ -66,6 +66,7 @@
 #include "scene/resources/packed_scene.h"
 #include "scene/theme/theme_db.h"
 #include "servers/audio_server.h"
+#include "servers/bluetooth_server.h"
 #include "servers/camera_server.h"
 #include "servers/display_server.h"
 #include "servers/movie_writer/movie_writer.h"
@@ -137,6 +138,7 @@ static AudioServer *audio_server = nullptr;
 static DisplayServer *display_server = nullptr;
 static RenderingServer *rendering_server = nullptr;
 static CameraServer *camera_server = nullptr;
+static BluetoothServer *bluetooth_server = nullptr;
 static XRServer *xr_server = nullptr;
 static TextServerManager *tsman = nullptr;
 static PhysicsServer3DManager *physics_server_3d_manager = nullptr;
@@ -2338,6 +2340,7 @@ Error Main::setup2(Thread::ID p_main_tid_override) {
 	}
 
 	camera_server = CameraServer::create();
+	bluetooth_server = BluetoothServer::create();
 
 	MAIN_PRINT("Main: Load Physics");
 
@@ -3370,6 +3373,10 @@ void Main::cleanup(bool p_force) {
 
 	if (camera_server) {
 		memdelete(camera_server);
+	}
+	
+	if (bluetooth_server) {
+	    memdelete(bluetooth_server);
 	}
 
 	OS::get_singleton()->finalize();

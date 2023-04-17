@@ -157,6 +157,7 @@ void EditorExportPlatformMacOS::get_export_options(List<ExportOption> *r_options
 	r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "codesign/entitlements/disable_library_validation"), false));
 	r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "codesign/entitlements/audio_input"), false));
 	r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "codesign/entitlements/camera"), false));
+	r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "codesign/entitlements/bluetooth"), false));
 	r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "codesign/entitlements/location"), false));
 	r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "codesign/entitlements/address_book"), false));
 	r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "codesign/entitlements/calendars"), false));
@@ -193,6 +194,8 @@ void EditorExportPlatformMacOS::get_export_options(List<ExportOption> *r_options
 	r_options->push_back(ExportOption(PropertyInfo(Variant::DICTIONARY, "privacy/microphone_usage_description_localized", PROPERTY_HINT_LOCALIZABLE_STRING), Dictionary()));
 	r_options->push_back(ExportOption(PropertyInfo(Variant::STRING, "privacy/camera_usage_description", PROPERTY_HINT_PLACEHOLDER_TEXT, "Provide a message if you need to use the camera"), ""));
 	r_options->push_back(ExportOption(PropertyInfo(Variant::DICTIONARY, "privacy/camera_usage_description_localized", PROPERTY_HINT_LOCALIZABLE_STRING), Dictionary()));
+	r_options->push_back(ExportOption(PropertyInfo(Variant::STRING, "privacy/bluetooth_usage_description", PROPERTY_HINT_PLACEHOLDER_TEXT, "Provide a message if you need to use bluetooth"), ""));
+	r_options->push_back(ExportOption(PropertyInfo(Variant::DICTIONARY, "privacy/bluetooth_usage_description_localized", PROPERTY_HINT_LOCALIZABLE_STRING), Dictionary()));
 	r_options->push_back(ExportOption(PropertyInfo(Variant::STRING, "privacy/location_usage_description", PROPERTY_HINT_PLACEHOLDER_TEXT, "Provide a message if you need to use the location information"), ""));
 	r_options->push_back(ExportOption(PropertyInfo(Variant::DICTIONARY, "privacy/location_usage_description_localized", PROPERTY_HINT_LOCALIZABLE_STRING), Dictionary()));
 	r_options->push_back(ExportOption(PropertyInfo(Variant::STRING, "privacy/address_book_usage_description", PROPERTY_HINT_PLACEHOLDER_TEXT, "Provide a message if you need to use the address book"), ""));
@@ -435,6 +438,10 @@ void EditorExportPlatformMacOS::_fix_plist(const Ref<EditorExportPreset> &p_pres
 			if (!((String)p_preset->get("privacy/camera_usage_description")).is_empty()) {
 				descriptions += "\t<key>NSCameraUsageDescription</key>\n";
 				descriptions += "\t<string>" + (String)p_preset->get("privacy/camera_usage_description") + "</string>\n";
+			}
+			if (!((String)p_preset->get("privacy/bluetooth_usage_description")).is_empty()) {
+				descriptions += "\t<key>NSBluetoothAlwaysUsageDescription</key>\n";
+				descriptions += "\t<string>" + (String)p_preset->get("privacy/bluetooth_usage_description") + "</string>\n";
 			}
 			if (!((String)p_preset->get("privacy/location_usage_description")).is_empty()) {
 				descriptions += "\t<key>NSLocationUsageDescription</key>\n";
@@ -1191,6 +1198,7 @@ Error EditorExportPlatformMacOS::export_project(const Ref<EditorExportPreset> &p
 	Dictionary appnames = GLOBAL_GET("application/config/name_localized");
 	Dictionary microphone_usage_descriptions = p_preset->get("privacy/microphone_usage_description_localized");
 	Dictionary camera_usage_descriptions = p_preset->get("privacy/camera_usage_description_localized");
+	Dictionary bluetooth_usage_descriptions = p_preset->get("privacy/bluetooth_usage_description_localized");
 	Dictionary location_usage_descriptions = p_preset->get("privacy/location_usage_description_localized");
 	Dictionary address_book_usage_descriptions = p_preset->get("privacy/address_book_usage_description_localized");
 	Dictionary calendar_usage_descriptions = p_preset->get("privacy/calendar_usage_description_localized");
@@ -1216,6 +1224,9 @@ Error EditorExportPlatformMacOS::export_project(const Ref<EditorExportPreset> &p
 			}
 			if (!((String)p_preset->get("privacy/camera_usage_description")).is_empty()) {
 				f->store_line("NSCameraUsageDescription = \"" + p_preset->get("privacy/camera_usage_description").operator String() + "\";");
+			}
+			if (!((String)p_preset->get("privacy/bluetooth_usage_description")).is_empty()) {
+				f->store_line("NSBluetoothAlwaysUsageDescription = \"" + p_preset->get("privacy/bluetooth_usage_description").operator String() + "\";");
 			}
 			if (!((String)p_preset->get("privacy/location_usage_description")).is_empty()) {
 				f->store_line("NSLocationUsageDescription = \"" + p_preset->get("privacy/location_usage_description").operator String() + "\";");
@@ -1269,6 +1280,9 @@ Error EditorExportPlatformMacOS::export_project(const Ref<EditorExportPreset> &p
 			}
 			if (camera_usage_descriptions.has(lang)) {
 				f->store_line("NSCameraUsageDescription = \"" + camera_usage_descriptions[lang].operator String() + "\";");
+			}
+			if (bluetooth_usage_descriptions.has(lang)) {
+				f->store_line("NSBluetoothAlwaysUsageDescription = \"" + bluetooth_usage_descriptions[lang].operator String() + "\";");
 			}
 			if (location_usage_descriptions.has(lang)) {
 				f->store_line("NSLocationUsageDescription = \"" + location_usage_descriptions[lang].operator String() + "\";");
@@ -1522,6 +1536,10 @@ Error EditorExportPlatformMacOS::export_project(const Ref<EditorExportPreset> &p
 				}
 				if ((bool)p_preset->get("codesign/entitlements/camera")) {
 					ent_f->store_line("<key>com.apple.security.device.camera</key>");
+					ent_f->store_line("<true/>");
+				}
+				if ((bool)p_preset->get("codesign/entitlements/bluetooth")) {
+					ent_f->store_line("<key>com.apple.security.device.bluetooth</key>");
 					ent_f->store_line("<true/>");
 				}
 				if ((bool)p_preset->get("codesign/entitlements/location")) {
@@ -1911,6 +1929,10 @@ bool EditorExportPlatformMacOS::has_valid_project_configuration(const Ref<Editor
 		}
 		if ((bool)p_preset->get("codesign/entitlements/camera") && ((String)p_preset->get("privacy/camera_usage_description")).is_empty()) {
 			err += TTR("Privacy: Camera access is enabled, but usage description is not specified.") + "\n";
+			valid = false;
+		}
+		if ((bool)p_preset->get("codesign/entitlements/bluetooth") && ((String)p_preset->get("privacy/bluetooth_usage_description")).is_empty()) {
+			err += TTR("Privacy: Bluetooth access is enabled, but usage description is not specified.") + "\n";
 			valid = false;
 		}
 		if ((bool)p_preset->get("codesign/entitlements/location") && ((String)p_preset->get("privacy/location_usage_description")).is_empty()) {
