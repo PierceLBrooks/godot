@@ -30,6 +30,7 @@
 
 #include "bluetooth_macos.h"
 #include "servers/bluetooth/bluetooth_advertiser.h"
+#include "core/config/engine.h"
 
 #import <Foundation/Foundation.h>
 #import <CoreBluetooth/CoreBluetooth.h>
@@ -203,7 +204,10 @@ void BluetoothAdvertiserMacOS::stop_advertising() {
 };
 
 BluetoothMacOS::BluetoothMacOS() {
-    Ref<BluetoothAdvertiser> advertiser;
+    if (Engine::get_singleton()->is_editor_hint() || Engine::get_singleton()->is_project_manager_hint()) {
+        return;
+    }
+    Ref<BluetoothAdvertiserMacOS> advertiser;
     advertiser.instantiate();
     add_advertiser(advertiser);
 };

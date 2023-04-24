@@ -1538,7 +1538,7 @@ Error EditorExportPlatformMacOS::export_project(const Ref<EditorExportPreset> &p
 					ent_f->store_line("<key>com.apple.security.device.camera</key>");
 					ent_f->store_line("<true/>");
 				}
-				if ((bool)p_preset->get("codesign/entitlements/bluetooth")) {
+				if (((bool)p_preset->get("codesign/entitlements/bluetooth")) && ((!((bool)p_preset->get("codesign/entitlements/app_sandbox/device_bluetooth"))) || (!((bool)p_preset->get("codesign/entitlements/app_sandbox/enabled"))))) {
 					ent_f->store_line("<key>com.apple.security.device.bluetooth</key>");
 					ent_f->store_line("<true/>");
 				}

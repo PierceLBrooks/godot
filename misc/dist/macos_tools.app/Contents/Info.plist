@@ -26,6 +26,8 @@
 	<string>Microphone access is required to capture audio.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Camera access is required to capture video.</string>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>Bluetooth access is required to discover and advertise service broadcasts from other devices.</string>
 	<key>NSRequiresAquaSystemAppearance</key>
 	<false/>
 	<key>NSHumanReadableCopyright</key>
