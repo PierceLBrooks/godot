@@ -93,9 +93,9 @@ public:
 	void remove_advertiser(const Ref<BluetoothAdvertiser> &p_advertiser);
 
 	// Get our advertisers.
-	Ref<BluetoothAdvertiser> get_advertiser(int p_index);
-	int get_advertiser_count();
-	TypedArray<BluetoothAdvertiser> get_advertisers();
+	Ref<BluetoothAdvertiser> get_advertiser(int p_index) const;
+	int get_advertiser_count() const;
+	TypedArray<BluetoothAdvertiser> get_advertisers() const;
 
 	BluetoothServer();
 	~BluetoothServer();

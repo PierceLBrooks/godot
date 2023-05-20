@@ -99,9 +99,10 @@ void BluetoothServer::add_advertiser(const Ref<BluetoothAdvertiser> &p_advertise
 	// add our advertiser
 	advertisers.push_back(p_advertiser);
 
-	print_verbose("BluetoothServer: Registered advertiser " + p_advertiser->get_name() + " with ID " + itos(p_advertiser->get_id()) + " at index " + itos(advertisers.size() - 1));
+	print_verbose("BluetoothServer: Registered advertiser \"" + p_advertiser->get_service_uuid() + "\" with ID " + itos(p_advertiser->get_id()) + " at index " + itos(advertisers.size() - 1));
 
 	// let whomever is interested know
+	p_advertiser->on_register();
 	emit_signal(SNAME("bluetooth_advertiser_added"), p_advertiser->get_id());
 };
 
@@ -110,29 +111,30 @@ void BluetoothServer::remove_advertiser(const Ref<BluetoothAdvertiser> &p_advert
 		if (advertisers[i] == p_advertiser) {
 			int advertiser_id = p_advertiser->get_id();
 
-			print_verbose("BluetoothServer: Removed advertiser " + p_advertiser->get_name() + " with ID " + itos(advertiser_id));
+			print_verbose("BluetoothServer: Removed advertiser \"" + p_advertiser->get_service_uuid() + "\" with ID " + itos(advertiser_id));
 
 			// remove it from our array, if this results in our advertiser being unreferenced it will be destroyed
 			advertisers.remove_at(i);
 
 			// let whomever is interested know
+			p_advertiser->on_unregister();
 			emit_signal(SNAME("bluetooth_advertiser_removed"), advertiser_id);
 			return;
 		};
 	};
 };
 
-Ref<BluetoothAdvertiser> BluetoothServer::get_advertiser(int p_index) {
+Ref<BluetoothAdvertiser> BluetoothServer::get_advertiser(int p_index) const {
 	ERR_FAIL_INDEX_V(p_index, advertisers.size(), nullptr);
 
 	return advertisers[p_index];
 };
 
-int BluetoothServer::get_advertiser_count() {
+int BluetoothServer::get_advertiser_count() const {
 	return advertisers.size();
 };
 
-TypedArray<BluetoothAdvertiser> BluetoothServer::get_advertisers() {
+TypedArray<BluetoothAdvertiser> BluetoothServer::get_advertisers() const {
 	TypedArray<BluetoothAdvertiser> return_advertisers;
 	int cc = get_advertiser_count();
 	return_advertisers.resize(cc);

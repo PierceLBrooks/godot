@@ -39,14 +39,17 @@
 // MyPeripheralManagerDelegate - This is a little helper class so we can advertise our service
 
 @interface MyPeripheralManagerDelegate : NSObject<CBPeripheralManagerDelegate> {
-    CBUUID *serviceUuid;
-    CBUUID *characteristicUuid;
 }
 
-@property (nonatomic, assign) CBPeripheralManager* peripheralManager;
+@property (nonatomic, assign) CBUUID* serviceUuid;
+@property (nonatomic, assign) CBUUID* characteristicUuid;
+@property (nonatomic, assign) bool active;
 
+@property (atomic, strong) CBPeripheralManager* peripheralManager;
 @property (atomic, strong) CBCentral *currentCentral;
 @property (atomic, strong) CBMutableCharacteristic *mainCharacteristic;
+@property (atomic, strong) CBMutableService *service;
+@property (atomic, strong) NSDictionary *serviceDict;
 
 - (instancetype)initWithQueue:(dispatch_queue_t) bleQueue;
 - (void)sendValue:(NSString *)data;
@@ -73,16 +76,23 @@
 {
     return [self initWithQueue:nil];
 }
+
 - (instancetype)initWithQueue:(dispatch_queue_t) bleQueue
 {
     self = [super init];
     if (self)
     {
-        serviceUuid = [CBUUID UUIDWithString:@"29D7544B-6870-45A4-BB7E-D981535F4525"];
-        characteristicUuid = [CBUUID UUIDWithString:@"B81672D5-396B-4803-82C2-029D34319015"];
+        self.active = false;
+        self.serviceUuid = [CBUUID UUIDWithString:@"29D7544B-6870-45A4-BB7E-D981535F4525"];
+        self.characteristicUuid = [CBUUID UUIDWithString:@"B81672D5-396B-4803-82C2-029D34319015"];
+        if (bleQueue)
+        {
+            self.peripheralManager = [[CBPeripheralManager alloc] initWithDelegate:self queue:bleQueue];
+        }
     }
     return self;
 }
+
 #pragma mark CENTRAL FUNCTIONS
 - (void) peripheralManager:(CBPeripheralManager *)peripheral
                    central:(CBCentral *)central didSubscribeToCharacteristic:(CBCharacteristic *)characteristic
@@ -105,16 +115,16 @@
     NSLog(@"CBPeripheralManager entered state %@", [MyPeripheralManagerDelegate stringFromCBManagerState:peripheral.state]);
     if (peripheral.state == CBManagerStatePoweredOn)
     {
-        NSDictionary* dict = @{
+        self.serviceDict = @{
             CBAdvertisementDataLocalNameKey: self.description,
-            //            CBAdvertisementDataSolicitedServiceUUIDsKey: @[serviceUuid],
-            CBAdvertisementDataServiceUUIDsKey: @[serviceUuid]
+            //            CBAdvertisementDataSolicitedServiceUUIDsKey: @[self.serviceUuid],
+            CBAdvertisementDataServiceUUIDsKey: @[self.serviceUuid]
         };
         
-        CBMutableService* service = [[CBMutableService alloc] initWithType:serviceUuid primary:YES];
+        self.service = [[CBMutableService alloc] initWithType:self.serviceUuid primary:YES];
         
-        _mainCharacteristic = [[CBMutableCharacteristic alloc]
-                               initWithType:characteristicUuid
+        self.mainCharacteristic = [[CBMutableCharacteristic alloc]
+                               initWithType:self.characteristicUuid
                                properties:(
                                            CBCharacteristicPropertyRead |
                                            CBCharacteristicPropertyNotify // needed for didSubscribeToCharacteristic
@@ -122,12 +132,16 @@
                                value: nil
                                permissions:CBAttributePermissionsReadable];
         
-        service.characteristics = @[_mainCharacteristic];
-        [self.peripheralManager addService:service];
-        [self.peripheralManager startAdvertising:dict];
-        NSLog(@"startAdvertising. isAdvertising: %d", self.peripheralManager.isAdvertising);
+        self.service.characteristics = @[self.mainCharacteristic];
+        if (self.active && !self.peripheralManager.isAdvertising)
+        {
+            [self.peripheralManager addService:self.service];
+            [self.peripheralManager startAdvertising:self.serviceDict];
+            NSLog(@"startAdvertising. isAdvertising: %d", self.peripheralManager.isAdvertising);
+        }
     }
 }
+
 //------------------------------------------------------------------------------
 - (void)peripheralManagerDidStartAdvertising:(CBPeripheralManager *)peripheral
                                        error:(NSError *)error
@@ -143,7 +157,7 @@
 - (void) peripheralManager: (CBPeripheralManager *)peripheral
      didReceiveReadRequest: (CBATTRequest *)request
 {
-    if ([request.characteristic.UUID isEqualTo:characteristicUuid])
+    if ([request.characteristic.UUID isEqualTo:self.characteristicUuid])
     {
         [self.peripheralManager setDesiredConnectionLatency:CBPeripheralManagerConnectionLatencyLow
                                                  forCentral:request.central];
@@ -175,21 +189,38 @@ private:
 public:
 	BluetoothAdvertiserMacOS();
 
-	bool start_advertising();
-	void stop_advertising();
+	bool start_advertising() const override;
+	bool stop_advertising() const override;
+
+    void on_register() const override;
+    void on_unregister() const override;
 };
 
 BluetoothAdvertiserMacOS::BluetoothAdvertiserMacOS() {
-    start_advertising();
-};
-
-bool BluetoothAdvertiserMacOS::start_advertising() {
+    active = true;
     @autoreleasepool
     {
-        peripheral_manager_delegate = [[MyPeripheralManagerDelegate alloc] init];
         dispatch_queue_t ble_service = dispatch_queue_create("ble_test_service",  DISPATCH_QUEUE_SERIAL);
-        CBPeripheralManager* peripheralManager = [[CBPeripheralManager alloc] initWithDelegate:peripheral_manager_delegate queue:ble_service];
-        peripheral_manager_delegate.peripheralManager = peripheralManager;
+        peripheral_manager_delegate = [[MyPeripheralManagerDelegate alloc] initWithQueue:ble_service];
+    }
+};
+
+bool BluetoothAdvertiserMacOS::start_advertising() const {
+    if (!active || peripheral_manager_delegate.peripheralManager.state != CBManagerStatePoweredOn || get_characteristic_count() <= 0)
+    {
+        print_line("Advertise failure");
+        return false;
+    }
+    @autoreleasepool
+    {
+        peripheral_manager_delegate.serviceUuid = [CBUUID UUIDWithString:[[NSString alloc] initWithUTF8String:get_service_uuid().utf8().get_data()]];
+        peripheral_manager_delegate.characteristicUuid = [CBUUID UUIDWithString:[[NSString alloc] initWithUTF8String:get_characteristic(get_characteristic_count()-1).utf8().get_data()]];
+
+        if (!peripheral_manager_delegate.peripheralManager.isAdvertising)
+        {
+            [peripheral_manager_delegate.peripheralManager addService:peripheral_manager_delegate.service];
+            [peripheral_manager_delegate.peripheralManager startAdvertising:peripheral_manager_delegate.serviceDict];
+        }
 
         print_line("Sending");
         while (![peripheral_manager_delegate currentCentral]);
@@ -200,8 +231,18 @@ bool BluetoothAdvertiserMacOS::start_advertising() {
 	return true;
 };
 
-void BluetoothAdvertiserMacOS::stop_advertising() {
+bool BluetoothAdvertiserMacOS::stop_advertising() const {
+    // nothing to do here
+    return true;
 };
+
+void BluetoothAdvertiserMacOS::on_register() const {
+    start_advertising();
+}
+
+void BluetoothAdvertiserMacOS::on_unregister() const {
+	// nothing to do here
+}
 
 BluetoothMacOS::BluetoothMacOS() {
     if (Engine::get_singleton()->is_editor_hint() || Engine::get_singleton()->is_project_manager_hint()) {
@@ -209,5 +250,7 @@ BluetoothMacOS::BluetoothMacOS() {
     }
     Ref<BluetoothAdvertiserMacOS> advertiser;
     advertiser.instantiate();
+    advertiser->set_service_uuid("29D7544B-6870-45A4-BB7E-D981535F4525");
+    advertiser->add_characteristic("B81672D5-396B-4803-82C2-029D34319015");
     add_advertiser(advertiser);
 };

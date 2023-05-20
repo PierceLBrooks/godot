@@ -42,29 +42,44 @@ class BluetoothAdvertiser : public RefCounted {
 	GDCLASS(BluetoothAdvertiser, RefCounted);
 
 private:
+	friend class BluetoothServer;
+
 	int id; // unique id for this, for internal use in case devices are removed
 
 protected:
-	String name; // name of our service advertisement
+	String service_uuid; // uuid of our service advertisement
+	Vector<String> characteristic_uuids; // uuids of our characteristics
 
 	bool active; // only when active do we actually update the bluetooth status
 
 	static void _bind_methods();
+
+	virtual void on_register() const;
+	virtual void on_unregister() const;
 
 public:
 	int get_id() const;
 	bool is_active() const;
 	void set_active(bool p_is_active);
 
-	String get_name() const;
-	void set_name(String p_name);
+	String get_service_uuid() const;
+	void set_service_uuid(String p_service_uuid);
+
+	// Add and remove characteristics.
+	void add_characteristic(String p_characteristic_uuid);
+	void remove_characteristic(int p_index);
+
+	// Get our characteristics.
+	String get_characteristic(int p_index) const;
+	int get_characteristic_count() const;
+	TypedArray<String> get_characteristics() const;
 
 	BluetoothAdvertiser();
-	BluetoothAdvertiser(String p_name);
+	BluetoothAdvertiser(String p_service_uuid);
 	virtual ~BluetoothAdvertiser();
 
-	virtual bool start_advertising();
-	virtual void stop_advertising();
+	virtual bool start_advertising() const;
+	virtual bool stop_advertising() const;
 };
 
 #endif // BLUETOOTH_ADVERTISER_H
