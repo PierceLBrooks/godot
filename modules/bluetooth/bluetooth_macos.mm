@@ -47,17 +47,17 @@
 @property (nonatomic, assign) int readRequestCount;
 @property (nonatomic, assign) int writeRequestCount;
 
-@property (atomic, strong) CBUUID* serviceUuid;
 @property (atomic, strong) CBPeripheralManager* peripheralManager;
-@property (atomic, strong) CBCentral* currentCentral;
-@property (atomic, strong) NSMutableArray* mainCharacteristics;
+@property (atomic, strong) CBUUID* serviceUuid;
+@property (atomic, strong) NSString* serviceName;
+@property (atomic, strong) NSData* serviceManufacturerInformation;
+@property (atomic, strong) NSMutableArray* serviceCharacteristics;
 @property (atomic, strong) CBMutableService* service;
 @property (atomic, strong) NSDictionary* serviceDict;
 @property (atomic, strong) NSMutableDictionary* readRequests;
 @property (atomic, strong) NSMutableDictionary* writeRequests;
 
 - (instancetype) initWithQueue:(dispatch_queue_t)bleQueue;
-- (void) sendValue:(NSString *)data;
 - (void) respondReadRequest:(NSString *)response forRequest:(int)request;
 - (void) respondWriteRequest:(NSString *)response forRequest:(int)request;
 - (bool) startAdvertising;
@@ -104,23 +104,6 @@
 }
 
 #pragma mark CENTRAL FUNCTIONS
-- (void) peripheralManager:(CBPeripheralManager *)peripheral
-                   central:(CBCentral *)central didSubscribeToCharacteristic:(CBCharacteristic *)characteristic
-{
-    _currentCentral = central;
-}
-
-- (void) peripheralManager: (CBPeripheralManager *)peripheral
-                   central: (CBCentral *)central didUnsubscribeFromCharacteristic:(CBCharacteristic *)characteristic
-{
-    _currentCentral = nil;
-}
-
-- (void)peripheralManagerIsReadyToUpdateSubscribers:(CBPeripheralManager *)peripheral
-{
-    NSLog(@"Ready To Update Subscribers");
-}
-
 //------------------------------------------------------------------------------
 - (void)peripheralManagerDidUpdateState:(CBPeripheralManager *)peripheral
 {
@@ -190,7 +173,7 @@
         [writes addObject:write];
     }
     count = writes.count;
-    for (int i = 0; i < count; i++)
+    for (int i = 0; i < writes.count; i++)
     {
         NSNumber *key = writes[i];
         if ([self.writeRequests objectForKey:key])
@@ -240,25 +223,17 @@
     }
 }
 
-- (void) sendValue: (NSString *)data
-{
-    /*
-    [self.peripheralManager updateValue:[data dataUsingEncoding:NSUTF8StringEncoding]
-                      forCharacteristic:_mainCharacteristic
-                   onSubscribedCentrals:@[_currentCentral]];
-    */
-}
-
 - (bool) startAdvertising
 {
     bool success = false;
     if (self.peripheralManager.state == CBManagerStatePoweredOn && self.active)
     {
         int count = self.context->get_characteristic_count();
-        if (self.serviceUuid)
+        if (self.serviceUuid && self.serviceName && self.serviceManufacturerInformation)
         {
             self.serviceDict = @{
-                CBAdvertisementDataLocalNameKey: self.description,
+                CBAdvertisementDataLocalNameKey: self.serviceName,
+                CBAdvertisementDataManufacturerDataKey: self.serviceManufacturerInformation,
                 //            CBAdvertisementDataSolicitedServiceUUIDsKey: @[self.serviceUuid],
                 CBAdvertisementDataServiceUUIDsKey: @[self.serviceUuid]
             };
@@ -271,7 +246,7 @@
         }
         if (count > 0)
         {
-            self.mainCharacteristics = [[NSMutableArray alloc] initWithCapacity:count];
+            self.serviceCharacteristics = [[NSMutableArray alloc] initWithCapacity:count];
             for (int i = 0; i < count; i++)
             {
                 CBUUID *uuid = [CBUUID UUIDWithString:[[NSString alloc] initWithUTF8String:self.context->get_characteristic(i).utf8().get_data()]];
@@ -282,24 +257,23 @@
                                 properties:(CBCharacteristicPropertyRead|CBCharacteristicPropertyWrite)
                                 value: nil
                                 permissions:(CBAttributePermissionsReadable|CBAttributePermissionsWriteable)];
-                    [self.mainCharacteristics addObject:characteristic];
                 } else {
                     characteristic = [[CBMutableCharacteristic alloc]
                                 initWithType:uuid
                                 properties:CBCharacteristicPropertyRead
                                 value: nil
                                 permissions:CBAttributePermissionsReadable];
-                    [self.mainCharacteristics addObject:characteristic];
                 }
+                [self.serviceCharacteristics addObject:characteristic];
             }
         }
         else
         {
-            self.mainCharacteristics = nil;
+            self.serviceCharacteristics = nil;
         }
-        if (self.service && self.mainCharacteristics)
+        if (self.service && self.serviceCharacteristics)
         {
-            self.service.characteristics = self.mainCharacteristics;
+            self.service.characteristics = self.serviceCharacteristics;
             if (!self.peripheralManager.isAdvertising)
             {
                 [self.peripheralManager addService:self.service];
@@ -361,6 +335,8 @@ bool BluetoothAdvertiserMacOS::start_advertising() const {
         print_line("Advertise failure");
         return success;
     }
+    peripheral_manager_delegate.serviceName = [[NSString alloc] initWithUTF8String:get_service_name().utf8().get_data()];
+    peripheral_manager_delegate.serviceManufacturerInformation = [NSData dataWithBytes:get_service_manufacturer_information().ptr() length:get_service_manufacturer_information().size()];
     peripheral_manager_delegate.serviceUuid = [CBUUID UUIDWithString:[[NSString alloc] initWithUTF8String:get_service_uuid().utf8().get_data()]];
     if (peripheral_manager_delegate.peripheralManager.state != CBManagerStatePoweredOn) {
         return success;

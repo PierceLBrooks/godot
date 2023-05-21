@@ -47,6 +47,10 @@ void BluetoothAdvertiser::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("get_service_uuid"), &BluetoothAdvertiser::get_service_uuid);
 	ClassDB::bind_method(D_METHOD("set_service_uuid", "service_uuid"), &BluetoothAdvertiser::set_service_uuid);
+	ClassDB::bind_method(D_METHOD("get_service_name"), &BluetoothAdvertiser::get_service_name);
+	ClassDB::bind_method(D_METHOD("set_service_name", "service_name"), &BluetoothAdvertiser::set_service_name);
+	ClassDB::bind_method(D_METHOD("get_service_manufacturer_information"), &BluetoothAdvertiser::get_service_manufacturer_information);
+	ClassDB::bind_method(D_METHOD("set_service_manufacturer_information", "service_manufacturer_information"), &BluetoothAdvertiser::set_service_manufacturer_information);
 
 	ClassDB::bind_method(D_METHOD("get_characteristic", "index"), &BluetoothAdvertiser::get_characteristic);
 	ClassDB::bind_method(D_METHOD("get_characteristic_count"), &BluetoothAdvertiser::get_characteristic_count);
@@ -109,6 +113,22 @@ String BluetoothAdvertiser::get_service_uuid() const {
 
 void BluetoothAdvertiser::set_service_uuid(String p_service_uuid) {
 	service_uuid = p_service_uuid;
+}
+
+String BluetoothAdvertiser::get_service_name() const {
+	return service_name;
+}
+
+void BluetoothAdvertiser::set_service_name(String p_service_name) {
+	service_name = p_service_name;
+}
+
+Vector<uint8_t> BluetoothAdvertiser::get_service_manufacturer_information() const {
+	return service_manufacturer_information;
+}
+
+void BluetoothAdvertiser::set_service_manufacturer_information(Vector<uint8_t> p_service_manufacturer_information) {
+	service_manufacturer_information = p_service_manufacturer_information;
 }
 
 void BluetoothAdvertiser::add_characteristic(String p_characteristic_uuid) {

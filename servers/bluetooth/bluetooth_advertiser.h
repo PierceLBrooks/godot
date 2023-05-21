@@ -68,6 +68,8 @@ protected:
 	};
 
 	String service_uuid; // uuid of our service advertisement
+	String service_name; // name of our service advertisement
+	Vector<uint8_t> service_manufacturer_information; // manufacturer information of our service advertisement
 	Vector<Ref<BluetoothAdvertiser::BluetoothAdvertiserCharacteristic>> characteristics; // our characteristics
 
 	bool active; // only when active do we actually update the bluetooth status
@@ -86,6 +88,10 @@ public:
 
 	String get_service_uuid() const;
 	void set_service_uuid(String p_service_uuid);
+	String get_service_name() const;
+	void set_service_name(String p_service_name);
+	Vector<uint8_t> get_service_manufacturer_information() const;
+	void set_service_manufacturer_information(Vector<uint8_t> p_service_manufacturer_information);
 
 	// Add and remove characteristics.
 	void add_characteristic(String p_characteristic_uuid);
