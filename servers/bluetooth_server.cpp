@@ -38,6 +38,7 @@
 BluetoothServer::CreateFunc BluetoothServer::create_func = nullptr;
 
 void BluetoothServer::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("get_advertiser_by_id", "id"), &BluetoothServer::get_advertiser_by_id);
 	ClassDB::bind_method(D_METHOD("get_advertiser", "index"), &BluetoothServer::get_advertiser);
 	ClassDB::bind_method(D_METHOD("get_advertiser_count"), &BluetoothServer::get_advertiser_count);
 	ClassDB::bind_method(D_METHOD("advertisers"), &BluetoothServer::get_advertisers);
@@ -49,13 +50,13 @@ void BluetoothServer::_bind_methods() {
 
 	ADD_SIGNAL(MethodInfo("bluetooth_advertiser_added", PropertyInfo(Variant::INT, "id")));
 	ADD_SIGNAL(MethodInfo("bluetooth_advertiser_removed", PropertyInfo(Variant::INT, "id")));
-};
+}
 
 BluetoothServer *BluetoothServer::singleton = nullptr;
 
 BluetoothServer *BluetoothServer::get_singleton() {
 	return singleton;
-};
+}
 
 int BluetoothServer::get_free_advertiser_id() {
 	bool id_exists = true;
@@ -68,31 +69,31 @@ int BluetoothServer::get_free_advertiser_id() {
 		for (int i = 0; i < advertisers.size() && !id_exists; i++) {
 			if (advertisers[i]->get_id() == newid) {
 				id_exists = true;
-			};
-		};
-	};
+			}
+		}
+	}
 
 	return newid;
-};
+}
 
-int BluetoothServer::get_advertiser_index(int p_id) {
+int BluetoothServer::get_advertiser_index(int p_id) const {
 	for (int i = 0; i < advertisers.size(); i++) {
 		if (advertisers[i]->get_id() == p_id) {
 			return i;
-		};
-	};
+		}
+	}
 
 	return -1;
-};
+}
 
-Ref<BluetoothAdvertiser> BluetoothServer::get_advertiser_by_id(int p_id) {
+Ref<BluetoothAdvertiser> BluetoothServer::get_advertiser_by_id(int p_id) const {
 	int index = get_advertiser_index(p_id);
 
-	if (index == -1) {
+	if (index < 0) {
 		return nullptr;
-	} else {
-		return advertisers[index];
 	}
+
+	return advertisers[index];
 }
 
 Ref<BluetoothAdvertiser> BluetoothServer::new_advertiser() {
@@ -115,7 +116,7 @@ void BluetoothServer::add_advertiser(const Ref<BluetoothAdvertiser> &p_advertise
 	// let whomever is interested know
 	p_advertiser->on_register();
 	emit_signal(SNAME("bluetooth_advertiser_added"), p_advertiser->get_id());
-};
+}
 
 void BluetoothServer::remove_advertiser(const Ref<BluetoothAdvertiser> &p_advertiser) {
 	for (int i = 0; i < advertisers.size(); i++) {
@@ -131,19 +132,19 @@ void BluetoothServer::remove_advertiser(const Ref<BluetoothAdvertiser> &p_advert
 			p_advertiser->on_unregister();
 			emit_signal(SNAME("bluetooth_advertiser_removed"), advertiser_id);
 			return;
-		};
-	};
-};
+		}
+	}
+}
 
 Ref<BluetoothAdvertiser> BluetoothServer::get_advertiser(int p_index) const {
 	ERR_FAIL_INDEX_V(p_index, advertisers.size(), nullptr);
 
 	return advertisers[p_index];
-};
+}
 
 int BluetoothServer::get_advertiser_count() const {
 	return advertisers.size();
-};
+}
 
 TypedArray<BluetoothAdvertiser> BluetoothServer::get_advertisers() const {
 	TypedArray<BluetoothAdvertiser> return_advertisers;
@@ -152,15 +153,15 @@ TypedArray<BluetoothAdvertiser> BluetoothServer::get_advertisers() const {
 
 	for (int i = 0; i < advertisers.size(); i++) {
 		return_advertisers[i] = get_advertiser(i);
-	};
+	}
 
 	return return_advertisers;
-};
+}
 
 BluetoothServer::BluetoothServer() {
 	singleton = this;
-};
+}
 
 BluetoothServer::~BluetoothServer() {
 	singleton = nullptr;
-};
+}

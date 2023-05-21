@@ -43,6 +43,7 @@
 
 @property (nonatomic, assign) BluetoothAdvertiser* context;
 @property (nonatomic, assign) bool active;
+@property (nonatomic, assign) int readRequestCount;
 
 @property (atomic, strong) CBUUID* serviceUuid;
 @property (atomic, strong) CBUUID* characteristicUuid;
@@ -51,9 +52,11 @@
 @property (atomic, strong) CBMutableCharacteristic* mainCharacteristic;
 @property (atomic, strong) CBMutableService* service;
 @property (atomic, strong) NSDictionary* serviceDict;
+@property (atomic, strong) NSMutableDictionary* readRequests;
 
-- (instancetype) initWithQueue:(dispatch_queue_t) bleQueue;
+- (instancetype) initWithQueue:(dispatch_queue_t)bleQueue;
 - (void) sendValue:(NSString *)data;
+- (void) respondReadRequest:(NSString *)response forRequest:(int)request;
 - (bool) startAdvertising;
 
 @end
@@ -71,6 +74,7 @@
         case CBManagerStateUnsupported:  return @"Unsupported";
     }
 }
+
 //------------------------------------------------------------------------------
 #pragma mark init funcs
 
@@ -85,6 +89,8 @@
     self = [super init];
     if (self)
     {
+        self.readRequestCount = 0;
+        self.readRequests = [[NSMutableDictionary alloc] initWithCapacity:10];
         self.active = false;
         if (bleQueue)
         {
@@ -106,10 +112,12 @@
 {
     _currentCentral = nil;
 }
+
 - (void)peripheralManagerIsReadyToUpdateSubscribers:(CBPeripheralManager *)peripheral
 {
     NSLog(@"------------------Ready To Update------------------");
 }
+
 //------------------------------------------------------------------------------
 - (void)peripheralManagerDidUpdateState:(CBPeripheralManager *)peripheral
 {
@@ -139,19 +147,27 @@
 - (void) peripheralManager: (CBPeripheralManager *)peripheral
      didReceiveReadRequest: (CBATTRequest *)request
 {
-    if ([request.characteristic.UUID isEqualTo:self.characteristicUuid])
-    {
-        [self.peripheralManager setDesiredConnectionLatency:CBPeripheralManagerConnectionLatencyLow
-                                                 forCentral:request.central];
-        NSString* description = @"ABCD";
-        request.value = [description dataUsingEncoding:NSUTF8StringEncoding];
-        [self.peripheralManager respondToRequest:request withResult:CBATTErrorSuccess];
-        NSLog(@"didReceiveReadRequest:latencyCharacteristic. Responding with %@", description);
-    }
-    else
+    NSString *uuid = request.characteristic.UUID.UUIDString;
+    int readRequest = self.readRequestCount;
+    [self.readRequests setObject:[NSValue valueWithPointer:(void *)request] forKey:[NSNumber numberWithInt:readRequest]];
+    self.readRequestCount += 1;
+    if (!self.context->on_read(uuid.UTF8String, readRequest))
     {
         NSLog(@"didReceiveReadRequest: (unknown) %@", request);
+        [self.peripheralManager respondToRequest:request withResult:CBATTErrorRequestNotSupported];
     }
+}
+
+- (void) respondReadRequest: (NSString *)response forRequest: (int)request
+{
+    NSNumber *key = [NSNumber numberWithInt:request];
+    CBATTRequest *value = (CBATTRequest *)[(NSValue *)[self.readRequests objectForKey:key] pointerValue];
+    [self.peripheralManager setDesiredConnectionLatency:CBPeripheralManagerConnectionLatencyLow
+                                                 forCentral:value.central];
+    value.value = [response dataUsingEncoding:NSUTF8StringEncoding];
+    NSLog(@"didReceiveReadRequest:latencyCharacteristic. Responding with \"%@\"", response);
+    [self.peripheralManager respondToRequest:value withResult:CBATTErrorSuccess];
+    [self.readRequests removeObjectForKey:key];
 }
 
 - (void) sendValue: (NSString *)data
@@ -224,6 +240,8 @@ private:
 public:
 	BluetoothAdvertiserMacOS();
 
+    void respond_characteristic_read_request(String p_characteristic_uuid, String p_response, int p_request) const override;
+
 	bool start_advertising() const override;
 	bool stop_advertising() const override;
 
@@ -239,7 +257,11 @@ BluetoothAdvertiserMacOS::BluetoothAdvertiserMacOS() {
             peripheral_manager_delegate.context = this;
         }
     });
-};
+}
+
+void BluetoothAdvertiserMacOS::respond_characteristic_read_request(String p_characteristic_uuid, String p_response, int p_request) const {
+    [peripheral_manager_delegate respondReadRequest:[[NSString alloc] initWithUTF8String:p_response.utf8().get_data()] forRequest:p_request];
+}
 
 bool BluetoothAdvertiserMacOS::start_advertising() const {
     bool success = false;
@@ -260,7 +282,7 @@ bool BluetoothAdvertiserMacOS::start_advertising() const {
         success = true;
     }
     return success;
-};
+}
 
 bool BluetoothAdvertiserMacOS::stop_advertising() const {
     peripheral_manager_delegate.active = false;
@@ -271,7 +293,7 @@ bool BluetoothAdvertiserMacOS::stop_advertising() const {
         return true;
     }
     return false;
-};
+}
 
 void BluetoothAdvertiserMacOS::on_register() const {
 	// nothing to do here

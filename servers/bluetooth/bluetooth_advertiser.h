@@ -44,13 +44,27 @@ class BluetoothAdvertiser : public RefCounted {
 private:
 	friend class BluetoothServer;
 
+	static Ref<BluetoothAdvertiser>* null_advertiser;
+
 	int id; // unique id for this, for internal use in case devices are removed
 
 	bool can_emit_signal(const StringName &p_name) const;
 
 protected:
+	class BluetoothAdvertiserCharacteristic : public RefCounted {
+		GDCLASS(BluetoothAdvertiserCharacteristic, RefCounted);
+
+	public:
+		BluetoothAdvertiserCharacteristic();
+		BluetoothAdvertiserCharacteristic(String p_characteristic_uuid);
+		Ref<BluetoothAdvertiser> advertiser;
+		String uuid;
+		bool permission;
+		int readRequest;
+	};
+
 	String service_uuid; // uuid of our service advertisement
-	Vector<String> characteristic_uuids; // uuids of our characteristics
+	Vector<Ref<BluetoothAdvertiser::BluetoothAdvertiserCharacteristic>> characteristics; // our characteristics
 
 	bool active; // only when active do we actually update the bluetooth status
 
@@ -58,6 +72,8 @@ protected:
 
 	virtual void on_register() const;
 	virtual void on_unregister() const;
+
+	Ref<BluetoothAdvertiser::BluetoothAdvertiserCharacteristic> get_characteristic_by_uuid(String p_characteristic_uuid) const;
 
 public:
 	int get_id() const;
@@ -75,7 +91,9 @@ public:
 	String get_characteristic(int p_index) const;
 	int get_characteristic_count() const;
 	TypedArray<String> get_characteristics() const;
+	bool has_characteristic(String p_characteristic_uuid) const;
 
+	BluetoothAdvertiser(int p_id);
 	BluetoothAdvertiser();
 	BluetoothAdvertiser(String p_service_uuid);
 	virtual ~BluetoothAdvertiser();
@@ -83,8 +101,11 @@ public:
 	virtual bool start_advertising() const;
 	virtual bool stop_advertising() const;
 
+	virtual void respond_characteristic_read_request(String p_characteristic_uuid, String p_response, int p_request) const;
+
 	bool on_start() const;
 	bool on_stop() const;
+	bool on_read(String p_characteristic_uuid, int p_request) const;
 };
 
 #endif // BLUETOOTH_ADVERTISER_H

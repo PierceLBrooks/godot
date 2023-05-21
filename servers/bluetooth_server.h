@@ -85,8 +85,8 @@ public:
 	// Right now we identify our advertiser by it's ID when it's used in the background.
 	// May see if we can change this to purely relying on BluetoothAdvertiser objects or by name.
 	int get_free_advertiser_id();
-	int get_advertiser_index(int p_id);
-	Ref<BluetoothAdvertiser> get_advertiser_by_id(int p_id);
+	int get_advertiser_index(int p_id) const;
+	Ref<BluetoothAdvertiser> get_advertiser_by_id(int p_id) const;
 
 	// Add and remove advertisers.
 	virtual Ref<BluetoothAdvertiser> new_advertiser();
