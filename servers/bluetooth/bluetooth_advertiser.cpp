@@ -197,6 +197,10 @@ bool BluetoothAdvertiser::on_stop() const {
 }
 
 bool BluetoothAdvertiser::can_emit_signal(const StringName &p_name) const {
-	bool signal_is_valid = ClassDB::has_signal(get_class_name(), p_name);
-	return !signal_is_valid && !get_script().is_null() && !Ref<Script>(get_script())->has_script_signal(p_name);
+	List<Connection> conns;
+	get_signal_connection_list(p_name, &conns);
+	if (conns.size() > 0) {
+		return true;
+	}
+	return false;
 }
