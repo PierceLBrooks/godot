@@ -81,12 +81,11 @@
 
 - (instancetype)initWithQueue:(dispatch_queue_t) bleQueue
 {
+    //NSLog(@"init %d", [NSThread isMultiThreaded]);
     self = [super init];
     if (self)
     {
         self.active = false;
-        self.serviceUuid = [CBUUID UUIDWithString:@"29D7544B-6870-45A4-BB7E-D981535F4525"];
-        self.characteristicUuid = [CBUUID UUIDWithString:@"B81672D5-396B-4803-82C2-029D34319015"];
         if (bleQueue)
         {
             self.peripheralManager = [[CBPeripheralManager alloc] initWithDelegate:self queue:bleQueue];
@@ -181,7 +180,6 @@
             self.serviceDict = nil;
             self.service = nil;
         }
-        
         if (self.characteristicUuid)
         {
             self.mainCharacteristic = [[CBMutableCharacteristic alloc]
@@ -197,7 +195,6 @@
         {
             self.mainCharacteristic = nil;
         }
-        
         if (self.service && self.mainCharacteristic)
         {
             self.service.characteristics = @[self.mainCharacteristic];
@@ -235,42 +232,39 @@ public:
 };
 
 BluetoothAdvertiserMacOS::BluetoothAdvertiserMacOS() {
-    //active = true;
-    @autoreleasepool
-    {
-        dispatch_queue_t ble_service = dispatch_queue_create("ble_test_service",  DISPATCH_QUEUE_SERIAL);
-        peripheral_manager_delegate = [[MyPeripheralManagerDelegate alloc] initWithQueue:ble_service];
-        peripheral_manager_delegate.context = this;
-    }
+    dispatch_async(dispatch_get_main_queue(), ^{
+        @autoreleasepool {
+            dispatch_queue_t ble_service = dispatch_queue_create("ble_test_service",  DISPATCH_QUEUE_SERIAL);
+            peripheral_manager_delegate = [[MyPeripheralManagerDelegate alloc] initWithQueue:ble_service];
+            peripheral_manager_delegate.context = this;
+        }
+    });
 };
 
 bool BluetoothAdvertiserMacOS::start_advertising() const {
-    if (!active || peripheral_manager_delegate.peripheralManager.state != CBManagerStatePoweredOn || get_characteristic_count() <= 0)
-    {
+    bool success = false;
+    peripheral_manager_delegate.active = true;
+    if (get_characteristic_count() <= 0) {
         print_line("Advertise failure");
-        return false;
+        return success;
     }
-    @autoreleasepool
-    {
-        peripheral_manager_delegate.active = active;
-        peripheral_manager_delegate.serviceUuid = [CBUUID UUIDWithString:[[NSString alloc] initWithUTF8String:get_service_uuid().utf8().get_data()]];
-        peripheral_manager_delegate.characteristicUuid = [CBUUID UUIDWithString:[[NSString alloc] initWithUTF8String:get_characteristic(get_characteristic_count()-1).utf8().get_data()]];
-
-        if (!peripheral_manager_delegate.peripheralManager.isAdvertising)
-        {
-            return [peripheral_manager_delegate startAdvertising];
-        }
-        else
-        {
-            on_start();
-        }
+    peripheral_manager_delegate.serviceUuid = [CBUUID UUIDWithString:[[NSString alloc] initWithUTF8String:get_service_uuid().utf8().get_data()]];
+    peripheral_manager_delegate.characteristicUuid = [CBUUID UUIDWithString:[[NSString alloc] initWithUTF8String:get_characteristic(get_characteristic_count()-1).utf8().get_data()]];
+    if (peripheral_manager_delegate.peripheralManager.state != CBManagerStatePoweredOn) {
+        return success;
     }
-	return true;
+    if (!peripheral_manager_delegate.peripheralManager.isAdvertising) {
+        success = [peripheral_manager_delegate startAdvertising];
+    } else {
+        on_start();
+        success = true;
+    }
+    return success;
 };
 
 bool BluetoothAdvertiserMacOS::stop_advertising() const {
-    if (peripheral_manager_delegate.peripheralManager.isAdvertising)
-    {
+    peripheral_manager_delegate.active = false;
+    if (peripheral_manager_delegate.peripheralManager.isAdvertising) {
         [peripheral_manager_delegate.peripheralManager removeAllServices];
         [peripheral_manager_delegate.peripheralManager stopAdvertising];
         on_stop();
@@ -280,7 +274,7 @@ bool BluetoothAdvertiserMacOS::stop_advertising() const {
 };
 
 void BluetoothAdvertiserMacOS::on_register() const {
-    start_advertising();
+	// nothing to do here
 }
 
 void BluetoothAdvertiserMacOS::on_unregister() const {
@@ -288,12 +282,15 @@ void BluetoothAdvertiserMacOS::on_unregister() const {
 }
 
 BluetoothMacOS::BluetoothMacOS() {
+}
+
+Ref<BluetoothAdvertiser> BluetoothMacOS::new_advertiser() {
     if (Engine::get_singleton()->is_editor_hint() || Engine::get_singleton()->is_project_manager_hint()) {
-        return;
+        return nullptr;
     }
+    int count = get_advertiser_count();
     Ref<BluetoothAdvertiserMacOS> advertiser;
     advertiser.instantiate();
-    advertiser->set_service_uuid("29D7544B-6870-45A4-BB7E-D981535F4525");
-    advertiser->add_characteristic("B81672D5-396B-4803-82C2-029D34319015");
     add_advertiser(advertiser);
-};
+    return get_advertiser(count);
+}

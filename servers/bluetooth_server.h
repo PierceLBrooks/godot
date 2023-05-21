@@ -89,6 +89,7 @@ public:
 	Ref<BluetoothAdvertiser> get_advertiser_by_id(int p_id);
 
 	// Add and remove advertisers.
+	virtual Ref<BluetoothAdvertiser> new_advertiser();
 	void add_advertiser(const Ref<BluetoothAdvertiser> &p_advertiser);
 	void remove_advertiser(const Ref<BluetoothAdvertiser> &p_advertiser);
 

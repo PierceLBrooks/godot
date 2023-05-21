@@ -45,6 +45,8 @@ void BluetoothServer::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("add_advertiser", "advertiser"), &BluetoothServer::add_advertiser);
 	ClassDB::bind_method(D_METHOD("remove_advertiser", "advertiser"), &BluetoothServer::remove_advertiser);
 
+	ClassDB::bind_method(D_METHOD("new_advertiser"), &BluetoothServer::new_advertiser);
+
 	ADD_SIGNAL(MethodInfo("bluetooth_advertiser_added", PropertyInfo(Variant::INT, "id")));
 	ADD_SIGNAL(MethodInfo("bluetooth_advertiser_removed", PropertyInfo(Variant::INT, "id")));
 };
@@ -91,9 +93,18 @@ Ref<BluetoothAdvertiser> BluetoothServer::get_advertiser_by_id(int p_id) {
 	} else {
 		return advertisers[index];
 	}
-};
+}
+
+Ref<BluetoothAdvertiser> BluetoothServer::new_advertiser() {
+	// nothing to do here
+	return nullptr;
+}
 
 void BluetoothServer::add_advertiser(const Ref<BluetoothAdvertiser> &p_advertiser) {
+	if (!get_advertiser_by_id(p_advertiser->get_id()).is_null()) {
+		return;
+	}
+
 	ERR_FAIL_COND(p_advertiser.is_null());
 
 	// add our advertiser

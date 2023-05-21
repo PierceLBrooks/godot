@@ -33,6 +33,8 @@
 #include "core/os/thread.h"
 #include "core/object/script_language.h"
 
+#include <chrono>
+
 void BluetoothAdvertiser::_bind_methods() {
 	// The setters prefixed with _ are only exposed so we can have advertisers through GDExtension!
 	// They should not be called by the end user.
@@ -43,7 +45,7 @@ void BluetoothAdvertiser::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_active", "active"), &BluetoothAdvertiser::set_active);
 
 	ClassDB::bind_method(D_METHOD("get_service_uuid"), &BluetoothAdvertiser::get_service_uuid);
-	ClassDB::bind_method(D_METHOD("_set_service_uuid", "service_uuid"), &BluetoothAdvertiser::set_service_uuid);
+	ClassDB::bind_method(D_METHOD("set_service_uuid", "service_uuid"), &BluetoothAdvertiser::set_service_uuid);
 
 	ClassDB::bind_method(D_METHOD("get_characteristic", "index"), &BluetoothAdvertiser::get_characteristic);
 	ClassDB::bind_method(D_METHOD("get_characteristic_count"), &BluetoothAdvertiser::get_characteristic_count);
@@ -87,6 +89,7 @@ void BluetoothAdvertiser::set_active(bool p_is_active) {
 		}
 		active = false;
 	}
+	//std::this_thread::sleep_for(std::chrono::duration<double, std::milli>(1000.0));
 }
 
 String BluetoothAdvertiser::get_service_uuid() const {
@@ -133,7 +136,7 @@ TypedArray<String> BluetoothAdvertiser::get_characteristics() const {
 BluetoothAdvertiser::BluetoothAdvertiser() {
 	// initialize us
 	id = BluetoothServer::get_singleton()->get_free_advertiser_id();
-	service_uuid = "29D7544B-6870-45A4-BB7E-D981535F4525";
+	service_uuid = "";
 	active = false;
 }
 
@@ -150,12 +153,12 @@ BluetoothAdvertiser::~BluetoothAdvertiser() {
 
 bool BluetoothAdvertiser::start_advertising() const {
 	// nothing to do here
-	return true;
+	return false;
 }
 
 bool BluetoothAdvertiser::stop_advertising() const {
 	// nothing to do here
-	return true;
+	return false;
 }
 
 void BluetoothAdvertiser::on_register() const {

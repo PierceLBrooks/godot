@@ -36,6 +36,7 @@
 class BluetoothMacOS : public BluetoothServer {
 public:
 	BluetoothMacOS();
+	Ref<BluetoothAdvertiser> new_advertiser() override;
 };
 
 #endif // BLUETOOTH_MACOS_H
