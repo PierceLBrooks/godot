@@ -46,6 +46,8 @@ private:
 
 	int id; // unique id for this, for internal use in case devices are removed
 
+	bool can_emit_signal(const StringName &p_name) const;
+
 protected:
 	String service_uuid; // uuid of our service advertisement
 	Vector<String> characteristic_uuids; // uuids of our characteristics
@@ -80,6 +82,9 @@ public:
 
 	virtual bool start_advertising() const;
 	virtual bool stop_advertising() const;
+
+	bool on_start() const;
+	bool on_stop() const;
 };
 
 #endif // BLUETOOTH_ADVERTISER_H

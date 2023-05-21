@@ -41,18 +41,20 @@
 @interface MyPeripheralManagerDelegate : NSObject<CBPeripheralManagerDelegate> {
 }
 
-@property (nonatomic, assign) CBUUID* serviceUuid;
-@property (nonatomic, assign) CBUUID* characteristicUuid;
+@property (nonatomic, assign) BluetoothAdvertiser* context;
 @property (nonatomic, assign) bool active;
 
+@property (atomic, strong) CBUUID* serviceUuid;
+@property (atomic, strong) CBUUID* characteristicUuid;
 @property (atomic, strong) CBPeripheralManager* peripheralManager;
-@property (atomic, strong) CBCentral *currentCentral;
-@property (atomic, strong) CBMutableCharacteristic *mainCharacteristic;
-@property (atomic, strong) CBMutableService *service;
-@property (atomic, strong) NSDictionary *serviceDict;
+@property (atomic, strong) CBCentral* currentCentral;
+@property (atomic, strong) CBMutableCharacteristic* mainCharacteristic;
+@property (atomic, strong) CBMutableService* service;
+@property (atomic, strong) NSDictionary* serviceDict;
 
-- (instancetype)initWithQueue:(dispatch_queue_t) bleQueue;
-- (void)sendValue:(NSString *)data;
+- (instancetype) initWithQueue:(dispatch_queue_t) bleQueue;
+- (void) sendValue:(NSString *)data;
+- (bool) startAdvertising;
 
 @end
 
@@ -113,33 +115,7 @@
 - (void)peripheralManagerDidUpdateState:(CBPeripheralManager *)peripheral
 {
     NSLog(@"CBPeripheralManager entered state %@", [MyPeripheralManagerDelegate stringFromCBManagerState:peripheral.state]);
-    if (peripheral.state == CBManagerStatePoweredOn)
-    {
-        self.serviceDict = @{
-            CBAdvertisementDataLocalNameKey: self.description,
-            //            CBAdvertisementDataSolicitedServiceUUIDsKey: @[self.serviceUuid],
-            CBAdvertisementDataServiceUUIDsKey: @[self.serviceUuid]
-        };
-        
-        self.service = [[CBMutableService alloc] initWithType:self.serviceUuid primary:YES];
-        
-        self.mainCharacteristic = [[CBMutableCharacteristic alloc]
-                               initWithType:self.characteristicUuid
-                               properties:(
-                                           CBCharacteristicPropertyRead |
-                                           CBCharacteristicPropertyNotify // needed for didSubscribeToCharacteristic
-                                           )
-                               value: nil
-                               permissions:CBAttributePermissionsReadable];
-        
-        self.service.characteristics = @[self.mainCharacteristic];
-        if (self.active && !self.peripheralManager.isAdvertising)
-        {
-            [self.peripheralManager addService:self.service];
-            [self.peripheralManager startAdvertising:self.serviceDict];
-            NSLog(@"startAdvertising. isAdvertising: %d", self.peripheralManager.isAdvertising);
-        }
-    }
+    [self startAdvertising];
 }
 
 //------------------------------------------------------------------------------
@@ -151,6 +127,13 @@
         NSLog(@"Error advertising: %@", [error localizedDescription]);
     }
     NSLog(@"peripheralManagerDidStartAdvertising %d", self.peripheralManager.isAdvertising);
+    if (self.peripheralManager.isAdvertising)
+    {
+        if (self.context->on_start())
+        {
+            NSLog(@"on_start %d", self.active);
+        }
+    }
 }
 
 //------------------------------------------------------------------------------
@@ -172,11 +155,66 @@
     }
 }
 
-- (void)sendValue: (NSString *)data
+- (void) sendValue: (NSString *)data
 {
     [self.peripheralManager updateValue:[data dataUsingEncoding:NSUTF8StringEncoding]
                       forCharacteristic:_mainCharacteristic
                    onSubscribedCentrals:@[_currentCentral]];
+}
+
+- (bool) startAdvertising
+{
+    bool success = false;
+    if (self.peripheralManager.state == CBManagerStatePoweredOn && self.active)
+    {
+        if (self.serviceUuid)
+        {
+            self.serviceDict = @{
+                CBAdvertisementDataLocalNameKey: self.description,
+                //            CBAdvertisementDataSolicitedServiceUUIDsKey: @[self.serviceUuid],
+                CBAdvertisementDataServiceUUIDsKey: @[self.serviceUuid]
+            };
+            self.service = [[CBMutableService alloc] initWithType:self.serviceUuid primary:YES];
+        }
+        else
+        {
+            self.serviceDict = nil;
+            self.service = nil;
+        }
+        
+        if (self.characteristicUuid)
+        {
+            self.mainCharacteristic = [[CBMutableCharacteristic alloc]
+                                initWithType:self.characteristicUuid
+                                properties:(
+                                            CBCharacteristicPropertyRead |
+                                            CBCharacteristicPropertyNotify // needed for didSubscribeToCharacteristic
+                                            )
+                                value: nil
+                                permissions:CBAttributePermissionsReadable];
+        }
+        else
+        {
+            self.mainCharacteristic = nil;
+        }
+        
+        if (self.service && self.mainCharacteristic)
+        {
+            self.service.characteristics = @[self.mainCharacteristic];
+            if (!self.peripheralManager.isAdvertising)
+            {
+                [self.peripheralManager addService:self.service];
+                [self.peripheralManager startAdvertising:self.serviceDict];
+                NSLog(@"startAdvertising. isAdvertising: %d", self.peripheralManager.isAdvertising);
+                success = true;
+            }
+        }
+        if (!success)
+        {
+            NSLog(@"Failure.");
+        }
+    }
+    return success;
 }
 @end
 
@@ -197,11 +235,12 @@ public:
 };
 
 BluetoothAdvertiserMacOS::BluetoothAdvertiserMacOS() {
-    active = true;
+    //active = true;
     @autoreleasepool
     {
         dispatch_queue_t ble_service = dispatch_queue_create("ble_test_service",  DISPATCH_QUEUE_SERIAL);
         peripheral_manager_delegate = [[MyPeripheralManagerDelegate alloc] initWithQueue:ble_service];
+        peripheral_manager_delegate.context = this;
     }
 };
 
@@ -213,27 +252,31 @@ bool BluetoothAdvertiserMacOS::start_advertising() const {
     }
     @autoreleasepool
     {
+        peripheral_manager_delegate.active = active;
         peripheral_manager_delegate.serviceUuid = [CBUUID UUIDWithString:[[NSString alloc] initWithUTF8String:get_service_uuid().utf8().get_data()]];
         peripheral_manager_delegate.characteristicUuid = [CBUUID UUIDWithString:[[NSString alloc] initWithUTF8String:get_characteristic(get_characteristic_count()-1).utf8().get_data()]];
 
         if (!peripheral_manager_delegate.peripheralManager.isAdvertising)
         {
-            [peripheral_manager_delegate.peripheralManager addService:peripheral_manager_delegate.service];
-            [peripheral_manager_delegate.peripheralManager startAdvertising:peripheral_manager_delegate.serviceDict];
+            return [peripheral_manager_delegate startAdvertising];
         }
-
-        print_line("Sending");
-        while (![peripheral_manager_delegate currentCentral]);
-
-        [peripheral_manager_delegate sendValue:@""];
-        print_line("Sent");
+        else
+        {
+            on_start();
+        }
     }
 	return true;
 };
 
 bool BluetoothAdvertiserMacOS::stop_advertising() const {
-    // nothing to do here
-    return true;
+    if (peripheral_manager_delegate.peripheralManager.isAdvertising)
+    {
+        [peripheral_manager_delegate.peripheralManager removeAllServices];
+        [peripheral_manager_delegate.peripheralManager stopAdvertising];
+        on_stop();
+        return true;
+    }
+    return false;
 };
 
 void BluetoothAdvertiserMacOS::on_register() const {
