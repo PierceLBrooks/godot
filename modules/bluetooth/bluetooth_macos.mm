@@ -31,6 +31,7 @@
 #include "bluetooth_macos.h"
 #include "servers/bluetooth/bluetooth_advertiser.h"
 #include "core/config/engine.h"
+#include "core/core_bind.h"
 
 #import <Foundation/Foundation.h>
 #import <CoreBluetooth/CoreBluetooth.h>
@@ -44,19 +45,21 @@
 @property (nonatomic, assign) BluetoothAdvertiser* context;
 @property (nonatomic, assign) bool active;
 @property (nonatomic, assign) int readRequestCount;
+@property (nonatomic, assign) int writeRequestCount;
 
 @property (atomic, strong) CBUUID* serviceUuid;
-@property (atomic, strong) CBUUID* characteristicUuid;
 @property (atomic, strong) CBPeripheralManager* peripheralManager;
 @property (atomic, strong) CBCentral* currentCentral;
-@property (atomic, strong) CBMutableCharacteristic* mainCharacteristic;
+@property (atomic, strong) NSMutableArray* mainCharacteristics;
 @property (atomic, strong) CBMutableService* service;
 @property (atomic, strong) NSDictionary* serviceDict;
 @property (atomic, strong) NSMutableDictionary* readRequests;
+@property (atomic, strong) NSMutableDictionary* writeRequests;
 
 - (instancetype) initWithQueue:(dispatch_queue_t)bleQueue;
 - (void) sendValue:(NSString *)data;
 - (void) respondReadRequest:(NSString *)response forRequest:(int)request;
+- (void) respondWriteRequest:(NSString *)response forRequest:(int)request;
 - (bool) startAdvertising;
 
 @end
@@ -115,7 +118,7 @@
 
 - (void)peripheralManagerIsReadyToUpdateSubscribers:(CBPeripheralManager *)peripheral
 {
-    NSLog(@"------------------Ready To Update------------------");
+    NSLog(@"Ready To Update Subscribers");
 }
 
 //------------------------------------------------------------------------------
@@ -149,32 +152,101 @@
 {
     NSString *uuid = request.characteristic.UUID.UUIDString;
     int readRequest = self.readRequestCount;
-    [self.readRequests setObject:[NSValue valueWithPointer:(void *)request] forKey:[NSNumber numberWithInt:readRequest]];
+    NSNumber *read = [NSNumber numberWithInt:readRequest];
+    [self.readRequests setObject:[NSValue valueWithPointer:(void *)request] forKey:read];
     self.readRequestCount += 1;
-    if (!self.context->on_read(uuid.UTF8String, readRequest))
+    if (!self.context->on_read(uuid.UTF8String, readRequest, request.central.identifier.UUIDString.UTF8String))
     {
-        NSLog(@"didReceiveReadRequest: (unknown) %@", request);
         [self.peripheralManager respondToRequest:request withResult:CBATTErrorRequestNotSupported];
+    }
+    else
+    {
+        if ([self.readRequests objectForKey:read])
+        {
+            [self.peripheralManager respondToRequest:request withResult:CBATTErrorRequestNotSupported];
+        }
+    }
+    [self.readRequests removeObjectForKey:read];
+}
+
+- (void) peripheralManager: (CBPeripheralManager *)peripheral
+     didReceiveWriteRequests: (NSArray<CBATTRequest *> *)requests
+{
+    int count = requests.count;
+    NSMutableArray *writes = [[NSMutableArray alloc] initWithCapacity:count];
+    for (int i = 0; i < count; i++)
+    {
+        CBATTRequest *request = requests[i];
+        int length = request.value.length;
+        NSString *uuid = request.characteristic.UUID.UUIDString;
+        int writeRequest = self.writeRequestCount;
+        NSNumber *write = [NSNumber numberWithInt:writeRequest];
+        Vector<uint8_t> value;
+        value.resize(length);
+        memcpy(value.ptrw(), request.value.bytes, length);
+        [self.writeRequests setObject:[NSValue valueWithPointer:(void *)request] forKey:write];
+        self.writeRequestCount += 1;
+        self.context->on_write(uuid.UTF8String, writeRequest, request.central.identifier.UUIDString.UTF8String, core_bind::Marshalls::get_singleton()->raw_to_base64(value));
+        [writes addObject:write];
+    }
+    count = writes.count;
+    for (int i = 0; i < count; i++)
+    {
+        NSNumber *key = writes[i];
+        if ([self.writeRequests objectForKey:key])
+        {
+            count -= 1;
+            [self.writeRequests removeObjectForKey:key];
+        }
+    }
+    if (count < writes.count)
+    {
+        [self.peripheralManager respondToRequest:requests[0] withResult:CBATTErrorRequestNotSupported];
+    }
+    else
+    {
+        [self.peripheralManager respondToRequest:requests[0] withResult:CBATTErrorSuccess];
     }
 }
 
 - (void) respondReadRequest: (NSString *)response forRequest: (int)request
 {
     NSNumber *key = [NSNumber numberWithInt:request];
-    CBATTRequest *value = (CBATTRequest *)[(NSValue *)[self.readRequests objectForKey:key] pointerValue];
-    [self.peripheralManager setDesiredConnectionLatency:CBPeripheralManagerConnectionLatencyLow
-                                                 forCentral:value.central];
-    value.value = [response dataUsingEncoding:NSUTF8StringEncoding];
-    NSLog(@"didReceiveReadRequest:latencyCharacteristic. Responding with \"%@\"", response);
-    [self.peripheralManager respondToRequest:value withResult:CBATTErrorSuccess];
-    [self.readRequests removeObjectForKey:key];
+    if ([self.readRequests objectForKey:key])
+    {
+        CBATTRequest *value = (CBATTRequest *)[(NSValue *)[self.readRequests objectForKey:key] pointerValue];
+        if (value)
+        {
+            //[self.peripheralManager setDesiredConnectionLatency:CBPeripheralManagerConnectionLatencyLow forCentral:value.central];
+            value.value = [response dataUsingEncoding:NSUTF8StringEncoding];
+            [self.peripheralManager respondToRequest:value withResult:CBATTErrorSuccess];
+            [self.readRequests removeObjectForKey:key];
+        }
+    }
+}
+
+- (void) respondWriteRequest: (NSString *)response forRequest: (int)request
+{
+    NSNumber *key = [NSNumber numberWithInt:request];
+    if ([self.writeRequests objectForKey:key])
+    {
+        CBATTRequest *value = (CBATTRequest *)[(NSValue *)[self.writeRequests objectForKey:key] pointerValue];
+        if (value)
+        {
+            //[self.peripheralManager setDesiredConnectionLatency:CBPeripheralManagerConnectionLatencyLow forCentral:value.central];
+            //value.value = [response dataUsingEncoding:NSUTF8StringEncoding];
+            [self.writeRequests removeObjectForKey:key];
+        }
+    }
 }
 
 - (void) sendValue: (NSString *)data
 {
+    /*
     [self.peripheralManager updateValue:[data dataUsingEncoding:NSUTF8StringEncoding]
                       forCharacteristic:_mainCharacteristic
                    onSubscribedCentrals:@[_currentCentral]];
+    */
 }
 
 - (bool) startAdvertising
@@ -182,6 +254,7 @@
     bool success = false;
     if (self.peripheralManager.state == CBManagerStatePoweredOn && self.active)
     {
+        int count = self.context->get_characteristic_count();
         if (self.serviceUuid)
         {
             self.serviceDict = @{
@@ -196,24 +269,37 @@
             self.serviceDict = nil;
             self.service = nil;
         }
-        if (self.characteristicUuid)
+        if (count > 0)
         {
-            self.mainCharacteristic = [[CBMutableCharacteristic alloc]
-                                initWithType:self.characteristicUuid
-                                properties:(
-                                            CBCharacteristicPropertyRead |
-                                            CBCharacteristicPropertyNotify // needed for didSubscribeToCharacteristic
-                                            )
+            self.mainCharacteristics = [[NSMutableArray alloc] initWithCapacity:count];
+            for (int i = 0; i < count; i++)
+            {
+                CBUUID *uuid = [CBUUID UUIDWithString:[[NSString alloc] initWithUTF8String:self.context->get_characteristic(i).utf8().get_data()]];
+                CBMutableCharacteristic *characteristic = nil;
+                if (self.context->get_characteristic_permission(self.context->get_characteristic(i))) {
+                    characteristic = [[CBMutableCharacteristic alloc]
+                                initWithType:uuid
+                                properties:(CBCharacteristicPropertyRead|CBCharacteristicPropertyWrite)
+                                value: nil
+                                permissions:(CBAttributePermissionsReadable|CBAttributePermissionsWriteable)];
+                    [self.mainCharacteristics addObject:characteristic];
+                } else {
+                    characteristic = [[CBMutableCharacteristic alloc]
+                                initWithType:uuid
+                                properties:CBCharacteristicPropertyRead
                                 value: nil
                                 permissions:CBAttributePermissionsReadable];
+                    [self.mainCharacteristics addObject:characteristic];
+                }
+            }
         }
         else
         {
-            self.mainCharacteristic = nil;
+            self.mainCharacteristics = nil;
         }
-        if (self.service && self.mainCharacteristic)
+        if (self.service && self.mainCharacteristics)
         {
-            self.service.characteristics = @[self.mainCharacteristic];
+            self.service.characteristics = self.mainCharacteristics;
             if (!self.peripheralManager.isAdvertising)
             {
                 [self.peripheralManager addService:self.service];
@@ -241,6 +327,7 @@ public:
 	BluetoothAdvertiserMacOS();
 
     void respond_characteristic_read_request(String p_characteristic_uuid, String p_response, int p_request) const override;
+    void respond_characteristic_write_request(String p_characteristic_uuid, String p_response, int p_request) const override;
 
 	bool start_advertising() const override;
 	bool stop_advertising() const override;
@@ -263,6 +350,10 @@ void BluetoothAdvertiserMacOS::respond_characteristic_read_request(String p_char
     [peripheral_manager_delegate respondReadRequest:[[NSString alloc] initWithUTF8String:p_response.utf8().get_data()] forRequest:p_request];
 }
 
+void BluetoothAdvertiserMacOS::respond_characteristic_write_request(String p_characteristic_uuid, String p_response, int p_request) const {
+    [peripheral_manager_delegate respondWriteRequest:[[NSString alloc] initWithUTF8String:p_response.utf8().get_data()] forRequest:p_request];
+}
+
 bool BluetoothAdvertiserMacOS::start_advertising() const {
     bool success = false;
     peripheral_manager_delegate.active = true;
@@ -271,7 +362,6 @@ bool BluetoothAdvertiserMacOS::start_advertising() const {
         return success;
     }
     peripheral_manager_delegate.serviceUuid = [CBUUID UUIDWithString:[[NSString alloc] initWithUTF8String:get_service_uuid().utf8().get_data()]];
-    peripheral_manager_delegate.characteristicUuid = [CBUUID UUIDWithString:[[NSString alloc] initWithUTF8String:get_characteristic(get_characteristic_count()-1).utf8().get_data()]];
     if (peripheral_manager_delegate.peripheralManager.state != CBManagerStatePoweredOn) {
         return success;
     }

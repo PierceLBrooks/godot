@@ -30,6 +30,7 @@
 
 #include "bluetooth_advertiser.h"
 #include "core/variant/typed_array.h"
+#include "core/core_bind.h"
 #include "core/os/thread.h"
 #include "core/object/script_language.h"
 
@@ -54,14 +55,21 @@ void BluetoothAdvertiser::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("add_characteristic", "characteristic_uuid"), &BluetoothAdvertiser::add_characteristic);
 	ClassDB::bind_method(D_METHOD("remove_characteristic", "index"), &BluetoothAdvertiser::remove_characteristic);
 
+	ClassDB::bind_method(D_METHOD("set_characteristic_permission", "characteristic_uuid", "permission"), &BluetoothAdvertiser::set_characteristic_permission);
+	ClassDB::bind_method(D_METHOD("get_characteristic_permission", "characteristic_uuid"), &BluetoothAdvertiser::get_characteristic_permission);
+
+	ClassDB::bind_method(D_METHOD("has_characteristic", "characteristic_uuid"), &BluetoothAdvertiser::has_characteristic);
+
 	ClassDB::bind_method(D_METHOD("respond_characteristic_read_request", "characteristic_uuid", "response", "request"), &BluetoothAdvertiser::respond_characteristic_read_request);
+	ClassDB::bind_method(D_METHOD("respond_characteristic_write_request", "characteristic_uuid", "response", "request"), &BluetoothAdvertiser::respond_characteristic_write_request);
 
 	ADD_GROUP("Advertiser", "advertiser_");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "advertiser_is_active"), "set_active", "is_active");
 
 	ADD_SIGNAL(MethodInfo("bluetooth_service_advertisement_started", PropertyInfo(Variant::INT, "id"), PropertyInfo(Variant::STRING, "uuid")));
 	ADD_SIGNAL(MethodInfo("bluetooth_service_advertisement_stopped", PropertyInfo(Variant::INT, "id"), PropertyInfo(Variant::STRING, "uuid")));
-	ADD_SIGNAL(MethodInfo("bluetooth_service_characteristic_read", PropertyInfo(Variant::INT, "id"), PropertyInfo(Variant::STRING, "uuid"), PropertyInfo(Variant::INT, "request")));
+	ADD_SIGNAL(MethodInfo("bluetooth_service_characteristic_read", PropertyInfo(Variant::INT, "id"), PropertyInfo(Variant::STRING, "uuid"), PropertyInfo(Variant::INT, "request"), PropertyInfo(Variant::STRING, "peer")));
+	ADD_SIGNAL(MethodInfo("bluetooth_service_characteristic_write", PropertyInfo(Variant::INT, "id"), PropertyInfo(Variant::STRING, "uuid"), PropertyInfo(Variant::INT, "request"), PropertyInfo(Variant::STRING, "peer"), PropertyInfo(Variant::STRING, "value")));
 }
 
 int BluetoothAdvertiser::get_id() const {
@@ -112,6 +120,7 @@ void BluetoothAdvertiser::add_characteristic(String p_characteristic_uuid) {
 	Ref<BluetoothAdvertiser::BluetoothAdvertiserCharacteristic> characteristic;
 	characteristic.instantiate();
 	characteristic->uuid = p_characteristic_uuid;
+	characteristic->permission = get_characteristic_permission(characteristic->uuid);
 	characteristics.push_back(characteristic);
 }
 
@@ -124,21 +133,21 @@ void BluetoothAdvertiser::remove_characteristic(int p_index) {
 Ref<BluetoothAdvertiser::BluetoothAdvertiserCharacteristic> BluetoothAdvertiser::get_characteristic_by_uuid(String p_characteristic_uuid) const {
 	for (int i = 0; i < characteristics.size(); i++) {
 		Ref<BluetoothAdvertiser::BluetoothAdvertiserCharacteristic> characteristic = characteristics[i];
-		if (characteristic->uuid == p_characteristic_uuid) {
+		if (characteristic.is_valid() && characteristic->uuid == p_characteristic_uuid) {
 			return characteristic;
 		}
 	}
 	return nullptr;
 }
 
+int BluetoothAdvertiser::get_characteristic_count() const {
+	return characteristics.size();
+}
+
 String BluetoothAdvertiser::get_characteristic(int p_index) const {
 	ERR_FAIL_INDEX_V(p_index, get_characteristic_count(), "");
 
 	return characteristics[p_index]->uuid;
-}
-
-int BluetoothAdvertiser::get_characteristic_count() const {
-	return characteristics.size();
 }
 
 TypedArray<String> BluetoothAdvertiser::get_characteristics() const {
@@ -160,6 +169,21 @@ bool BluetoothAdvertiser::has_characteristic(String p_characteristic_uuid) const
 		}
 	}
 	return false;
+}
+
+bool BluetoothAdvertiser::get_characteristic_permission(String p_characteristic_uuid) const {
+	if (permissions.find(p_characteristic_uuid) == permissions.end()) {
+		return false;
+	}
+	return permissions[p_characteristic_uuid];
+}
+
+void BluetoothAdvertiser::set_characteristic_permission(String p_characteristic_uuid, bool p_permission) {
+	Ref<BluetoothAdvertiser::BluetoothAdvertiserCharacteristic> characteristic = get_characteristic_by_uuid(p_characteristic_uuid);
+	if (characteristic.is_valid()) {
+		characteristic->permission = p_permission;
+	}
+	permissions[p_characteristic_uuid] = p_permission;
 }
 
 BluetoothAdvertiser::BluetoothAdvertiserCharacteristic::BluetoothAdvertiserCharacteristic() {
@@ -212,7 +236,17 @@ bool BluetoothAdvertiser::stop_advertising() const {
 }
 
 void BluetoothAdvertiser::respond_characteristic_read_request(String p_characteristic_uuid, String p_response, int p_request) const {
-	// nothing to do here
+	Ref<BluetoothAdvertiser::BluetoothAdvertiserCharacteristic> characteristic = get_characteristic_by_uuid(p_characteristic_uuid);
+	if (characteristic.is_valid()) {
+		characteristic->value = core_bind::Marshalls::get_singleton()->utf8_to_base64(p_response);
+	}
+}
+
+void BluetoothAdvertiser::respond_characteristic_write_request(String p_characteristic_uuid, String p_response, int p_request) const {
+	Ref<BluetoothAdvertiser::BluetoothAdvertiserCharacteristic> characteristic = get_characteristic_by_uuid(p_characteristic_uuid);
+	if (characteristic.is_valid()) {
+		characteristic->value = core_bind::Marshalls::get_singleton()->utf8_to_base64(p_response);
+	}
 }
 
 void BluetoothAdvertiser::on_register() const {
@@ -226,12 +260,16 @@ void BluetoothAdvertiser::on_unregister() const {
 bool BluetoothAdvertiser::on_start() const {
 	if (can_emit_signal(SNAME("bluetooth_service_advertisement_started"))) {
 		Ref<BluetoothAdvertiser>* reference = new Ref<BluetoothAdvertiser>(const_cast<BluetoothAdvertiser*>(this));
-		Thread thread;
-		thread.start([](void *p_udata) {
-			Ref<BluetoothAdvertiser>* advertiser = static_cast<Ref<BluetoothAdvertiser>*>(p_udata);
-			(*advertiser)->emit_signal(SNAME("bluetooth_service_advertisement_started"), (*advertiser)->get_id(), (*advertiser)->get_service_uuid());
-		}, reference);
-		thread.wait_to_finish();
+		if (reference->is_valid()) {
+			Thread thread;
+			thread.start([](void *p_udata) {
+				Ref<BluetoothAdvertiser>* advertiser = static_cast<Ref<BluetoothAdvertiser>*>(p_udata);
+				if (advertiser->is_valid()) {
+					(*advertiser)->emit_signal(SNAME("bluetooth_service_advertisement_started"), (*advertiser)->get_id(), (*advertiser)->get_service_uuid());
+				}
+			}, reference);
+			thread.wait_to_finish();
+		}
 		delete reference;
 		return true;
 	}
@@ -241,34 +279,73 @@ bool BluetoothAdvertiser::on_start() const {
 bool BluetoothAdvertiser::on_stop() const {
 	if (can_emit_signal(SNAME("bluetooth_service_advertisement_stopped"))) {
 		Ref<BluetoothAdvertiser>* reference = new Ref<BluetoothAdvertiser>(const_cast<BluetoothAdvertiser*>(this));
-		Thread thread;
-		thread.start([](void *p_udata) {
-			Ref<BluetoothAdvertiser>* advertiser = static_cast<Ref<BluetoothAdvertiser>*>(p_udata);
-			(*advertiser)->emit_signal(SNAME("bluetooth_service_advertisement_stopped"), (*advertiser)->get_id(), (*advertiser)->get_service_uuid());
-		}, reference);
-		thread.wait_to_finish();
+		if (reference->is_valid()) {
+			Thread thread;
+			thread.start([](void *p_udata) {
+				Ref<BluetoothAdvertiser>* advertiser = static_cast<Ref<BluetoothAdvertiser>*>(p_udata);
+				if (advertiser->is_valid()) {
+					(*advertiser)->emit_signal(SNAME("bluetooth_service_advertisement_stopped"), (*advertiser)->get_id(), (*advertiser)->get_service_uuid());
+				}
+			}, reference);
+			thread.wait_to_finish();
+		}
 		delete reference;
 		return true;
 	}
 	return false;
 }
 
-bool BluetoothAdvertiser::on_read(String p_characteristic_uuid, int p_request) const {
+bool BluetoothAdvertiser::on_read(String p_characteristic_uuid, int p_request, String p_peer_uuid) const {
 	if (!has_characteristic(p_characteristic_uuid)) {
 		return false;
 	}
 	if (can_emit_signal(SNAME("bluetooth_service_characteristic_read"))) {
 		Ref<BluetoothAdvertiser::BluetoothAdvertiserCharacteristic>* reference = new Ref<BluetoothAdvertiser::BluetoothAdvertiserCharacteristic>(get_characteristic_by_uuid(p_characteristic_uuid));
-		Thread thread;
-		(*reference)->readRequest = p_request;
-		(*reference)->advertiser = Ref<BluetoothAdvertiser>(const_cast<BluetoothAdvertiser*>(this));
-		thread.start([](void *p_udata) {
-			Ref<BluetoothAdvertiser::BluetoothAdvertiserCharacteristic>* characteristic = static_cast<Ref<BluetoothAdvertiser::BluetoothAdvertiserCharacteristic>*>(p_udata);
-			(*characteristic)->advertiser->emit_signal(SNAME("bluetooth_service_characteristic_read"), (*characteristic)->advertiser->get_id(), (*characteristic)->uuid, (*characteristic)->readRequest);
-		}, reference);
-		thread.wait_to_finish();
-		(*reference)->advertiser = *BluetoothAdvertiser::null_advertiser;
-		(*reference)->readRequest = -1;
+		if (reference->is_valid()) {
+			Thread thread;
+			(*reference)->peer = p_peer_uuid;
+			(*reference)->readRequest = p_request;
+			(*reference)->advertiser = Ref<BluetoothAdvertiser>(const_cast<BluetoothAdvertiser*>(this));
+			thread.start([](void *p_udata) {
+				Ref<BluetoothAdvertiser::BluetoothAdvertiserCharacteristic>* characteristic = static_cast<Ref<BluetoothAdvertiser::BluetoothAdvertiserCharacteristic>*>(p_udata);
+				if (characteristic->is_valid() && (*characteristic)->advertiser.is_valid()) {
+					(*characteristic)->advertiser->emit_signal(SNAME("bluetooth_service_characteristic_read"), (*characteristic)->advertiser->get_id(), (*characteristic)->uuid, (*characteristic)->readRequest, (*characteristic)->peer);
+				}
+			}, reference);
+			thread.wait_to_finish();
+			(*reference)->advertiser = *BluetoothAdvertiser::null_advertiser;
+			(*reference)->readRequest = -1;
+			(*reference)->peer = "";
+		}
+		delete reference;
+		return true;
+	}
+	return false;
+}
+
+bool BluetoothAdvertiser::on_write(String p_characteristic_uuid, int p_request, String p_peer_uuid, String p_value_base64) const {
+	if (!has_characteristic(p_characteristic_uuid)) {
+		return false;
+	}
+	if (can_emit_signal(SNAME("bluetooth_service_characteristic_write"))) {
+		Ref<BluetoothAdvertiser::BluetoothAdvertiserCharacteristic>* reference = new Ref<BluetoothAdvertiser::BluetoothAdvertiserCharacteristic>(get_characteristic_by_uuid(p_characteristic_uuid));
+		if (reference->is_valid()) {
+			Thread thread;
+			(*reference)->value = p_value_base64;
+			(*reference)->peer = p_peer_uuid;
+			(*reference)->readRequest = p_request;
+			(*reference)->advertiser = Ref<BluetoothAdvertiser>(const_cast<BluetoothAdvertiser*>(this));
+			thread.start([](void *p_udata) {
+				Ref<BluetoothAdvertiser::BluetoothAdvertiserCharacteristic>* characteristic = static_cast<Ref<BluetoothAdvertiser::BluetoothAdvertiserCharacteristic>*>(p_udata);
+				if (characteristic->is_valid() && (*characteristic)->advertiser.is_valid()) {
+					(*characteristic)->advertiser->emit_signal(SNAME("bluetooth_service_characteristic_write"), (*characteristic)->advertiser->get_id(), (*characteristic)->uuid, (*characteristic)->writeRequest, (*characteristic)->peer, (*characteristic)->value);
+				}
+			}, reference);
+			thread.wait_to_finish();
+			(*reference)->advertiser = *BluetoothAdvertiser::null_advertiser;
+			(*reference)->readRequest = -1;
+			(*reference)->peer = "";
+		}
 		delete reference;
 		return true;
 	}

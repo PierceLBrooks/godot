@@ -47,6 +47,7 @@ private:
 	static Ref<BluetoothAdvertiser>* null_advertiser;
 
 	int id; // unique id for this, for internal use in case devices are removed
+	HashMap<String, bool> permissions;
 
 	bool can_emit_signal(const StringName &p_name) const;
 
@@ -59,8 +60,11 @@ protected:
 		BluetoothAdvertiserCharacteristic(String p_characteristic_uuid);
 		Ref<BluetoothAdvertiser> advertiser;
 		String uuid;
+		String peer;
+		String value;
 		bool permission;
 		int readRequest;
+		int writeRequest;
 	};
 
 	String service_uuid; // uuid of our service advertisement
@@ -88,10 +92,12 @@ public:
 	void remove_characteristic(int p_index);
 
 	// Get our characteristics.
-	String get_characteristic(int p_index) const;
 	int get_characteristic_count() const;
+	String get_characteristic(int p_index) const;
 	TypedArray<String> get_characteristics() const;
 	bool has_characteristic(String p_characteristic_uuid) const;
+	bool get_characteristic_permission(String p_characteristic_uuid) const;
+	void set_characteristic_permission(String p_characteristic_uuid, bool p_permission);
 
 	BluetoothAdvertiser(int p_id);
 	BluetoothAdvertiser();
@@ -102,10 +108,12 @@ public:
 	virtual bool stop_advertising() const;
 
 	virtual void respond_characteristic_read_request(String p_characteristic_uuid, String p_response, int p_request) const;
+	virtual void respond_characteristic_write_request(String p_characteristic_uuid, String p_response, int p_request) const;
 
 	bool on_start() const;
 	bool on_stop() const;
-	bool on_read(String p_characteristic_uuid, int p_request) const;
+	bool on_read(String p_characteristic_uuid, int p_request, String p_peer_uuid) const;
+	bool on_write(String p_characteristic_uuid, int p_request, String p_peer_uuid, String p_value_base64) const;
 };
 
 #endif // BLUETOOTH_ADVERTISER_H
