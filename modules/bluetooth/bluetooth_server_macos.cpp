@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  bluetooth_macos.h                                                     */
+/*  bluetooth_server_macos.cpp                                            */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,15 +28,20 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef BLUETOOTH_MACOS_H
-#define BLUETOOTH_MACOS_H
+#include "bluetooth_server_macos.h"
+#include "bluetooth_advertiser_macos.h"
+#include "core/config/engine.h"
 
-#include "servers/bluetooth_server.h"
+BluetoothServerMacOS::BluetoothServerMacOS() {
+}
 
-class BluetoothMacOS : public BluetoothServer {
-public:
-	BluetoothMacOS();
-	Ref<BluetoothAdvertiser> new_advertiser() override;
-};
-
-#endif // BLUETOOTH_MACOS_H
+Ref<BluetoothAdvertiser> BluetoothServerMacOS::new_advertiser() {
+    if (Engine::get_singleton()->is_editor_hint() || Engine::get_singleton()->is_project_manager_hint()) {
+        return nullptr;
+    }
+    int count = get_advertiser_count();
+    Ref<BluetoothAdvertiserMacOS> advertiser;
+    advertiser.instantiate();
+    add_advertiser(advertiser);
+    return get_advertiser(count);
+}

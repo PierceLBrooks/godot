@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  register_types.cpp                                                    */
+/*  bluetooth_server_macos.h                                              */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,24 +28,15 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#include "register_types.h"
+#ifndef BLUETOOTH_SERVER_MACOS_H
+#define BLUETOOTH_SERVER_MACOS_H
 
-#if defined(MACOS_ENABLED)
-#include "bluetooth_server_macos.h"
-#endif
+#include "servers/bluetooth_server.h"
 
-void initialize_bluetooth_module(ModuleInitializationLevel p_level) {
-	if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE) {
-		return;
-	}
+class BluetoothServerMacOS : public BluetoothServer {
+public:
+	BluetoothServerMacOS();
+	Ref<BluetoothAdvertiser> new_advertiser() override;
+};
 
-#if defined(MACOS_ENABLED)
-	BluetoothServer::make_default<BluetoothServerMacOS>();
-#endif
-}
-
-void uninitialize_bluetooth_module(ModuleInitializationLevel p_level) {
-	if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE) {
-		return;
-	}
-}
+#endif // BLUETOOTH_SERVER_MACOS_H

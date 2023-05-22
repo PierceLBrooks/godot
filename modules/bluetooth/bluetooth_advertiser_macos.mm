@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  bluetooth_macos.mm                                                    */
+/*  bluetooth_advertiser_macos.mm                                         */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,7 +28,8 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#include "bluetooth_macos.h"
+#include "bluetooth_server_macos.h"
+#include "bluetooth_advertiser_macos.h"
 #include "servers/bluetooth/bluetooth_advertiser.h"
 #include "core/config/engine.h"
 #include "core/core_bind.h"
@@ -291,45 +292,33 @@
 }
 @end
 
-//////////////////////////////////////////////////////////////////////////
-// BluetoothAdvertiserMacOS - Subclass for bluetooth advertisers in macOS
-
-class BluetoothAdvertiserMacOS : public BluetoothAdvertiser {
-private:
-	MyPeripheralManagerDelegate *peripheral_manager_delegate;
-public:
-	BluetoothAdvertiserMacOS();
-
-    void respond_characteristic_read_request(String p_characteristic_uuid, String p_response, int p_request) const override;
-    void respond_characteristic_write_request(String p_characteristic_uuid, String p_response, int p_request) const override;
-
-	bool start_advertising() const override;
-	bool stop_advertising() const override;
-
-    void on_register() const override;
-    void on_unregister() const override;
-};
-
 BluetoothAdvertiserMacOS::BluetoothAdvertiserMacOS() {
     dispatch_async(dispatch_get_main_queue(), ^{
         @autoreleasepool {
-            dispatch_queue_t ble_service = dispatch_queue_create("ble_test_service",  DISPATCH_QUEUE_SERIAL);
-            peripheral_manager_delegate = [[MyPeripheralManagerDelegate alloc] initWithQueue:ble_service];
+            dispatch_queue_t btle_service = dispatch_queue_create("btle_service",  DISPATCH_QUEUE_SERIAL);
+            MyPeripheralManagerDelegate *peripheral_manager_delegate = [[MyPeripheralManagerDelegate alloc] initWithQueue:btle_service];
             peripheral_manager_delegate.context = this;
+            this->peripheral_manager_delegate = (__bridge_retained void *)peripheral_manager_delegate;
         }
     });
 }
 
+BluetoothAdvertiserMacOS::~BluetoothAdvertiserMacOS() {
+    //MyPeripheralManagerDelegate *peripheral_manager_delegate = (__bridge MyPeripheralManagerDelegate *)this->peripheral_manager_delegate;
+    CFRelease(this->peripheral_manager_delegate);
+}
+
 void BluetoothAdvertiserMacOS::respond_characteristic_read_request(String p_characteristic_uuid, String p_response, int p_request) const {
-    [peripheral_manager_delegate respondReadRequest:[[NSString alloc] initWithUTF8String:p_response.utf8().get_data()] forRequest:p_request];
+    [(__bridge MyPeripheralManagerDelegate *)peripheral_manager_delegate respondReadRequest:[[NSString alloc] initWithUTF8String:p_response.utf8().get_data()] forRequest:p_request];
 }
 
 void BluetoothAdvertiserMacOS::respond_characteristic_write_request(String p_characteristic_uuid, String p_response, int p_request) const {
-    [peripheral_manager_delegate respondWriteRequest:[[NSString alloc] initWithUTF8String:p_response.utf8().get_data()] forRequest:p_request];
+    [(__bridge MyPeripheralManagerDelegate *)peripheral_manager_delegate respondWriteRequest:[[NSString alloc] initWithUTF8String:p_response.utf8().get_data()] forRequest:p_request];
 }
 
 bool BluetoothAdvertiserMacOS::start_advertising() const {
     bool success = false;
+    MyPeripheralManagerDelegate *peripheral_manager_delegate = (__bridge MyPeripheralManagerDelegate *)this->peripheral_manager_delegate;
     peripheral_manager_delegate.active = true;
     if (get_characteristic_count() <= 0) {
         print_line("Advertise failure");
@@ -351,6 +340,7 @@ bool BluetoothAdvertiserMacOS::start_advertising() const {
 }
 
 bool BluetoothAdvertiserMacOS::stop_advertising() const {
+    MyPeripheralManagerDelegate *peripheral_manager_delegate = (__bridge MyPeripheralManagerDelegate *)this->peripheral_manager_delegate;
     peripheral_manager_delegate.active = false;
     if (peripheral_manager_delegate.peripheralManager.isAdvertising) {
         [peripheral_manager_delegate.peripheralManager removeAllServices];
@@ -367,18 +357,4 @@ void BluetoothAdvertiserMacOS::on_register() const {
 
 void BluetoothAdvertiserMacOS::on_unregister() const {
 	// nothing to do here
-}
-
-BluetoothMacOS::BluetoothMacOS() {
-}
-
-Ref<BluetoothAdvertiser> BluetoothMacOS::new_advertiser() {
-    if (Engine::get_singleton()->is_editor_hint() || Engine::get_singleton()->is_project_manager_hint()) {
-        return nullptr;
-    }
-    int count = get_advertiser_count();
-    Ref<BluetoothAdvertiserMacOS> advertiser;
-    advertiser.instantiate();
-    add_advertiser(advertiser);
-    return get_advertiser(count);
 }

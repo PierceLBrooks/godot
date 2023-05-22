@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  register_types.cpp                                                    */
+/*  bluetooth_advertiser_macos.h                                          */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,24 +28,29 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#include "register_types.h"
+#ifndef BLUETOOTH_ADVERTISER_MACOS_H
+#define BLUETOOTH_ADVERTISER_MACOS_H
 
-#if defined(MACOS_ENABLED)
-#include "bluetooth_server_macos.h"
-#endif
+#include "servers/bluetooth/bluetooth_advertiser.h"
 
-void initialize_bluetooth_module(ModuleInitializationLevel p_level) {
-	if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE) {
-		return;
-	}
+//////////////////////////////////////////////////////////////////////////
+// BluetoothAdvertiserMacOS - Subclass for bluetooth advertisers in macOS
 
-#if defined(MACOS_ENABLED)
-	BluetoothServer::make_default<BluetoothServerMacOS>();
-#endif
-}
+class BluetoothAdvertiserMacOS : public BluetoothAdvertiser {
+private:
+	void *peripheral_manager_delegate;
+public:
+	BluetoothAdvertiserMacOS();
+	virtual ~BluetoothAdvertiserMacOS();
 
-void uninitialize_bluetooth_module(ModuleInitializationLevel p_level) {
-	if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE) {
-		return;
-	}
-}
+    void respond_characteristic_read_request(String p_characteristic_uuid, String p_response, int p_request) const override;
+    void respond_characteristic_write_request(String p_characteristic_uuid, String p_response, int p_request) const override;
+
+	bool start_advertising() const override;
+	bool stop_advertising() const override;
+
+    void on_register() const override;
+    void on_unregister() const override;
+};
+
+#endif // BLUETOOTH_ADVERTISER_MACOS_H

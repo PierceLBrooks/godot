@@ -211,6 +211,7 @@ BluetoothAdvertiser::BluetoothAdvertiserCharacteristic::BluetoothAdvertiserChara
 	uuid = "";
 	permission = false;
 	readRequest = -1;
+	writeRequest = -1;
 }
 
 BluetoothAdvertiser::BluetoothAdvertiserCharacteristic::BluetoothAdvertiserCharacteristic(String p_characteristic_uuid) {
@@ -218,6 +219,7 @@ BluetoothAdvertiser::BluetoothAdvertiserCharacteristic::BluetoothAdvertiserChara
 	uuid = p_characteristic_uuid;
 	permission = false;
 	readRequest = -1;
+	writeRequest = -1;
 }
 
 BluetoothAdvertiser::BluetoothAdvertiser(int p_id) {
@@ -353,7 +355,7 @@ bool BluetoothAdvertiser::on_write(String p_characteristic_uuid, int p_request, 
 			Thread thread;
 			(*reference)->value = p_value_base64;
 			(*reference)->peer = p_peer_uuid;
-			(*reference)->readRequest = p_request;
+			(*reference)->writeRequest = p_request;
 			(*reference)->advertiser = Ref<BluetoothAdvertiser>(const_cast<BluetoothAdvertiser*>(this));
 			thread.start([](void *p_udata) {
 				Ref<BluetoothAdvertiser::BluetoothAdvertiserCharacteristic>* characteristic = static_cast<Ref<BluetoothAdvertiser::BluetoothAdvertiserCharacteristic>*>(p_udata);
@@ -363,7 +365,7 @@ bool BluetoothAdvertiser::on_write(String p_characteristic_uuid, int p_request, 
 			}, reference);
 			thread.wait_to_finish();
 			(*reference)->advertiser = *BluetoothAdvertiser::null_advertiser;
-			(*reference)->readRequest = -1;
+			(*reference)->writeRequest = -1;
 			(*reference)->peer = "";
 		}
 		delete reference;
