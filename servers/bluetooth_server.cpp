@@ -31,6 +31,7 @@
 #include "bluetooth_server.h"
 #include "core/variant/typed_array.h"
 #include "servers/bluetooth/bluetooth_advertiser.h"
+#include "servers/bluetooth/bluetooth_enumerator.h"
 
 ////////////////////////////////////////////////////////
 // BluetoothServer
@@ -50,6 +51,19 @@ void BluetoothServer::_bind_methods() {
 
 	ADD_SIGNAL(MethodInfo("bluetooth_advertiser_added", PropertyInfo(Variant::INT, "id")));
 	ADD_SIGNAL(MethodInfo("bluetooth_advertiser_removed", PropertyInfo(Variant::INT, "id")));
+
+	ClassDB::bind_method(D_METHOD("get_enumerator_by_id", "id"), &BluetoothServer::get_enumerator_by_id);
+	ClassDB::bind_method(D_METHOD("get_enumerator", "index"), &BluetoothServer::get_enumerator);
+	ClassDB::bind_method(D_METHOD("get_enumerator_count"), &BluetoothServer::get_enumerator_count);
+	ClassDB::bind_method(D_METHOD("enumerators"), &BluetoothServer::get_enumerators);
+
+	ClassDB::bind_method(D_METHOD("add_enumerator", "enumerator"), &BluetoothServer::add_enumerator);
+	ClassDB::bind_method(D_METHOD("remove_enumerator", "enumerator"), &BluetoothServer::remove_enumerator);
+
+	ClassDB::bind_method(D_METHOD("new_enumerator"), &BluetoothServer::new_enumerator);
+
+	ADD_SIGNAL(MethodInfo("bluetooth_enumerator_added", PropertyInfo(Variant::INT, "id")));
+	ADD_SIGNAL(MethodInfo("bluetooth_enumerator_removed", PropertyInfo(Variant::INT, "id")));
 }
 
 BluetoothServer *BluetoothServer::singleton = nullptr;
@@ -156,6 +170,106 @@ TypedArray<BluetoothAdvertiser> BluetoothServer::get_advertisers() const {
 	}
 
 	return return_advertisers;
+}
+
+int BluetoothServer::get_free_enumerator_id() {
+	bool id_exists = true;
+	int newid = 0;
+
+	// find a free id
+	while (id_exists) {
+		newid++;
+		id_exists = false;
+		for (int i = 0; i < enumerators.size() && !id_exists; i++) {
+			if (enumerators[i]->get_id() == newid) {
+				id_exists = true;
+			}
+		}
+	}
+
+	return newid;
+}
+
+int BluetoothServer::get_enumerator_index(int p_id) const {
+	for (int i = 0; i < enumerators.size(); i++) {
+		if (enumerators[i]->get_id() == p_id) {
+			return i;
+		}
+	}
+
+	return -1;
+}
+
+Ref<BluetoothEnumerator> BluetoothServer::get_enumerator_by_id(int p_id) const {
+	int index = get_enumerator_index(p_id);
+
+	if (index < 0) {
+		return nullptr;
+	}
+
+	return enumerators[index];
+}
+
+Ref<BluetoothEnumerator> BluetoothServer::new_enumerator() {
+	// nothing to do here
+	return nullptr;
+}
+
+void BluetoothServer::add_enumerator(const Ref<BluetoothEnumerator> &p_enumerator) {
+	if (!get_enumerator_by_id(p_enumerator->get_id()).is_null()) {
+		return;
+	}
+
+	ERR_FAIL_COND(p_enumerator.is_null());
+
+	// add our enumerator
+	enumerators.push_back(p_enumerator);
+
+	print_verbose("BluetoothServer: Registered enumerator with ID " + itos(p_enumerator->get_id()) + " at index " + itos(enumerators.size() - 1));
+
+	// let whomever is interested know
+	p_enumerator->on_register();
+	emit_signal(SNAME("bluetooth_enumerator_added"), p_enumerator->get_id());
+}
+
+void BluetoothServer::remove_enumerator(const Ref<BluetoothEnumerator> &p_enumerator) {
+	for (int i = 0; i < enumerators.size(); i++) {
+		if (enumerators[i] == p_enumerator) {
+			int enumerator_id = p_enumerator->get_id();
+
+			print_verbose("BluetoothServer: Removed enumerator with ID " + itos(enumerator_id));
+
+			// remove it from our array, if this results in our enumerator being unreferenced it will be destroyed
+			enumerators.remove_at(i);
+
+			// let whomever is interested know
+			p_enumerator->on_unregister();
+			emit_signal(SNAME("bluetooth_enumerator_removed"), enumerator_id);
+			return;
+		}
+	}
+}
+
+Ref<BluetoothEnumerator> BluetoothServer::get_enumerator(int p_index) const {
+	ERR_FAIL_INDEX_V(p_index, enumerators.size(), nullptr);
+
+	return enumerators[p_index];
+}
+
+int BluetoothServer::get_enumerator_count() const {
+	return enumerators.size();
+}
+
+TypedArray<BluetoothEnumerator> BluetoothServer::get_enumerators() const {
+	TypedArray<BluetoothEnumerator> return_enumerators;
+	int cc = get_enumerator_count();
+	return_enumerators.resize(cc);
+
+	for (int i = 0; i < enumerators.size(); i++) {
+		return_enumerators[i] = get_enumerator(i);
+	}
+
+	return return_enumerators;
 }
 
 BluetoothServer::BluetoothServer() {

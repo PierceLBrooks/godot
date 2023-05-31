@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  bluetooth_server_macos.h                                              */
+/*  bluetooth_enumerator_macos.mm                                         */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,16 +28,33 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef BLUETOOTH_SERVER_MACOS_H
-#define BLUETOOTH_SERVER_MACOS_H
+#include "bluetooth_server_macos.h"
+#include "bluetooth_enumerator_macos.h"
+#include "servers/bluetooth/bluetooth_enumerator.h"
+#include "core/config/engine.h"
+#include "core/core_bind.h"
 
-#include "servers/bluetooth_server.h"
+#import <Foundation/Foundation.h>
+#import <CoreBluetooth/CoreBluetooth.h>
 
-class BluetoothServerMacOS : public BluetoothServer {
-public:
-	BluetoothServerMacOS();
-	Ref<BluetoothAdvertiser> new_advertiser() override;
-	Ref<BluetoothEnumerator> new_enumerator() override;
-};
+BluetoothEnumeratorMacOS::BluetoothEnumeratorMacOS() {
+}
 
-#endif // BLUETOOTH_SERVER_MACOS_H
+BluetoothEnumeratorMacOS::~BluetoothEnumeratorMacOS() {
+}
+
+bool BluetoothEnumeratorMacOS::start_scanning() const {
+	return true;
+}
+
+bool BluetoothEnumeratorMacOS::stop_scanning() const {
+	return true;
+}
+
+void BluetoothEnumeratorMacOS::on_register() const {
+	// nothing to do here
+}
+
+void BluetoothEnumeratorMacOS::on_unregister() const {
+	// nothing to do here
+}

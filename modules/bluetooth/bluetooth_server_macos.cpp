@@ -30,6 +30,7 @@
 
 #include "bluetooth_server_macos.h"
 #include "bluetooth_advertiser_macos.h"
+#include "bluetooth_enumerator_macos.h"
 #include "core/config/engine.h"
 
 BluetoothServerMacOS::BluetoothServerMacOS() {
@@ -44,4 +45,15 @@ Ref<BluetoothAdvertiser> BluetoothServerMacOS::new_advertiser() {
     advertiser.instantiate();
     add_advertiser(advertiser);
     return get_advertiser(count);
+}
+
+Ref<BluetoothEnumerator> BluetoothServerMacOS::new_enumerator() {
+    if (Engine::get_singleton()->is_editor_hint() || Engine::get_singleton()->is_project_manager_hint()) {
+        return nullptr;
+    }
+    int count = get_enumerator_count();
+    Ref<BluetoothEnumeratorMacOS> enumerator;
+    enumerator.instantiate();
+    add_enumerator(enumerator);
+    return get_enumerator(count);
 }

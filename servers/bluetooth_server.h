@@ -43,6 +43,7 @@
 **/
 
 class BluetoothAdvertiser;
+class BluetoothEnumerator;
 template <typename T>
 class TypedArray;
 
@@ -59,6 +60,7 @@ protected:
 	static CreateFunc create_func;
 
 	Vector<Ref<BluetoothAdvertiser>> advertisers;
+	Vector<Ref<BluetoothEnumerator>> enumerators;
 
 	static BluetoothServer *singleton;
 
@@ -97,6 +99,22 @@ public:
 	Ref<BluetoothAdvertiser> get_advertiser(int p_index) const;
 	int get_advertiser_count() const;
 	TypedArray<BluetoothAdvertiser> get_advertisers() const;
+
+	// Right now we identify our enumerator by it's ID when it's used in the background.
+	// May see if we can change this to purely relying on BluetoothEnumerator objects or by name.
+	int get_free_enumerator_id();
+	int get_enumerator_index(int p_id) const;
+	Ref<BluetoothEnumerator> get_enumerator_by_id(int p_id) const;
+
+	// Add and remove enumerators.
+	virtual Ref<BluetoothEnumerator> new_enumerator();
+	void add_enumerator(const Ref<BluetoothEnumerator> &p_enumerator);
+	void remove_enumerator(const Ref<BluetoothEnumerator> &p_enumerator);
+
+	// Get our enumerators.
+	Ref<BluetoothEnumerator> get_enumerator(int p_index) const;
+	int get_enumerator_count() const;
+	TypedArray<BluetoothEnumerator> get_enumerators() const;
 
 	BluetoothServer();
 	~BluetoothServer();

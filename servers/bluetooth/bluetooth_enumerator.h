@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  bluetooth_server_macos.h                                              */
+/*  bluetooth_enumerator.h                                                */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,16 +28,48 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef BLUETOOTH_SERVER_MACOS_H
-#define BLUETOOTH_SERVER_MACOS_H
+#ifndef BLUETOOTH_ENUMERATOR_H
+#define BLUETOOTH_ENUMERATOR_H
 
 #include "servers/bluetooth_server.h"
 
-class BluetoothServerMacOS : public BluetoothServer {
+/**
+	The bluetooth server is a singleton object that gives access to the various
+	bluetooth enumerator and device enumerators that can be used as the background for our environment.
+**/
+
+class BluetoothEnumerator : public RefCounted {
+	GDCLASS(BluetoothEnumerator, RefCounted);
+
+private:
+	friend class BluetoothServer;
+
+	static Ref<BluetoothEnumerator>* null_enumerator;
+
+	int id; // unique id for this, for internal use in case devices are removed
+	HashMap<String, bool> permissions;
+
+	bool can_emit_signal(const StringName &p_name) const;
+
+protected:
+	bool active; // only when active do we actually update the bluetooth status
+
+	static void _bind_methods();
+
+	virtual void on_register() const;
+	virtual void on_unregister() const;
+
 public:
-	BluetoothServerMacOS();
-	Ref<BluetoothAdvertiser> new_advertiser() override;
-	Ref<BluetoothEnumerator> new_enumerator() override;
+	int get_id() const;
+	bool is_active() const;
+	void set_active(bool p_is_active);
+
+	BluetoothEnumerator(int p_id);
+	BluetoothEnumerator();
+	virtual ~BluetoothEnumerator();
+
+	virtual bool start_scanning() const;
+	virtual bool stop_scanning() const;
 };
 
-#endif // BLUETOOTH_SERVER_MACOS_H
+#endif // BLUETOOTH_ENUMERATOR_H

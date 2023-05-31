@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  bluetooth_server_macos.h                                              */
+/*  bluetooth_enumerator_macos.h                                          */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,16 +28,24 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef BLUETOOTH_SERVER_MACOS_H
-#define BLUETOOTH_SERVER_MACOS_H
+#ifndef BLUETOOTH_ENUMERATOR_MACOS_H
+#define BLUETOOTH_ENUMERATOR_MACOS_H
 
-#include "servers/bluetooth_server.h"
+#include "servers/bluetooth/bluetooth_enumerator.h"
 
-class BluetoothServerMacOS : public BluetoothServer {
+//////////////////////////////////////////////////////////////////////////
+// BluetoothEnumeratorMacOS - Subclass for bluetooth enumerators in macOS
+
+class BluetoothEnumeratorMacOS : public BluetoothEnumerator {
 public:
-	BluetoothServerMacOS();
-	Ref<BluetoothAdvertiser> new_advertiser() override;
-	Ref<BluetoothEnumerator> new_enumerator() override;
+	BluetoothEnumeratorMacOS();
+	virtual ~BluetoothEnumeratorMacOS();
+
+	bool start_scanning() const override;
+	bool stop_scanning() const override;
+
+    void on_register() const override;
+    void on_unregister() const override;
 };
 
-#endif // BLUETOOTH_SERVER_MACOS_H
+#endif // BLUETOOTH_ENUMERATOR_MACOS_H
