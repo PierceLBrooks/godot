@@ -175,7 +175,7 @@ TypedArray<String> BluetoothAdvertiser::get_characteristics() const {
 	int count = get_characteristic_count();
 	return_characteristics.resize(count);
 
-	for (int i = 0; i < characteristics.size(); i++) {
+	for (int i = 0; i < count; i++) {
 		return_characteristics[i] = get_characteristic(i);
 	}
 

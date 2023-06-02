@@ -53,6 +53,7 @@
 #include "audio/effects/audio_effect_stereo_enhance.h"
 #include "audio/effects/audio_stream_generator.h"
 #include "audio_server.h"
+#include "bluetooth/bluetooth_enumerator.h"
 #include "bluetooth/bluetooth_advertiser.h"
 #include "bluetooth_server.h"
 #include "camera/camera_feed.h"
@@ -175,6 +176,7 @@ void register_server_types() {
 	
 	GDREGISTER_CLASS(BluetoothServer);
 	GDREGISTER_CLASS(BluetoothAdvertiser);
+	GDREGISTER_CLASS(BluetoothEnumerator);
 
 	GDREGISTER_ABSTRACT_CLASS(RenderingDevice);
 

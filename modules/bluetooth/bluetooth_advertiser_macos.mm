@@ -58,7 +58,7 @@
 @property (atomic, strong) NSMutableDictionary* readRequests;
 @property (atomic, strong) NSMutableDictionary* writeRequests;
 
-- (instancetype) initWithQueue:(dispatch_queue_t)bleQueue;
+- (instancetype) initWithQueue:(dispatch_queue_t)btleQueue;
 - (void) respondReadRequest:(NSString *)response forRequest:(int)request;
 - (void) respondWriteRequest:(NSString *)response forRequest:(int)request;
 - (bool) startAdvertising;
@@ -66,6 +66,7 @@
 @end
 
 @implementation MyPeripheralManagerDelegate
+
 + (NSString*)stringFromCBManagerState:(CBManagerState)state
 {
     switch (state)
@@ -87,7 +88,7 @@
     return [self initWithQueue:nil];
 }
 
-- (instancetype)initWithQueue:(dispatch_queue_t) bleQueue
+- (instancetype)initWithQueue:(dispatch_queue_t) btleQueue
 {
     //NSLog(@"init %d", [NSThread isMultiThreaded]);
     self = [super init];
@@ -95,16 +96,18 @@
     {
         self.readRequestCount = 0;
         self.readRequests = [[NSMutableDictionary alloc] initWithCapacity:10];
+        self.writeRequestCount = 0;
+        self.writeRequests = [[NSMutableDictionary alloc] initWithCapacity:10];
         self.active = false;
-        if (bleQueue)
+        if (btleQueue)
         {
-            self.peripheralManager = [[CBPeripheralManager alloc] initWithDelegate:self queue:bleQueue];
+            self.peripheralManager = [[CBPeripheralManager alloc] initWithDelegate:self queue:btleQueue];
         }
     }
     return self;
 }
 
-#pragma mark CENTRAL FUNCTIONS
+#pragma mark PERIPHERAL FUNCTIONS
 //------------------------------------------------------------------------------
 - (void)peripheralManagerDidUpdateState:(CBPeripheralManager *)peripheral
 {
@@ -125,7 +128,7 @@
     {
         if (self.context->on_start())
         {
-            NSLog(@"on_start %d", self.active);
+            NSLog(@"on_start: %d", self.active);
         }
     }
 }
@@ -290,6 +293,7 @@
     }
     return success;
 }
+
 @end
 
 BluetoothAdvertiserMacOS::BluetoothAdvertiserMacOS() {

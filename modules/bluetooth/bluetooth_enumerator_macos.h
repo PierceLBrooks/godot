@@ -37,6 +37,8 @@
 // BluetoothEnumeratorMacOS - Subclass for bluetooth enumerators in macOS
 
 class BluetoothEnumeratorMacOS : public BluetoothEnumerator {
+private:
+	void *central_manager_delegate;
 public:
 	BluetoothEnumeratorMacOS();
 	virtual ~BluetoothEnumeratorMacOS();
