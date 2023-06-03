@@ -54,10 +54,15 @@ void BluetoothEnumerator::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("has_sought_service", "service_uuid"), &BluetoothEnumerator::has_sought_service);
 
+	ClassDB::bind_method(D_METHOD("connect_peer", "peer_uuid"), &BluetoothEnumerator::connect_peer);
+
 	ADD_GROUP("Enumerator", "enumerator_");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "enumerator_is_active"), "set_active", "is_active");
 
 	ADD_SIGNAL(MethodInfo("bluetooth_service_enumeration_started", PropertyInfo(Variant::INT, "id")));
+	ADD_SIGNAL(MethodInfo("bluetooth_peer_discovered", PropertyInfo(Variant::INT, "id"), PropertyInfo(Variant::STRING, "peer")));
+	ADD_SIGNAL(MethodInfo("bluetooth_peer_connected", PropertyInfo(Variant::INT, "id"), PropertyInfo(Variant::STRING, "peer")));
+	ADD_SIGNAL(MethodInfo("bluetooth_peer_disconnected", PropertyInfo(Variant::INT, "id"), PropertyInfo(Variant::STRING, "peer")));
 }
 
 int BluetoothEnumerator::get_id() const {
@@ -164,6 +169,10 @@ bool BluetoothEnumerator::stop_scanning() const {
 	return false;
 }
 
+void BluetoothEnumerator::connect_peer(String p_peer_uuid) {
+
+}
+
 bool BluetoothEnumerator::on_start() const {
 	if (can_emit_signal(SNAME("bluetooth_service_enumeration_started"))) {
 		Ref<BluetoothEnumerator>* reference = new Ref<BluetoothEnumerator>(const_cast<BluetoothEnumerator*>(this));
@@ -173,6 +182,100 @@ bool BluetoothEnumerator::on_start() const {
 				Ref<BluetoothEnumerator>* enumerator = static_cast<Ref<BluetoothEnumerator>*>(p_udata);
 				if (enumerator->is_valid()) {
 					(*enumerator)->emit_signal(SNAME("bluetooth_service_enumeration_started"), (*enumerator)->get_id());
+				}
+			}, reference);
+			thread.wait_to_finish();
+		}
+		delete reference;
+		return true;
+	}
+	return false;
+}
+
+bool BluetoothEnumerator::on_discover(String p_peer_uuid) const {
+	if (can_emit_signal(SNAME("bluetooth_peer_discovered"))) {
+		Ref<BluetoothEnumerator>* reference = new Ref<BluetoothEnumerator>(const_cast<BluetoothEnumerator*>(this));
+		if (reference->is_valid()) {
+			Thread thread;
+			(*reference)->peer_discoveries.push_back(p_peer_uuid);
+			thread.start([](void *p_udata) {
+				Ref<BluetoothEnumerator>* enumerator = static_cast<Ref<BluetoothEnumerator>*>(p_udata);
+				if (enumerator->is_valid()) {
+					TypedArray<String> peer_discoveries;
+					int count = (*enumerator)->peer_discoveries.size();
+					peer_discoveries.resize(count);
+					for (int i = 0; i < count; i++) {
+						peer_discoveries[i] = (*enumerator)->peer_discoveries[i];
+					}
+					(*enumerator)->peer_discoveries.clear();
+					for (int i = 0; i < count; i++) {
+						(*enumerator)->emit_signal(SNAME("bluetooth_peer_discovered"), (*enumerator)->get_id(), peer_discoveries[i]);
+					}
+				}
+			}, reference);
+			thread.wait_to_finish();
+		}
+		delete reference;
+		return true;
+	}
+	return false;
+}
+
+bool BluetoothEnumerator::on_connect(String p_peer_uuid) const {
+	if (can_emit_signal(SNAME("bluetooth_peer_connected"))) {
+		Ref<BluetoothEnumerator>* reference = new Ref<BluetoothEnumerator>(const_cast<BluetoothEnumerator*>(this));
+		if (reference->is_valid()) {
+			Thread thread;
+			(*reference)->peer_connections.push_back(p_peer_uuid);
+			thread.start([](void *p_udata) {
+				Ref<BluetoothEnumerator>* enumerator = static_cast<Ref<BluetoothEnumerator>*>(p_udata);
+				if (enumerator->is_valid()) {
+					TypedArray<String> peer_connections;
+					int count = (*enumerator)->peer_connections.size();
+					peer_connections.resize(count);
+					for (int i = 0; i < count; i++) {
+						peer_connections[i] = (*enumerator)->peer_connections[i];
+					}
+					(*enumerator)->peer_connections.clear();
+					for (int i = 0; i < count; i++) {
+						(*enumerator)->peers.push_back(peer_connections[i]);
+						(*enumerator)->emit_signal(SNAME("bluetooth_peer_connected"), (*enumerator)->get_id(), peer_connections[i]);
+					}
+				}
+			}, reference);
+			thread.wait_to_finish();
+		}
+		delete reference;
+		return true;
+	}
+	return false;
+}
+
+bool BluetoothEnumerator::on_disconnect(String p_peer_uuid) const {
+	if (can_emit_signal(SNAME("bluetooth_peer_disconnected"))) {
+		Ref<BluetoothEnumerator>* reference = new Ref<BluetoothEnumerator>(const_cast<BluetoothEnumerator*>(this));
+		if (reference->is_valid()) {
+			Thread thread;
+			(*reference)->peer_disconnections.push_back(p_peer_uuid);
+			thread.start([](void *p_udata) {
+				Ref<BluetoothEnumerator>* enumerator = static_cast<Ref<BluetoothEnumerator>*>(p_udata);
+				if (enumerator->is_valid()) {
+					TypedArray<String> peer_disconnections;
+					int count = (*enumerator)->peer_disconnections.size();
+					peer_disconnections.resize(count);
+					for (int i = 0; i < count; i++) {
+						peer_disconnections[i] = (*enumerator)->peer_disconnections[i];
+					}
+					(*enumerator)->peer_disconnections.clear();
+					for (int i = 0; i < count; i++) {
+						for (int j = 0; j < (*enumerator)->peers.size(); j++) {
+							if (peer_disconnections[i] == (*enumerator)->peers[j]) {
+								(*enumerator)->peers.remove_at(j);
+								break;
+							}
+						}
+						(*enumerator)->emit_signal(SNAME("bluetooth_peer_disconnected"), (*enumerator)->get_id(), peer_disconnections[i]);
+					}
 				}
 			}, reference);
 			thread.wait_to_finish();

@@ -46,6 +46,8 @@ public:
 	bool start_scanning() const override;
 	bool stop_scanning() const override;
 
+	void connect_peer(String p_peer_uuid) override;
+
     void on_register() const override;
     void on_unregister() const override;
 };

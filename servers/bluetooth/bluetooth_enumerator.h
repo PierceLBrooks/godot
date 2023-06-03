@@ -52,6 +52,10 @@ private:
 
 protected:
 	Vector<String> sought_services; // our sought services
+	Vector<String> peers; // our peers
+	Vector<String> peer_discoveries; // our peer discoveries
+	Vector<String> peer_connections; // our peer connections
+	Vector<String> peer_disconnections; // our peer disconnections
 
 	bool active; // only when active do we actually update the bluetooth status
 
@@ -82,7 +86,12 @@ public:
 	virtual bool start_scanning() const;
 	virtual bool stop_scanning() const;
 
+	virtual void connect_peer(String p_peer_uuid);
+
 	bool on_start() const;
+	bool on_discover(String p_peer_uuid) const;
+	bool on_connect(String p_peer_uuid) const;
+	bool on_disconnect(String p_peer_uuid) const;
 };
 
 #endif // BLUETOOTH_ENUMERATOR_H
