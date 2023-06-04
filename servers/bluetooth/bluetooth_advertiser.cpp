@@ -354,7 +354,7 @@ bool BluetoothAdvertiser::on_write(String p_characteristic_uuid, int p_request, 
 		Ref<BluetoothAdvertiser::BluetoothAdvertiserCharacteristic>* reference = new Ref<BluetoothAdvertiser::BluetoothAdvertiserCharacteristic>(get_characteristic_by_uuid(p_characteristic_uuid));
 		if (reference->is_valid()) {
 			Thread thread;
-			(*reference)->value = p_value_base64;
+			(*reference)->value = core_bind::Marshalls::get_singleton()->base64_to_utf8(p_value_base64);
 			(*reference)->peer = p_peer_uuid;
 			(*reference)->writeRequest = p_request;
 			(*reference)->advertiser = Ref<BluetoothAdvertiser>(const_cast<BluetoothAdvertiser*>(this));
