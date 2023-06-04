@@ -2002,6 +2002,7 @@ void ObjectDB::cleanup() {
 			for (uint32_t i = 0, count = slot_count; i < slot_max && count != 0; i++) {
 				if (object_slots[i].validator) {
 					Object *obj = object_slots[i].object;
+					RefCounted *ref = Object::cast_to<RefCounted>(obj);
 
 					String extra_info;
 					if (obj->is_class("Node")) {
@@ -2009,6 +2010,9 @@ void ObjectDB::cleanup() {
 					}
 					if (obj->is_class("Resource")) {
 						extra_info = " - Resource path: " + String(resource_get_path->call(obj, nullptr, 0, call_error));
+					}
+					if (ref) {
+						extra_info = " - Reference count: " + itos(ref->get_reference_count());
 					}
 
 					uint64_t id = uint64_t(i) | (uint64_t(object_slots[i].validator) << OBJECTDB_VALIDATOR_BITS) | (object_slots[i].is_ref_counted ? OBJECTDB_REFERENCE_BIT : 0);

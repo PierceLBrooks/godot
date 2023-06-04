@@ -44,8 +44,6 @@ class BluetoothAdvertiser : public RefCounted {
 private:
 	friend class BluetoothServer;
 
-	static Ref<BluetoothAdvertiser>* null_advertiser;
-
 	int id; // unique id for this, for internal use in case devices are removed
 	HashMap<String, bool> permissions;
 

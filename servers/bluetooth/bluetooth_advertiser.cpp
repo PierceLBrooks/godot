@@ -336,7 +336,7 @@ bool BluetoothAdvertiser::on_read(String p_characteristic_uuid, int p_request, S
 				}
 			}, reference);
 			thread.wait_to_finish();
-			(*reference)->advertiser = *BluetoothAdvertiser::null_advertiser;
+			(*reference)->advertiser.reference_ptr(static_cast<BluetoothAdvertiser*>(nullptr));
 			(*reference)->readRequest = -1;
 			(*reference)->peer = "";
 		}
@@ -365,7 +365,7 @@ bool BluetoothAdvertiser::on_write(String p_characteristic_uuid, int p_request, 
 				}
 			}, reference);
 			thread.wait_to_finish();
-			(*reference)->advertiser = *BluetoothAdvertiser::null_advertiser;
+			(*reference)->advertiser.reference_ptr(static_cast<BluetoothAdvertiser*>(nullptr));
 			(*reference)->writeRequest = -1;
 			(*reference)->peer = "";
 		}
@@ -383,5 +383,3 @@ bool BluetoothAdvertiser::can_emit_signal(const StringName &p_name) const {
 	}
 	return false;
 }
-
-Ref<BluetoothAdvertiser>* BluetoothAdvertiser::null_advertiser = new Ref<BluetoothAdvertiser>(new BluetoothAdvertiser(-1));

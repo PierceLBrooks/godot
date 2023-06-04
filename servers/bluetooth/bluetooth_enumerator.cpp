@@ -282,7 +282,7 @@ bool BluetoothEnumerator::on_discover(String p_peer_uuid, String p_peer_name, St
 				}
 			}, reference);
 			thread.wait_to_finish();
-			(*reference)->enumerator = *BluetoothEnumerator::null_enumerator;
+			(*reference)->enumerator.reference_ptr(static_cast<BluetoothEnumerator*>(nullptr));
 		}
 		delete reference;
 		return true;
@@ -303,7 +303,7 @@ bool BluetoothEnumerator::on_connect(String p_peer_uuid) const {
 				}
 			}, reference);
 			thread.wait_to_finish();
-			(*reference)->enumerator = *BluetoothEnumerator::null_enumerator;
+			(*reference)->enumerator.reference_ptr(static_cast<BluetoothEnumerator*>(nullptr));
 		}
 		delete reference;
 		return true;
@@ -325,7 +325,7 @@ bool BluetoothEnumerator::on_disconnect(String p_peer_uuid) const {
 				}
 			}, reference);
 			thread.wait_to_finish();
-			(*reference)->enumerator = *BluetoothEnumerator::null_enumerator;
+			(*reference)->enumerator.reference_ptr(static_cast<BluetoothEnumerator*>(nullptr));
 		}
 		delete reference;
 		return true;
@@ -370,8 +370,8 @@ bool BluetoothEnumerator::on_discover_service_characteristic(String p_peer_uuid,
 				}
 			}, reference);
 			thread.wait_to_finish();
-			(*peer)->enumerator = *BluetoothEnumerator::null_enumerator;
-			(*reference)->peer = *BluetoothEnumerator::null_peer;
+			(*peer)->enumerator.reference_ptr(static_cast<BluetoothEnumerator*>(nullptr));
+			(*reference)->peer.reference_ptr(static_cast<BluetoothEnumerator::BluetoothEnumeratorPeer*>(nullptr));
 		}
 		delete reference;
 		delete peer;
@@ -380,7 +380,7 @@ bool BluetoothEnumerator::on_discover_service_characteristic(String p_peer_uuid,
 	return false;
 }
 
-bool BluetoothEnumerator::on_read(String p_peer_uuid, String p_service_uuid, String p_characteristic_uuid, String p_value) const {
+bool BluetoothEnumerator::on_read(String p_peer_uuid, String p_service_uuid, String p_characteristic_uuid, String p_value_base64) const {
 	if (peers.find(p_peer_uuid) == peers.end()) {
 		return false;
 	}
@@ -395,7 +395,7 @@ bool BluetoothEnumerator::on_read(String p_peer_uuid, String p_service_uuid, Str
 				Ref<BluetoothEnumerator::BluetoothEnumeratorCharacteristic>* reference = new Ref<BluetoothEnumerator::BluetoothEnumeratorCharacteristic>(service->characteristics[p_characteristic_uuid]);
 				if (reference->is_valid()) {
 					Thread thread;
-					(*reference)->value = core_bind::Marshalls::get_singleton()->base64_to_utf8(p_value);
+					(*reference)->value = core_bind::Marshalls::get_singleton()->base64_to_utf8(p_value_base64);
 					(*reference)->uuid = p_characteristic_uuid;
 					(*reference)->service = p_service_uuid;
 					(*reference)->peer = *peer;
@@ -407,8 +407,8 @@ bool BluetoothEnumerator::on_read(String p_peer_uuid, String p_service_uuid, Str
 						}
 					}, reference);
 					thread.wait_to_finish();
-					(*peer)->enumerator = *BluetoothEnumerator::null_enumerator;
-					(*reference)->peer = *BluetoothEnumerator::null_peer;
+					(*peer)->enumerator.reference_ptr(static_cast<BluetoothEnumerator*>(nullptr));
+					(*reference)->peer.reference_ptr(static_cast<BluetoothEnumerator::BluetoothEnumeratorPeer*>(nullptr));
 				}
 				delete reference;
 			}
@@ -445,8 +445,8 @@ bool BluetoothEnumerator::on_write(String p_peer_uuid, String p_service_uuid, St
 						}
 					}, reference);
 					thread.wait_to_finish();
-					(*peer)->enumerator = *BluetoothEnumerator::null_enumerator;
-					(*reference)->peer = *BluetoothEnumerator::null_peer;
+					(*peer)->enumerator.reference_ptr(static_cast<BluetoothEnumerator*>(nullptr));
+					(*reference)->peer.reference_ptr(static_cast<BluetoothEnumerator::BluetoothEnumeratorPeer*>(nullptr));
 				}
 				delete reference;
 			}
@@ -483,8 +483,8 @@ bool BluetoothEnumerator::on_error(String p_peer_uuid, String p_service_uuid, St
 						}
 					}, reference);
 					thread.wait_to_finish();
-					(*peer)->enumerator = *BluetoothEnumerator::null_enumerator;
-					(*reference)->peer = *BluetoothEnumerator::null_peer;
+					(*peer)->enumerator.reference_ptr(static_cast<BluetoothEnumerator*>(nullptr));
+					(*reference)->peer.reference_ptr(static_cast<BluetoothEnumerator::BluetoothEnumeratorPeer*>(nullptr));
 				}
 				delete reference;
 			}
@@ -511,8 +511,3 @@ bool BluetoothEnumerator::can_emit_signal(const StringName &p_name) const {
 	}
 	return false;
 }
-
-Ref<BluetoothEnumerator>* BluetoothEnumerator::null_enumerator = new Ref<BluetoothEnumerator>(new BluetoothEnumerator(-1));
-Ref<BluetoothEnumerator::BluetoothEnumeratorPeer>* BluetoothEnumerator::null_peer = new Ref<BluetoothEnumerator::BluetoothEnumeratorPeer>(new BluetoothEnumerator::BluetoothEnumeratorPeer());
-Ref<BluetoothEnumerator::BluetoothEnumeratorService>* BluetoothEnumerator::null_service = new Ref<BluetoothEnumerator::BluetoothEnumeratorService>(new BluetoothEnumerator::BluetoothEnumeratorService());
-Ref<BluetoothEnumerator::BluetoothEnumeratorCharacteristic>* BluetoothEnumerator::null_characteristic = new Ref<BluetoothEnumerator::BluetoothEnumeratorCharacteristic>(new BluetoothEnumerator::BluetoothEnumeratorCharacteristic());

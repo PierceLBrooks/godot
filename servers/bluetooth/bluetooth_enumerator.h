@@ -49,11 +49,6 @@ protected:
 private:
 	friend class BluetoothServer;
 
-	static Ref<BluetoothEnumerator>* null_enumerator;
-	static Ref<BluetoothEnumerator::BluetoothEnumeratorPeer>* null_peer;
-	static Ref<BluetoothEnumerator::BluetoothEnumeratorService>* null_service;
-	static Ref<BluetoothEnumerator::BluetoothEnumeratorCharacteristic>* null_characteristic;
-
 	int id; // unique id for this, for internal use in case devices are removed
 
 	bool can_emit_signal(const StringName &p_name) const;
@@ -138,7 +133,7 @@ public:
 	bool on_connect(String p_peer_uuid) const;
 	bool on_disconnect(String p_peer_uuid) const;
 	bool on_discover_service_characteristic(String p_peer_uuid, String p_service_uuid, String p_characteristic_uuid, bool p_writable_permission) const;
-	bool on_read(String p_peer_uuid, String p_service_uuid, String p_characteristic_uuid, String p_value) const;
+	bool on_read(String p_peer_uuid, String p_service_uuid, String p_characteristic_uuid, String p_value_base64) const;
 	bool on_write(String p_peer_uuid, String p_service_uuid, String p_characteristic_uuid) const;
 	bool on_error(String p_peer_uuid, String p_service_uuid, String p_characteristic_uuid) const;
 };
