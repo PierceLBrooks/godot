@@ -41,21 +41,62 @@
 class BluetoothEnumerator : public RefCounted {
 	GDCLASS(BluetoothEnumerator, RefCounted);
 
+protected:
+	class BluetoothEnumeratorPeer;
+	class BluetoothEnumeratorService;
+	class BluetoothEnumeratorCharacteristic;
+
 private:
 	friend class BluetoothServer;
 
 	static Ref<BluetoothEnumerator>* null_enumerator;
+	static Ref<BluetoothEnumerator::BluetoothEnumeratorPeer>* null_peer;
+	static Ref<BluetoothEnumerator::BluetoothEnumeratorService>* null_service;
+	static Ref<BluetoothEnumerator::BluetoothEnumeratorCharacteristic>* null_characteristic;
 
 	int id; // unique id for this, for internal use in case devices are removed
 
 	bool can_emit_signal(const StringName &p_name) const;
 
 protected:
+	class BluetoothEnumeratorCharacteristic : public RefCounted {
+		GDCLASS(BluetoothEnumeratorCharacteristic, RefCounted);
+
+	public:
+		BluetoothEnumeratorCharacteristic();
+		BluetoothEnumeratorCharacteristic(String p_characteristic_uuid);
+		Ref<BluetoothEnumerator::BluetoothEnumeratorPeer> peer;
+		String service;
+		String uuid;
+		bool permission;
+	};
+
+	class BluetoothEnumeratorService : public RefCounted {
+		GDCLASS(BluetoothEnumeratorService, RefCounted);
+
+	public:
+		BluetoothEnumeratorService();
+		BluetoothEnumeratorService(String p_service_uuid);
+		Ref<BluetoothEnumerator::BluetoothEnumeratorPeer> peer;
+		String uuid;
+		HashMap<String, Ref<BluetoothEnumerator::BluetoothEnumeratorCharacteristic>> characteristics;
+	};
+
+	class BluetoothEnumeratorPeer : public RefCounted {
+		GDCLASS(BluetoothEnumeratorPeer, RefCounted);
+
+	public:
+		BluetoothEnumeratorPeer();
+		BluetoothEnumeratorPeer(String p_peer_uuid);
+		Ref<BluetoothEnumerator> enumerator;
+		String uuid;
+		String name;
+		Dictionary advertisement_data;
+		HashMap<String, Ref<BluetoothEnumerator::BluetoothEnumeratorService>> services;
+	};
+
 	Vector<String> sought_services; // our sought services
-	Vector<String> peers; // our peers
-	Vector<String> peer_discoveries; // our peer discoveries
-	Vector<String> peer_connections; // our peer connections
-	Vector<String> peer_disconnections; // our peer disconnections
+	HashMap<String, Ref<BluetoothEnumerator::BluetoothEnumeratorPeer>> peers; // our peers
 
 	bool active; // only when active do we actually update the bluetooth status
 
@@ -89,9 +130,11 @@ public:
 	virtual void connect_peer(String p_peer_uuid);
 
 	bool on_start() const;
-	bool on_discover(String p_peer_uuid) const;
+	bool on_stop() const;
+	bool on_discover(String p_peer_uuid, String p_peer_name, String p_peer_advertisement_data) const;
 	bool on_connect(String p_peer_uuid) const;
 	bool on_disconnect(String p_peer_uuid) const;
+	bool on_discover_service_characteristic(String p_peer_uuid, String p_service_uuid, String p_characteristic_uuid, bool p_writable_permission) const;
 };
 
 #endif // BLUETOOTH_ENUMERATOR_H

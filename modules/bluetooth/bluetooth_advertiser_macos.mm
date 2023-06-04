@@ -33,6 +33,7 @@
 #include "servers/bluetooth/bluetooth_advertiser.h"
 #include "core/config/engine.h"
 #include "core/core_bind.h"
+#include "core/variant/typed_array.h"
 
 #import <Foundation/Foundation.h>
 #import <CoreBluetooth/CoreBluetooth.h>

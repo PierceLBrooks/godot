@@ -33,6 +33,7 @@
 #include "servers/bluetooth/bluetooth_enumerator.h"
 #include "core/config/engine.h"
 #include "core/core_bind.h"
+#include "core/variant/typed_array.h"
 
 #import <Foundation/Foundation.h>
 #import <CoreBluetooth/CoreBluetooth.h>
@@ -75,7 +76,6 @@
     }
 }
 
-//------------------------------------------------------------------------------
 #pragma mark init funcs
 
 - (instancetype)init
@@ -104,23 +104,49 @@
 }
 
 #pragma mark CENTRAL FUNCTIONS
-//------------------------------------------------------------------------------
 - (void)centralManager:(CBCentralManager *)central
  didDiscoverPeripheral:(CBPeripheral *)peripheral
      advertisementData:(NSDictionary *)advertisementData
                   RSSI:(NSNumber *)RSSI
 {
-    if (![self.peers containsObject:peripheral]) {
+    String base64Data;
+    NSError *error = nil;
+    const char *name = [peripheral.name cStringUsingEncoding:NSASCIIStringEncoding];
+    if (name == NULL)
+    {
+        name = "";
+    }
+    if (advertisementData != nil)
+    {
+        NSData *jsonData = nil;
+        if ([NSJSONSerialization isValidJSONObject:advertisementData])
+        {
+            jsonData = [NSJSONSerialization dataWithJSONObject:advertisementData 
+                                                       options:NSJSONWritingPrettyPrinted
+                                                         error:&error];
+        }
+        if (jsonData != nil)
+        {
+            int length = jsonData.length;
+            Vector<uint8_t> data;
+            data.resize(length);
+            memcpy(data.ptrw(), jsonData.bytes, length);
+            base64Data += core_bind::Marshalls::get_singleton()->raw_to_base64(data);
+        }
+    }
+    if (![self.peers containsObject:peripheral])
+    {
         [self.peers addObject:peripheral];
     }
-    NSLog(@"Found: %@ @ %@", peripheral.name, self.peers);
-    self.context->on_discover(peripheral.identifier.UUIDString.UTF8String);
+    NSLog(@"Found: %@", peripheral.name);
+    self.context->on_discover(peripheral.identifier.UUIDString.UTF8String, name, base64Data);
 }
 
 - (void) centralManager: (CBCentralManager *)central
    didConnectPeripheral: (CBPeripheral *)peripheral
 {
-    if (![self.peers containsObject:peripheral]) {
+    if (![self.peers containsObject:peripheral]) 
+    {
         [self.peers addObject:peripheral];
     }
     [peripheral setDelegate:self];
@@ -139,15 +165,12 @@
 {
     NSLog(@"Retrieved peripheral: %lu - %@", [peripherals count], peripherals);
     
-    if (self.centralManager.isScanning)
-    {
-        [self.centralManager stopScan];
-    }
+    [self stopScanning];
     
-    for (int i = 0; i < [peripherals count]; i++)
+    for (int i = 0; i < peripherals.count; i++)
     {
-        CBPeripheral* peripheral = [peripherals objectAtIndex:i];
-        if (!self.context->on_discover(peripheral.identifier.UUIDString.UTF8String))
+        CBPeripheral *peripheral = [peripherals objectAtIndex:i];
+        if (!self.context->on_discover(peripheral.identifier.UUIDString.UTF8String, "", ""))
         {
             NSDictionary *connectOptions = @{
                 CBConnectPeripheralOptionNotifyOnConnectionKey: @YES,
@@ -163,7 +186,8 @@
         }
         else
         {
-            if (![self.peers containsObject:peripheral]) {
+            if (![self.peers containsObject:peripheral]) 
+            {
                 [self.peers addObject:peripheral];
             }
         }
@@ -175,19 +199,20 @@ didDisconnectPeripheral: (CBPeripheral *)peripheral
                   error: (NSError *)error
 {
     NSLog(@"didDisconnectPeripheral %@ with error = %@", peripheral, [error localizedDescription]);
-    if ([self.peers containsObject:peripheral]) {
+    if ([self.peers containsObject:peripheral]) 
+    {
         [self.peers removeObject:peripheral];
     }
     self.context->on_disconnect(peripheral.identifier.UUIDString.UTF8String);
 }
 
-//------------------------------------------------------------------------------
 - (void)    centralManager: (CBCentralManager *)central
 didFailToConnectPeripheral: (CBPeripheral *)peripheral
                      error: (NSError *)error
 {
     NSLog(@"Fail to connect to peripheral: %@ with error = %@", peripheral, [error localizedDescription]);
-    if ([self.peers containsObject:peripheral]) {
+    if ([self.peers containsObject:peripheral]) 
+    {
         [self.peers removeObject:peripheral];
     }
     self.context->on_disconnect(peripheral.identifier.UUIDString.UTF8String);
@@ -196,39 +221,77 @@ didFailToConnectPeripheral: (CBPeripheral *)peripheral
 - (void) peripheral: (CBPeripheral *)peripheral
 didDiscoverServices: (NSError *)error
 {
+    TypedArray<String> services = self.context->get_sought_services();
     NSLog(@"Service discovery error: %@", error);
     for (CBService *service in peripheral.services)
     {
+        if (services.size() > 0)
+        {
+            bool check = true;
+            for (int i = 0; i < services.size(); i++)
+            {
+                if (strcmp(services[i].stringify().utf8(), service.UUID.UUIDString.UTF8String) == 0)
+                {
+                    check = false;
+                    break;
+                }
+            }
+            if (check)
+            {
+                continue;
+            }
+        }
         NSLog(@"Service found with UUID: %@", service.UUID);
         [peripheral discoverCharacteristics:nil
                     forService:service];
     }
 }
-//------------------------------------------------------------------------------
+
 - (void)                  peripheral:(CBPeripheral *)peripheral
 didDiscoverCharacteristicsForService:(CBService *)service
                                error:(NSError *)error
 {
+    TypedArray<String> services = self.context->get_sought_services();
     NSLog(@"Characteristic discovery error: %@", error);
-    for (CBCharacteristic *characteristic in service.characteristics)
+    if (services.size() > 0)
     {
-        NSLog(@"Service: %@ with Char: %@", [characteristic service].UUID, characteristic.UUID);
-        if (characteristic.properties & CBCharacteristicPropertyRead)
+        bool check = true;
+        for (int i = 0; i < services.size(); i++)
         {
-            [peripheral setNotifyValue:YES forCharacteristic:characteristic];
-            //                [peripheral readValueForCharacteristic:characteristic];
-            //                [peripheral readValueForDescriptor:nil]
+            if (strcmp(services[i].stringify().utf8(), service.UUID.UUIDString.UTF8String) == 0)
+            {
+                check = false;
+                break;
+            }
+        }
+        if (check)
+        {
+            service = nil;
         }
     }
+    if (service == nil)
+    {
+        return;
+    }
+    for (CBCharacteristic *characteristic in service.characteristics)
+    {
+        bool writable = false;
+        if (characteristic.properties & CBCharacteristicPropertyWrite)
+        {
+            writable = true;
+        }
+        self.context->on_discover_service_characteristic(peripheral.identifier.UUIDString.UTF8String, service.UUID.UUIDString.UTF8String, characteristic.UUID.UUIDString.UTF8String, writable);
+        NSLog(@"Service: %@ with Char: %@", service.UUID, characteristic.UUID);
+    }
 }
-//------------------------------------------------------------------------------
+
 - (void)             peripheral:(CBPeripheral *)peripheral 
 didUpdateValueForCharacteristic:(CBCharacteristic *)characteristic
                           error:(NSError *)error
 {
     
 }
-//------------------------------------------------------------------------------
+
 - (void)centralManagerDidUpdateState:(CBCentralManager *)manager
 {
     NSLog(@"CBCentralManager entered state %@", [MyCentralManagerDelegate stringFromCBManagerState:manager.state]);
@@ -295,13 +358,27 @@ didUpdateValueForCharacteristic:(CBCharacteristic *)characteristic
 	return success;
 }
 
+- (bool) stopScanning
+{
+    bool success = false;
+    if (self.centralManager.isScanning)
+    {
+        [self.centralManager stopScan];
+        self.context->on_stop();
+        self.context->stop_scanning();
+        self.active = false;
+        success = true;
+    }
+    return success;
+}
+
 - (bool) connectToPeer: (CBUUID *)uuid
 {
     bool success = false;
     int count = self.peers.count;
     for (int i = 0; i < count; i++)
     {
-        CBPeripheral* peer = [self.peers objectAtIndex:i];
+        CBPeripheral *peer = [self.peers objectAtIndex:i];
         if ([peer.identifier.UUIDString isEqualToString:uuid.UUIDString])
         {
             NSDictionary *connectOptions = @{
@@ -316,14 +393,10 @@ didUpdateValueForCharacteristic:(CBCharacteristic *)characteristic
             success = true;
             break;
         }
-        else
-        {
-            NSLog(@"Peer mistmatch: %@ @ %@", uuid.UUIDString, peer.identifier.UUIDString);
-        }
     }
     if (success && self.centralManager.isScanning)
     {
-        [self.centralManager stopScan];
+        [self stopScanning];
     }
     return success;
 }
@@ -352,7 +425,8 @@ bool BluetoothEnumeratorMacOS::start_scanning() const {
 }
 
 bool BluetoothEnumeratorMacOS::stop_scanning() const {
-	return true;
+    MyCentralManagerDelegate *central_manager_delegate = (__bridge MyCentralManagerDelegate *)this->central_manager_delegate;
+    return [central_manager_delegate stopScanning];
 }
 
 void BluetoothEnumeratorMacOS::connect_peer(String p_peer_uuid) {

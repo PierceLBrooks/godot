@@ -306,6 +306,7 @@ bool BluetoothAdvertiser::on_stop() const {
 			thread.start([](void *p_udata) {
 				Ref<BluetoothAdvertiser>* advertiser = static_cast<Ref<BluetoothAdvertiser>*>(p_udata);
 				if (advertiser->is_valid()) {
+					(*advertiser)->active = false;
 					(*advertiser)->emit_signal(SNAME("bluetooth_service_advertisement_stopped"), (*advertiser)->get_id(), (*advertiser)->get_service_uuid());
 				}
 			}, reference);
