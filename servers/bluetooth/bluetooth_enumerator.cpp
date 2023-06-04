@@ -395,7 +395,7 @@ bool BluetoothEnumerator::on_read(String p_peer_uuid, String p_service_uuid, Str
 				Ref<BluetoothEnumerator::BluetoothEnumeratorCharacteristic>* reference = new Ref<BluetoothEnumerator::BluetoothEnumeratorCharacteristic>(service->characteristics[p_characteristic_uuid]);
 				if (reference->is_valid()) {
 					Thread thread;
-					(*reference)->value = p_value;
+					(*reference)->value = core_bind::Marshalls::get_singleton()->base64_to_utf8(p_value);
 					(*reference)->uuid = p_characteristic_uuid;
 					(*reference)->service = p_service_uuid;
 					(*reference)->peer = *peer;
