@@ -68,6 +68,7 @@ protected:
 		Ref<BluetoothEnumerator::BluetoothEnumeratorPeer> peer;
 		String service;
 		String uuid;
+		String value;
 		bool permission;
 	};
 
@@ -128,6 +129,8 @@ public:
 	virtual bool stop_scanning() const;
 
 	virtual void connect_peer(String p_peer_uuid);
+	virtual void read_peer_service_characteristic(String p_peer_uuid, String p_service_uuid, String p_characteristic_uuid);
+	virtual void write_peer_service_characteristic(String p_peer_uuid, String p_service_uuid, String p_characteristic_uuid, String p_value);
 
 	bool on_start() const;
 	bool on_stop() const;
@@ -135,6 +138,9 @@ public:
 	bool on_connect(String p_peer_uuid) const;
 	bool on_disconnect(String p_peer_uuid) const;
 	bool on_discover_service_characteristic(String p_peer_uuid, String p_service_uuid, String p_characteristic_uuid, bool p_writable_permission) const;
+	bool on_read(String p_peer_uuid, String p_service_uuid, String p_characteristic_uuid, String p_value) const;
+	bool on_write(String p_peer_uuid, String p_service_uuid, String p_characteristic_uuid) const;
+	bool on_error(String p_peer_uuid, String p_service_uuid, String p_characteristic_uuid) const;
 };
 
 #endif // BLUETOOTH_ENUMERATOR_H

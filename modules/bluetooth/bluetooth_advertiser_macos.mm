@@ -81,7 +81,6 @@
     }
 }
 
-//------------------------------------------------------------------------------
 #pragma mark init funcs
 
 - (instancetype)init
@@ -109,14 +108,12 @@
 }
 
 #pragma mark PERIPHERAL FUNCTIONS
-//------------------------------------------------------------------------------
 - (void)peripheralManagerDidUpdateState:(CBPeripheralManager *)peripheral
 {
     NSLog(@"CBPeripheralManager entered state %@", [MyPeripheralManagerDelegate stringFromCBManagerState:peripheral.state]);
     [self startAdvertising];
 }
 
-//------------------------------------------------------------------------------
 - (void)peripheralManagerDidStartAdvertising:(CBPeripheralManager *)peripheral
                                        error:(NSError *)error
 {
@@ -134,7 +131,6 @@
     }
 }
 
-//------------------------------------------------------------------------------
 - (void) peripheralManager: (CBPeripheralManager *)peripheral
      didReceiveReadRequest: (CBATTRequest *)request
 {

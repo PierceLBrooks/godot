@@ -46,18 +46,17 @@
 
 @property (nonatomic, assign) BluetoothEnumerator* context;
 @property (nonatomic, assign) bool active;
-@property (nonatomic, assign) int readRequestCount;
-@property (nonatomic, assign) int writeRequestCount;
 
 @property (atomic, strong) CBCentralManager* centralManager;
-@property (atomic, strong) NSMutableDictionary* readRequests;
-@property (atomic, strong) NSMutableDictionary* writeRequests;
 @property (atomic, strong) NSMutableArray* peers;
 
 - (instancetype) initWithQueue:(dispatch_queue_t)btleQueue;
-- (void) respondReadRequest:(NSString *)response forRequest:(int)request;
-- (void) respondWriteRequest:(NSString *)response forRequest:(int)request;
 - (bool) startScanning;
+- (bool) stopScanning;
+- (bool) connectToPeer: (CBUUID *)uuid;
+- (void) discoverFromPeer: (CBPeripheral *)peer;
+- (bool) readAtPeerServiceCharacteristic: (NSMutableArray *)parameters;
+- (bool) writeAtPeerServiceCharacteristic: (NSMutableArray *)parameters;
 
 @end
 
@@ -90,10 +89,6 @@
     if (self)
     {
         self.peers = [[NSMutableArray alloc] initWithCapacity:10];
-        self.readRequestCount = 0;
-        self.readRequests = [[NSMutableDictionary alloc] initWithCapacity:10];
-        self.writeRequestCount = 0;
-        self.writeRequests = [[NSMutableDictionary alloc] initWithCapacity:10];
         self.active = false;
         if (btleQueue)
         {
@@ -156,7 +151,7 @@
     }
     else
     {
-        [peripheral discoverServices:nil];
+        [self discoverFromPeer:peripheral];
     }
 }
 
@@ -218,6 +213,12 @@ didFailToConnectPeripheral: (CBPeripheral *)peripheral
     self.context->on_disconnect(peripheral.identifier.UUIDString.UTF8String);
 }
 
+- (void)peripheral:(CBPeripheral *)peripheral 
+ didModifyServices:(NSArray<CBService *> *)invalidatedServices
+{
+    [self discoverFromPeer:peripheral];
+}
+
 - (void) peripheral: (CBPeripheral *)peripheral
 didDiscoverServices: (NSError *)error
 {
@@ -230,7 +231,7 @@ didDiscoverServices: (NSError *)error
             bool check = true;
             for (int i = 0; i < services.size(); i++)
             {
-                if (strcmp(services[i].stringify().utf8(), service.UUID.UUIDString.UTF8String) == 0)
+                if (strcmp(services[i].stringify().utf8().get_data(), service.UUID.UUIDString.UTF8String) == 0)
                 {
                     check = false;
                     break;
@@ -252,13 +253,13 @@ didDiscoverCharacteristicsForService:(CBService *)service
                                error:(NSError *)error
 {
     TypedArray<String> services = self.context->get_sought_services();
-    NSLog(@"Characteristic discovery error: %@", error);
+    //NSLog(@"Characteristic discovery error: %@", error);
     if (services.size() > 0)
     {
         bool check = true;
         for (int i = 0; i < services.size(); i++)
         {
-            if (strcmp(services[i].stringify().utf8(), service.UUID.UUIDString.UTF8String) == 0)
+            if (strcmp(services[i].stringify().utf8().get_data(), service.UUID.UUIDString.UTF8String) == 0)
             {
                 check = false;
                 break;
@@ -282,6 +283,10 @@ didDiscoverCharacteristicsForService:(CBService *)service
         }
         self.context->on_discover_service_characteristic(peripheral.identifier.UUIDString.UTF8String, service.UUID.UUIDString.UTF8String, characteristic.UUID.UUIDString.UTF8String, writable);
         NSLog(@"Service: %@ with Char: %@", service.UUID, characteristic.UUID);
+        if (characteristic.properties & CBCharacteristicPropertyNotify)
+        {
+            [peripheral setNotifyValue:YES forCharacteristic:characteristic];
+        }
     }
 }
 
@@ -289,7 +294,40 @@ didDiscoverCharacteristicsForService:(CBService *)service
 didUpdateValueForCharacteristic:(CBCharacteristic *)characteristic
                           error:(NSError *)error
 {
-    
+    if (error != nil || characteristic.value == nil)
+    {
+        NSLog(@"Characteristic read error: %@", error);
+        self.context->on_error(peripheral.identifier.UUIDString.UTF8String, characteristic.service.UUID.UUIDString.UTF8String, characteristic.UUID.UUIDString.UTF8String);
+        return;
+    }
+    int length = characteristic.value.length;
+    Vector<uint8_t> value;
+    value.resize(length);
+    memcpy(value.ptrw(), characteristic.value.bytes, length);
+    self.context->on_read(peripheral.identifier.UUIDString.UTF8String, characteristic.service.UUID.UUIDString.UTF8String, characteristic.UUID.UUIDString.UTF8String, core_bind::Marshalls::get_singleton()->raw_to_base64(value));
+}
+
+- (void)             peripheral:(CBPeripheral *)peripheral 
+ didWriteValueForCharacteristic:(CBCharacteristic *)characteristic
+                          error:(NSError *)error
+{
+    if (error != nil)
+    {
+        NSLog(@"Characteristic write error: %@", error);
+        self.context->on_error(peripheral.identifier.UUIDString.UTF8String, characteristic.service.UUID.UUIDString.UTF8String, characteristic.UUID.UUIDString.UTF8String);
+        return;
+    }
+    self.context->on_write(peripheral.identifier.UUIDString.UTF8String, characteristic.service.UUID.UUIDString.UTF8String, characteristic.UUID.UUIDString.UTF8String);
+}
+
+- (void)peripheralDidUpdateName:(CBPeripheral *)peripheral
+{
+    const char *name = [peripheral.name cStringUsingEncoding:NSASCIIStringEncoding];
+    if (name == NULL)
+    {
+        name = "";
+    }
+    self.context->on_discover(peripheral.identifier.UUIDString.UTF8String, name, "");
 }
 
 - (void)centralManagerDidUpdateState:(CBCentralManager *)manager
@@ -303,16 +341,6 @@ didUpdateValueForCharacteristic:(CBCharacteristic *)characteristic
 			self.active = true;
 		}
     }
-}
-
-- (void) respondReadRequest: (NSString *)response forRequest: (int)request
-{
-
-}
-
-- (void) respondWriteRequest: (NSString *)response forRequest: (int)request
-{
-
 }
 
 - (bool) startScanning
@@ -401,6 +429,104 @@ didUpdateValueForCharacteristic:(CBCharacteristic *)characteristic
     return success;
 }
 
+- (void) discoverFromPeer: (CBPeripheral *)peer
+{
+    int count = self.context->get_sought_service_count();
+    if (count > 0)
+    {
+        NSMutableArray *services = [[NSMutableArray alloc] initWithCapacity:count];
+        for (int i = 0; i < count; i++)
+        {
+            CBUUID *uuid = [CBUUID UUIDWithString:[[NSString alloc] initWithUTF8String:self.context->get_sought_service(i).utf8().get_data()]];
+            [services addObject:uuid];
+        }
+        [peer discoverServices:services];
+    }
+    else
+    {
+        [peer discoverServices:nil];
+    }
+}
+
+- (bool) readAtPeerServiceCharacteristic: (NSMutableArray *)parameters
+{
+    bool success = false;
+    int count = self.peers.count;
+    CBUUID *peerUUID = [CBUUID UUIDWithString:[parameters objectAtIndex:0]];
+    CBUUID *serviceUUID = [CBUUID UUIDWithString:[parameters objectAtIndex:1]];
+    CBUUID *characteristicUUID = [CBUUID UUIDWithString:[parameters objectAtIndex:2]];
+    for (int i = 0; i < count; i++)
+    {
+        CBPeripheral *peer = [self.peers objectAtIndex:i];
+        if ([peerUUID.UUIDString isEqualToString:peer.identifier.UUIDString])
+        {
+            for (CBService *service in peer.services)
+            {
+                if ([serviceUUID.UUIDString isEqualToString:service.UUID.UUIDString])
+                {
+                    for (CBCharacteristic *characteristic in service.characteristics)
+                    {
+                        if ([characteristicUUID.UUIDString isEqualToString:characteristic.UUID.UUIDString])
+                        {
+                            if (characteristic.properties & CBCharacteristicPropertyRead)
+                            {
+                                [peer readValueForCharacteristic:characteristic];
+                                success = true;
+                            }
+                            break;
+                        }
+                    }
+                    break;
+                }
+            }
+            break;
+        }
+    }
+    return success;
+}
+
+- (bool) writeAtPeerServiceCharacteristic: (NSMutableArray *)parameters
+{
+    bool success = false;
+    int count = self.peers.count;
+    CBUUID *peerUUID = [CBUUID UUIDWithString:[parameters objectAtIndex:0]];
+    CBUUID *serviceUUID = [CBUUID UUIDWithString:[parameters objectAtIndex:1]];
+    CBUUID *characteristicUUID = [CBUUID UUIDWithString:[parameters objectAtIndex:2]];
+    NSString *value = [parameters objectAtIndex:3];
+    for (int i = 0; i < count; i++)
+    {
+        CBPeripheral *peer = [self.peers objectAtIndex:i];
+        if ([peerUUID.UUIDString isEqualToString:peer.identifier.UUIDString])
+        {
+            for (CBService *service in peer.services)
+            {
+                if ([serviceUUID.UUIDString isEqualToString:service.UUID.UUIDString])
+                {
+                    for (CBCharacteristic *characteristic in service.characteristics)
+                    {
+                        if ([characteristicUUID.UUIDString isEqualToString:characteristic.UUID.UUIDString])
+                        {
+                            if (characteristic.properties & CBCharacteristicPropertyWrite)
+                            {
+                                Vector<uint8_t> base64Data = core_bind::Marshalls::get_singleton()->base64_to_raw(value.UTF8String);
+                                NSData *data = [NSData dataWithBytes:base64Data.ptr() length:base64Data.size()];
+                                [peer writeValue:data
+                                      forCharacteristic:characteristic
+                                      type:CBCharacteristicWriteWithResponse];
+                                success = true;
+                            }
+                            break;
+                        }
+                    }
+                    break;
+                }
+            }
+            break;
+        }
+    }
+    return success;
+}
+
 @end
 
 BluetoothEnumeratorMacOS::BluetoothEnumeratorMacOS() {
@@ -435,6 +561,34 @@ void BluetoothEnumeratorMacOS::connect_peer(String p_peer_uuid) {
     if (![central_manager_delegate connectToPeer:peer])
     {
         NSLog(@"Connection failure: %@", peer);
+        on_disconnect(p_peer_uuid);
+    }
+}
+
+void BluetoothEnumeratorMacOS::read_peer_service_characteristic(String p_peer_uuid, String p_service_uuid, String p_characteristic_uuid) {
+    MyCentralManagerDelegate *central_manager_delegate = (__bridge MyCentralManagerDelegate *)this->central_manager_delegate;
+    NSMutableArray *parameters = [[NSMutableArray alloc] initWithCapacity:4];
+    [parameters addObject:[[NSString alloc] initWithUTF8String:p_peer_uuid.utf8().get_data()]];
+    [parameters addObject:[[NSString alloc] initWithUTF8String:p_service_uuid.utf8().get_data()]];
+    [parameters addObject:[[NSString alloc] initWithUTF8String:p_characteristic_uuid.utf8().get_data()]];
+    if (![central_manager_delegate readAtPeerServiceCharacteristic:parameters])
+    {
+        NSLog(@"Read failure: %@", [parameters objectAtIndex:0]);
+        on_error(p_peer_uuid, p_service_uuid, p_characteristic_uuid);
+    }
+}
+
+void BluetoothEnumeratorMacOS::write_peer_service_characteristic(String p_peer_uuid, String p_service_uuid, String p_characteristic_uuid, String p_value) {
+    MyCentralManagerDelegate *central_manager_delegate = (__bridge MyCentralManagerDelegate *)this->central_manager_delegate;
+    NSMutableArray *parameters = [[NSMutableArray alloc] initWithCapacity:4];
+    [parameters addObject:[[NSString alloc] initWithUTF8String:p_peer_uuid.utf8().get_data()]];
+    [parameters addObject:[[NSString alloc] initWithUTF8String:p_service_uuid.utf8().get_data()]];
+    [parameters addObject:[[NSString alloc] initWithUTF8String:p_characteristic_uuid.utf8().get_data()]];
+    [parameters addObject:[[NSString alloc] initWithUTF8String:core_bind::Marshalls::get_singleton()->utf8_to_base64(p_value).utf8().get_data()]];
+    if (![central_manager_delegate writeAtPeerServiceCharacteristic:parameters])
+    {
+        NSLog(@"Write failure: %@", [parameters objectAtIndex:0]);
+        on_error(p_peer_uuid, p_service_uuid, p_characteristic_uuid);
     }
 }
 
