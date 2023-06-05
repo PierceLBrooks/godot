@@ -39,6 +39,8 @@
 BluetoothServer::CreateFunc BluetoothServer::create_func = nullptr;
 
 void BluetoothServer::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("is_supported"), &BluetoothServer::is_supported);
+
 	ClassDB::bind_method(D_METHOD("get_advertiser_by_id", "id"), &BluetoothServer::get_advertiser_by_id);
 	ClassDB::bind_method(D_METHOD("get_advertiser", "index"), &BluetoothServer::get_advertiser);
 	ClassDB::bind_method(D_METHOD("get_advertiser_count"), &BluetoothServer::get_advertiser_count);
@@ -270,6 +272,10 @@ TypedArray<BluetoothEnumerator> BluetoothServer::get_enumerators() const {
 	}
 
 	return return_enumerators;
+}
+
+bool BluetoothServer::is_supported() const {
+	return false;
 }
 
 BluetoothServer::BluetoothServer() {

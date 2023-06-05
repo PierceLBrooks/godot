@@ -116,6 +116,8 @@ public:
 	int get_enumerator_count() const;
 	TypedArray<BluetoothEnumerator> get_enumerators() const;
 
+	virtual bool is_supported() const;
+
 	BluetoothServer();
 	~BluetoothServer();
 };

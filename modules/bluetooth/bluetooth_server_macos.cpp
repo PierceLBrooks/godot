@@ -36,6 +36,10 @@
 BluetoothServerMacOS::BluetoothServerMacOS() {
 }
 
+bool BluetoothServerMacOS::is_supported() const {
+    return true;
+}
+
 Ref<BluetoothAdvertiser> BluetoothServerMacOS::new_advertiser() {
     if (Engine::get_singleton()->is_editor_hint() || Engine::get_singleton()->is_project_manager_hint()) {
         return nullptr;

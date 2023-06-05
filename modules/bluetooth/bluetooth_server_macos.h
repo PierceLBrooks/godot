@@ -36,6 +36,7 @@
 class BluetoothServerMacOS : public BluetoothServer {
 public:
 	BluetoothServerMacOS();
+	bool is_supported() const override;
 	Ref<BluetoothAdvertiser> new_advertiser() override;
 	Ref<BluetoothEnumerator> new_enumerator() override;
 };
