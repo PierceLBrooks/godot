@@ -31,7 +31,7 @@
 #ifndef BLUETOOTH_ADVERTISER_MACOS_H
 #define BLUETOOTH_ADVERTISER_MACOS_H
 
-#include "servers/bluetooth/bluetooth_advertiser.h"
+#include "bluetooth_advertiser.h"
 
 //////////////////////////////////////////////////////////////////////////
 // BluetoothAdvertiserMacOS - Subclass for bluetooth advertisers in macOS

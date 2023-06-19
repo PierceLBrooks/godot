@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  bluetooth_server_macos.cpp                                            */
+/*  bluetooth_macos.h                                                     */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,36 +28,17 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#include "bluetooth_server_macos.h"
-#include "bluetooth_advertiser_macos.h"
-#include "bluetooth_enumerator_macos.h"
-#include "core/config/engine.h"
+#ifndef BLUETOOTH_MACOS_H
+#define BLUETOOTH_MACOS_H
 
-BluetoothServerMacOS::BluetoothServerMacOS() {
-}
+#include "bluetooth.h"
 
-bool BluetoothServerMacOS::is_supported() const {
-    return true;
-}
+class BluetoothMacOS : public Bluetooth {
+public:
+	BluetoothMacOS();
+	bool is_supported() const override;
+	Ref<BluetoothAdvertiser> new_advertiser() override;
+	Ref<BluetoothEnumerator> new_enumerator() override;
+};
 
-Ref<BluetoothAdvertiser> BluetoothServerMacOS::new_advertiser() {
-    if (Engine::get_singleton()->is_editor_hint() || Engine::get_singleton()->is_project_manager_hint()) {
-        return nullptr;
-    }
-    int count = get_advertiser_count();
-    Ref<BluetoothAdvertiserMacOS> advertiser;
-    advertiser.instantiate();
-    add_advertiser(advertiser);
-    return get_advertiser(count);
-}
-
-Ref<BluetoothEnumerator> BluetoothServerMacOS::new_enumerator() {
-    if (Engine::get_singleton()->is_editor_hint() || Engine::get_singleton()->is_project_manager_hint()) {
-        return nullptr;
-    }
-    int count = get_enumerator_count();
-    Ref<BluetoothEnumeratorMacOS> enumerator;
-    enumerator.instantiate();
-    add_enumerator(enumerator);
-    return get_enumerator(count);
-}
+#endif // BLUETOOTH_MACOS_H

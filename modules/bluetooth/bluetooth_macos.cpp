@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  bluetooth_server_macos.h                                              */
+/*  bluetooth_macos.cpp                                                   */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,17 +28,36 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef BLUETOOTH_SERVER_MACOS_H
-#define BLUETOOTH_SERVER_MACOS_H
+#include "bluetooth_macos.h"
+#include "bluetooth_advertiser_macos.h"
+#include "bluetooth_enumerator_macos.h"
+#include "core/config/engine.h"
 
-#include "servers/bluetooth_server.h"
+BluetoothMacOS::BluetoothMacOS() {
+}
 
-class BluetoothServerMacOS : public BluetoothServer {
-public:
-	BluetoothServerMacOS();
-	bool is_supported() const override;
-	Ref<BluetoothAdvertiser> new_advertiser() override;
-	Ref<BluetoothEnumerator> new_enumerator() override;
-};
+bool BluetoothMacOS::is_supported() const {
+    return true;
+}
 
-#endif // BLUETOOTH_SERVER_MACOS_H
+Ref<BluetoothAdvertiser> BluetoothMacOS::new_advertiser() {
+    if (Engine::get_singleton()->is_editor_hint() || Engine::get_singleton()->is_project_manager_hint()) {
+        return nullptr;
+    }
+    int count = get_advertiser_count();
+    Ref<BluetoothAdvertiserMacOS> advertiser;
+    advertiser.instantiate();
+    add_advertiser(advertiser);
+    return get_advertiser(count);
+}
+
+Ref<BluetoothEnumerator> BluetoothMacOS::new_enumerator() {
+    if (Engine::get_singleton()->is_editor_hint() || Engine::get_singleton()->is_project_manager_hint()) {
+        return nullptr;
+    }
+    int count = get_enumerator_count();
+    Ref<BluetoothEnumeratorMacOS> enumerator;
+    enumerator.instantiate();
+    add_enumerator(enumerator);
+    return get_enumerator(count);
+}

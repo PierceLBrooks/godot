@@ -5,8 +5,12 @@ Import("env_modules")
 
 env_bluetooth = env_modules.Clone()
 
+env_bluetooth.add_source_files(env.modules_sources, "bluetooth_advertiser.cpp")
+env_bluetooth.add_source_files(env.modules_sources, "bluetooth_enumerator.cpp")
+env_bluetooth.add_source_files(env.modules_sources, "bluetooth.cpp")
+
 if env["platform"] == "macos":
     env_bluetooth.add_source_files(env.modules_sources, "register_types.cpp")
     env_bluetooth.add_source_files(env.modules_sources, "bluetooth_advertiser_macos.mm")
     env_bluetooth.add_source_files(env.modules_sources, "bluetooth_enumerator_macos.mm")
-    env_bluetooth.add_source_files(env.modules_sources, "bluetooth_server_macos.cpp")
+    env_bluetooth.add_source_files(env.modules_sources, "bluetooth_macos.cpp")

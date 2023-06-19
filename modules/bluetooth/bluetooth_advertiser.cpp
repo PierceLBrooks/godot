@@ -231,14 +231,14 @@ BluetoothAdvertiser::BluetoothAdvertiser(int p_id) {
 
 BluetoothAdvertiser::BluetoothAdvertiser() {
 	// initialize us
-	id = BluetoothServer::get_singleton()->get_free_advertiser_id();
+	id = Bluetooth::get_singleton()->get_free_advertiser_id();
 	service_uuid = "";
 	active = false;
 }
 
 BluetoothAdvertiser::BluetoothAdvertiser(String p_service_uuid) {
 	// initialize us
-	id = BluetoothServer::get_singleton()->get_free_advertiser_id();
+	id = Bluetooth::get_singleton()->get_free_advertiser_id();
 	service_uuid = p_service_uuid;
 	active = false;
 }

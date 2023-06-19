@@ -31,7 +31,7 @@
 #ifndef BLUETOOTH_ENUMERATOR_H
 #define BLUETOOTH_ENUMERATOR_H
 
-#include "servers/bluetooth_server.h"
+#include "bluetooth.h"
 
 /**
 	The bluetooth server is a singleton object that gives access to the various
@@ -47,7 +47,7 @@ protected:
 	class BluetoothEnumeratorCharacteristic;
 
 private:
-	friend class BluetoothServer;
+	friend class Bluetooth;
 
 	int id; // unique id for this, for internal use in case devices are removed
 

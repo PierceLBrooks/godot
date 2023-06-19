@@ -188,7 +188,7 @@ BluetoothEnumerator::BluetoothEnumerator(int p_id) {
 
 BluetoothEnumerator::BluetoothEnumerator() {
 	// initialize us
-	id = BluetoothServer::get_singleton()->get_free_enumerator_id();
+	id = Bluetooth::get_singleton()->get_free_enumerator_id();
 	active = false;
 }
 

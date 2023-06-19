@@ -58,6 +58,9 @@
 #include "main/main_timer_sync.h"
 #include "main/performance.h"
 #include "main/splash.gen.h"
+#include "modules/bluetooth/bluetooth.h"
+#include "modules/bluetooth/bluetooth_advertiser.h"
+#include "modules/bluetooth/bluetooth_enumerator.h"
 #include "modules/register_module_types.h"
 #include "platform/register_platform_apis.h"
 #include "scene/main/scene_tree.h"
@@ -66,7 +69,6 @@
 #include "scene/resources/packed_scene.h"
 #include "scene/theme/theme_db.h"
 #include "servers/audio_server.h"
-#include "servers/bluetooth_server.h"
 #include "servers/camera_server.h"
 #include "servers/display_server.h"
 #include "servers/movie_writer/movie_writer.h"
@@ -125,6 +127,7 @@ static Input *input = nullptr;
 static InputMap *input_map = nullptr;
 static TranslationServer *translation_server = nullptr;
 static Performance *performance = nullptr;
+static Bluetooth *bluetooth = nullptr;
 static PackedData *packed_data = nullptr;
 static Time *time_singleton = nullptr;
 #ifdef MINIZIP_ENABLED
@@ -138,7 +141,6 @@ static AudioServer *audio_server = nullptr;
 static DisplayServer *display_server = nullptr;
 static RenderingServer *rendering_server = nullptr;
 static CameraServer *camera_server = nullptr;
-static BluetoothServer *bluetooth_server = nullptr;
 static XRServer *xr_server = nullptr;
 static TextServerManager *tsman = nullptr;
 static PhysicsServer3DManager *physics_server_3d_manager = nullptr;
@@ -1414,6 +1416,12 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 	initialize_modules(MODULE_INITIALIZATION_LEVEL_CORE);
 	register_core_extensions(); // core extensions must be registered after globals setup and before display
 
+	bluetooth = Bluetooth::create();
+	GDREGISTER_CLASS(Bluetooth);
+	GDREGISTER_CLASS(BluetoothAdvertiser);
+	GDREGISTER_CLASS(BluetoothEnumerator);
+	engine->add_singleton(Engine::Singleton("Bluetooth", bluetooth, "Bluetooth"));
+
 	ResourceUID::get_singleton()->load_from_cache(); // load UUIDs from cache.
 
 	if (ProjectSettings::get_singleton()->has_custom_feature("dedicated_server")) {
@@ -2340,7 +2348,6 @@ Error Main::setup2(Thread::ID p_main_tid_override) {
 	}
 
 	camera_server = CameraServer::create();
-	bluetooth_server = BluetoothServer::create();
 
 	MAIN_PRINT("Main: Load Physics");
 
@@ -3374,10 +3381,6 @@ void Main::cleanup(bool p_force) {
 	if (camera_server) {
 		memdelete(camera_server);
 	}
-	
-	if (bluetooth_server) {
-	    memdelete(bluetooth_server);
-	}
 
 	OS::get_singleton()->finalize();
 
@@ -3395,6 +3398,9 @@ void Main::cleanup(bool p_force) {
 	}
 	if (performance) {
 		memdelete(performance);
+	}
+	if (bluetooth) {
+	    memdelete(bluetooth);
 	}
 	if (input_map) {
 		memdelete(input_map);

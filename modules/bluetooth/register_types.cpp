@@ -31,21 +31,14 @@
 #include "register_types.h"
 
 #if defined(MACOS_ENABLED)
-#include "bluetooth_server_macos.h"
+#include "bluetooth_macos.h"
 #endif
 
 void initialize_bluetooth_module(ModuleInitializationLevel p_level) {
-	if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE) {
-		return;
-	}
-
 #if defined(MACOS_ENABLED)
-	BluetoothServer::make_default<BluetoothServerMacOS>();
+	Bluetooth::make_default<BluetoothMacOS>();
 #endif
 }
 
 void uninitialize_bluetooth_module(ModuleInitializationLevel p_level) {
-	if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE) {
-		return;
-	}
 }

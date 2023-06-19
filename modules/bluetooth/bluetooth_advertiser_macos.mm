@@ -28,9 +28,8 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#include "bluetooth_server_macos.h"
+#include "bluetooth_macos.h"
 #include "bluetooth_advertiser_macos.h"
-#include "servers/bluetooth/bluetooth_advertiser.h"
 #include "core/config/engine.h"
 #include "core/core_bind.h"
 #include "core/variant/typed_array.h"

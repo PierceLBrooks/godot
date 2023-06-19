@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  bluetooth_server.h                                                    */
+/*  bluetooth.h                                                    */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,8 +28,8 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef BLUETOOTH_SERVER_H
-#define BLUETOOTH_SERVER_H
+#ifndef BLUETOOTH_H
+#define BLUETOOTH_H
 
 #include "core/object/class_db.h"
 #include "core/object/ref_counted.h"
@@ -47,13 +47,13 @@ class BluetoothEnumerator;
 template <typename T>
 class TypedArray;
 
-class BluetoothServer : public Object {
-	GDCLASS(BluetoothServer, Object);
+class Bluetooth : public Object {
+	GDCLASS(Bluetooth, Object);
 	_THREAD_SAFE_CLASS_
 
 public:
 
-	typedef BluetoothServer *(*CreateFunc)();
+	typedef Bluetooth *(*CreateFunc)();
 
 private:
 protected:
@@ -62,25 +62,25 @@ protected:
 	Vector<Ref<BluetoothAdvertiser>> advertisers;
 	Vector<Ref<BluetoothEnumerator>> enumerators;
 
-	static BluetoothServer *singleton;
+	static Bluetooth *singleton;
 
 	static void _bind_methods();
 
 	template <class T>
-	static BluetoothServer *_create_builtin() {
+	static Bluetooth *_create_builtin() {
 		return memnew(T);
 	}
 
 public:
-	static BluetoothServer *get_singleton();
+	static Bluetooth *get_singleton();
 
 	template <class T>
 	static void make_default() {
 		create_func = _create_builtin<T>;
 	}
 
-	static BluetoothServer *create() {
-		BluetoothServer *server = create_func ? create_func() : memnew(BluetoothServer);
+	static Bluetooth *create() {
+		Bluetooth *server = create_func ? create_func() : memnew(Bluetooth);
 		return server;
 	};
 
@@ -118,8 +118,8 @@ public:
 
 	virtual bool is_supported() const;
 
-	BluetoothServer();
-	~BluetoothServer();
+	Bluetooth();
+	~Bluetooth();
 };
 
-#endif // BLUETOOTH_SERVER_H
+#endif // BLUETOOTH_H

@@ -31,7 +31,7 @@
 #ifndef BLUETOOTH_ENUMERATOR_MACOS_H
 #define BLUETOOTH_ENUMERATOR_MACOS_H
 
-#include "servers/bluetooth/bluetooth_enumerator.h"
+#include "bluetooth_enumerator.h"
 
 //////////////////////////////////////////////////////////////////////////
 // BluetoothEnumeratorMacOS - Subclass for bluetooth enumerators in macOS
