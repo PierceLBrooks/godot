@@ -39,9 +39,13 @@
 class BluetoothAdvertiserMacOS : public BluetoothAdvertiser {
 private:
 	void *peripheral_manager_delegate;
+	static BluetoothAdvertiser *_create() { return memnew(BluetoothAdvertiserMacOS); }
 public:
 	BluetoothAdvertiserMacOS();
 	virtual ~BluetoothAdvertiserMacOS();
+
+	static void initialize();
+	static void deinitialize();
 
     void respond_characteristic_read_request(String p_characteristic_uuid, String p_response, int p_request) const override;
     void respond_characteristic_write_request(String p_characteristic_uuid, String p_response, int p_request) const override;

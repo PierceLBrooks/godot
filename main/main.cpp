@@ -58,9 +58,6 @@
 #include "main/main_timer_sync.h"
 #include "main/performance.h"
 #include "main/splash.gen.h"
-#include "modules/bluetooth/bluetooth.h"
-#include "modules/bluetooth/bluetooth_advertiser.h"
-#include "modules/bluetooth/bluetooth_enumerator.h"
 #include "modules/register_module_types.h"
 #include "platform/register_platform_apis.h"
 #include "scene/main/scene_tree.h"
@@ -127,7 +124,6 @@ static Input *input = nullptr;
 static InputMap *input_map = nullptr;
 static TranslationServer *translation_server = nullptr;
 static Performance *performance = nullptr;
-static Bluetooth *bluetooth = nullptr;
 static PackedData *packed_data = nullptr;
 static Time *time_singleton = nullptr;
 #ifdef MINIZIP_ENABLED
@@ -1415,12 +1411,6 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 
 	initialize_modules(MODULE_INITIALIZATION_LEVEL_CORE);
 	register_core_extensions(); // core extensions must be registered after globals setup and before display
-
-	bluetooth = Bluetooth::create();
-	GDREGISTER_CLASS(Bluetooth);
-	GDREGISTER_CLASS(BluetoothAdvertiser);
-	GDREGISTER_CLASS(BluetoothEnumerator);
-	engine->add_singleton(Engine::Singleton("Bluetooth", bluetooth, "Bluetooth"));
 
 	ResourceUID::get_singleton()->load_from_cache(); // load UUIDs from cache.
 
@@ -3398,9 +3388,6 @@ void Main::cleanup(bool p_force) {
 	}
 	if (performance) {
 		memdelete(performance);
-	}
-	if (bluetooth) {
-	    memdelete(bluetooth);
 	}
 	if (input_map) {
 		memdelete(input_map);

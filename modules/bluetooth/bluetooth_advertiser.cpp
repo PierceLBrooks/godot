@@ -36,11 +36,11 @@
 
 #include <chrono>
 
+BluetoothAdvertiser *(*BluetoothAdvertiser::_create)() = nullptr;
+
 void BluetoothAdvertiser::_bind_methods() {
 	// The setters prefixed with _ are only exposed so we can have advertisers through GDExtension!
 	// They should not be called by the end user.
-
-	ClassDB::bind_method(D_METHOD("get_id"), &BluetoothAdvertiser::get_id);
 
 	ClassDB::bind_method(D_METHOD("is_active"), &BluetoothAdvertiser::is_active);
 	ClassDB::bind_method(D_METHOD("set_active", "active"), &BluetoothAdvertiser::set_active);
@@ -70,14 +70,10 @@ void BluetoothAdvertiser::_bind_methods() {
 	ADD_GROUP("Advertiser", "advertiser_");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "advertiser_is_active"), "set_active", "is_active");
 
-	ADD_SIGNAL(MethodInfo("bluetooth_service_advertisement_started", PropertyInfo(Variant::INT, "id"), PropertyInfo(Variant::STRING, "uuid")));
-	ADD_SIGNAL(MethodInfo("bluetooth_service_advertisement_stopped", PropertyInfo(Variant::INT, "id"), PropertyInfo(Variant::STRING, "uuid")));
-	ADD_SIGNAL(MethodInfo("bluetooth_service_characteristic_read", PropertyInfo(Variant::INT, "id"), PropertyInfo(Variant::STRING, "uuid"), PropertyInfo(Variant::INT, "request"), PropertyInfo(Variant::STRING, "peer")));
-	ADD_SIGNAL(MethodInfo("bluetooth_service_characteristic_write", PropertyInfo(Variant::INT, "id"), PropertyInfo(Variant::STRING, "uuid"), PropertyInfo(Variant::INT, "request"), PropertyInfo(Variant::STRING, "peer"), PropertyInfo(Variant::STRING, "value")));
-}
-
-int BluetoothAdvertiser::get_id() const {
-	return id;
+	ADD_SIGNAL(MethodInfo("bluetooth_service_advertisement_started", PropertyInfo(Variant::STRING, "service_uuid")));
+	ADD_SIGNAL(MethodInfo("bluetooth_service_advertisement_stopped", PropertyInfo(Variant::STRING, "service_uuid")));
+	ADD_SIGNAL(MethodInfo("bluetooth_service_characteristic_read", PropertyInfo(Variant::STRING, "service_uuid"), PropertyInfo(Variant::STRING, "characteristic_uuid"), PropertyInfo(Variant::INT, "request"), PropertyInfo(Variant::STRING, "peer")));
+	ADD_SIGNAL(MethodInfo("bluetooth_service_characteristic_write", PropertyInfo(Variant::STRING, "service_uuid"), PropertyInfo(Variant::STRING, "characteristic_uuid"), PropertyInfo(Variant::INT, "request"), PropertyInfo(Variant::STRING, "peer"), PropertyInfo(Variant::STRING, "value")));
 }
 
 bool BluetoothAdvertiser::is_active() const {
@@ -222,23 +218,14 @@ BluetoothAdvertiser::BluetoothAdvertiserCharacteristic::BluetoothAdvertiserChara
 	writeRequest = -1;
 }
 
-BluetoothAdvertiser::BluetoothAdvertiser(int p_id) {
-	// initialize us
-	id = p_id;
-	service_uuid = "";
-	active = false;
-}
-
 BluetoothAdvertiser::BluetoothAdvertiser() {
 	// initialize us
-	id = Bluetooth::get_singleton()->get_free_advertiser_id();
 	service_uuid = "";
 	active = false;
 }
 
 BluetoothAdvertiser::BluetoothAdvertiser(String p_service_uuid) {
 	// initialize us
-	id = Bluetooth::get_singleton()->get_free_advertiser_id();
 	service_uuid = p_service_uuid;
 	active = false;
 }
@@ -287,7 +274,7 @@ bool BluetoothAdvertiser::on_start() const {
 			thread.start([](void *p_udata) {
 				Ref<BluetoothAdvertiser>* advertiser = static_cast<Ref<BluetoothAdvertiser>*>(p_udata);
 				if (advertiser->is_valid()) {
-					(*advertiser)->emit_signal(SNAME("bluetooth_service_advertisement_started"), (*advertiser)->get_id(), (*advertiser)->get_service_uuid());
+					(*advertiser)->emit_signal(SNAME("bluetooth_service_advertisement_started"), (*advertiser)->get_service_uuid());
 				}
 			}, reference);
 			thread.wait_to_finish();
@@ -307,7 +294,7 @@ bool BluetoothAdvertiser::on_stop() const {
 				Ref<BluetoothAdvertiser>* advertiser = static_cast<Ref<BluetoothAdvertiser>*>(p_udata);
 				if (advertiser->is_valid()) {
 					(*advertiser)->active = false;
-					(*advertiser)->emit_signal(SNAME("bluetooth_service_advertisement_stopped"), (*advertiser)->get_id(), (*advertiser)->get_service_uuid());
+					(*advertiser)->emit_signal(SNAME("bluetooth_service_advertisement_stopped"), (*advertiser)->get_service_uuid());
 				}
 			}, reference);
 			thread.wait_to_finish();
@@ -332,7 +319,7 @@ bool BluetoothAdvertiser::on_read(String p_characteristic_uuid, int p_request, S
 			thread.start([](void *p_udata) {
 				Ref<BluetoothAdvertiser::BluetoothAdvertiserCharacteristic>* characteristic = static_cast<Ref<BluetoothAdvertiser::BluetoothAdvertiserCharacteristic>*>(p_udata);
 				if (characteristic->is_valid() && (*characteristic)->advertiser.is_valid()) {
-					(*characteristic)->advertiser->emit_signal(SNAME("bluetooth_service_characteristic_read"), (*characteristic)->advertiser->get_id(), (*characteristic)->uuid, (*characteristic)->readRequest, (*characteristic)->peer);
+					(*characteristic)->advertiser->emit_signal(SNAME("bluetooth_service_characteristic_read"), (*characteristic)->advertiser->get_service_uuid(), (*characteristic)->uuid, (*characteristic)->readRequest, (*characteristic)->peer);
 				}
 			}, reference);
 			thread.wait_to_finish();
@@ -361,7 +348,7 @@ bool BluetoothAdvertiser::on_write(String p_characteristic_uuid, int p_request, 
 			thread.start([](void *p_udata) {
 				Ref<BluetoothAdvertiser::BluetoothAdvertiserCharacteristic>* characteristic = static_cast<Ref<BluetoothAdvertiser::BluetoothAdvertiserCharacteristic>*>(p_udata);
 				if (characteristic->is_valid() && (*characteristic)->advertiser.is_valid()) {
-					(*characteristic)->advertiser->emit_signal(SNAME("bluetooth_service_characteristic_write"), (*characteristic)->advertiser->get_id(), (*characteristic)->uuid, (*characteristic)->writeRequest, (*characteristic)->peer, (*characteristic)->value);
+					(*characteristic)->advertiser->emit_signal(SNAME("bluetooth_service_characteristic_write"), (*characteristic)->advertiser->get_service_uuid(), (*characteristic)->uuid, (*characteristic)->writeRequest, (*characteristic)->peer, (*characteristic)->value);
 				}
 			}, reference);
 			thread.wait_to_finish();

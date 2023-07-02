@@ -39,9 +39,13 @@
 class BluetoothEnumeratorMacOS : public BluetoothEnumerator {
 private:
 	void *central_manager_delegate;
+	static BluetoothEnumerator *_create() { return memnew(BluetoothEnumeratorMacOS); }
 public:
 	BluetoothEnumeratorMacOS();
 	virtual ~BluetoothEnumeratorMacOS();
+
+	static void initialize();
+	static void deinitialize();
 
 	bool start_scanning() const override;
 	bool stop_scanning() const override;

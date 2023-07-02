@@ -31,14 +31,32 @@
 #include "register_types.h"
 
 #if defined(MACOS_ENABLED)
-#include "bluetooth_macos.h"
+#include "bluetooth_advertiser_macos.h"
+#include "bluetooth_enumerator_macos.h"
 #endif
 
+#include "core/config/engine.h"
+
 void initialize_bluetooth_module(ModuleInitializationLevel p_level) {
+	if (p_level == MODULE_INITIALIZATION_LEVEL_CORE) {
+		ClassDB::register_custom_instance_class<BluetoothAdvertiser>();
+		ClassDB::register_custom_instance_class<BluetoothEnumerator>();
+	}
+	if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE || Engine::get_singleton()->is_editor_hint()) {
+		return;
+	}
 #if defined(MACOS_ENABLED)
-	Bluetooth::make_default<BluetoothMacOS>();
+	BluetoothAdvertiserMacOS::initialize();
+	BluetoothEnumeratorMacOS::initialize();
 #endif
 }
 
 void uninitialize_bluetooth_module(ModuleInitializationLevel p_level) {
+	if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE || Engine::get_singleton()->is_editor_hint()) {
+		return;
+	}
+#if defined(MACOS_ENABLED)
+	BluetoothAdvertiserMacOS::deinitialize();
+	BluetoothEnumeratorMacOS::deinitialize();
+#endif
 }

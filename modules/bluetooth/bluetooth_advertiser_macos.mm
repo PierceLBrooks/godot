@@ -28,7 +28,6 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#include "bluetooth_macos.h"
 #include "bluetooth_advertiser_macos.h"
 #include "core/config/engine.h"
 #include "core/core_bind.h"
@@ -306,6 +305,14 @@ BluetoothAdvertiserMacOS::BluetoothAdvertiserMacOS() {
 BluetoothAdvertiserMacOS::~BluetoothAdvertiserMacOS() {
     //MyPeripheralManagerDelegate *peripheral_manager_delegate = (__bridge MyPeripheralManagerDelegate *)this->peripheral_manager_delegate;
     CFRelease(this->peripheral_manager_delegate);
+}
+
+void BluetoothAdvertiserMacOS::initialize() {
+    BluetoothAdvertiser::_create = BluetoothAdvertiserMacOS::_create;
+}
+
+void BluetoothAdvertiserMacOS::deinitialize() {
+	// nothing to do here
 }
 
 void BluetoothAdvertiserMacOS::respond_characteristic_read_request(String p_characteristic_uuid, String p_response, int p_request) const {

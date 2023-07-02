@@ -31,7 +31,11 @@
 #ifndef BLUETOOTH_ENUMERATOR_H
 #define BLUETOOTH_ENUMERATOR_H
 
-#include "bluetooth.h"
+#include "core/object/class_db.h"
+#include "core/object/ref_counted.h"
+#include "core/os/thread_safe.h"
+#include "core/templates/rid.h"
+#include "core/variant/variant.h"
 
 /**
 	The bluetooth server is a singleton object that gives access to the various
@@ -48,8 +52,6 @@ protected:
 
 private:
 	friend class Bluetooth;
-
-	int id; // unique id for this, for internal use in case devices are removed
 
 	bool can_emit_signal(const StringName &p_name) const;
 
@@ -96,13 +98,21 @@ protected:
 
 	bool active; // only when active do we actually update the bluetooth status
 
+	static BluetoothEnumerator *(*_create)();
+
 	static void _bind_methods();
 
 	virtual void on_register() const;
 	virtual void on_unregister() const;
 
 public:
-	int get_id() const;
+	static BluetoothEnumerator *create() {
+		if (!_create) {
+			return nullptr;
+		}
+		return _create();
+	}
+
 	bool is_active() const;
 	void set_active(bool p_is_active);
 
@@ -116,7 +126,6 @@ public:
 	TypedArray<String> get_sought_services() const;
 	bool has_sought_service(String p_service_uuid) const;
 
-	BluetoothEnumerator(int p_id);
 	BluetoothEnumerator();
 	virtual ~BluetoothEnumerator();
 

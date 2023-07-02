@@ -31,7 +31,11 @@
 #ifndef BLUETOOTH_ADVERTISER_H
 #define BLUETOOTH_ADVERTISER_H
 
-#include "bluetooth.h"
+#include "core/object/class_db.h"
+#include "core/object/ref_counted.h"
+#include "core/os/thread_safe.h"
+#include "core/templates/rid.h"
+#include "core/variant/variant.h"
 
 /**
 	The bluetooth server is a singleton object that gives access to the various
@@ -44,7 +48,6 @@ class BluetoothAdvertiser : public RefCounted {
 private:
 	friend class Bluetooth;
 
-	int id; // unique id for this, for internal use in case devices are removed
 	HashMap<String, bool> permissions;
 
 	bool can_emit_signal(const StringName &p_name) const;
@@ -72,6 +75,8 @@ protected:
 
 	bool active; // only when active do we actually update the bluetooth status
 
+	static BluetoothAdvertiser *(*_create)();
+
 	static void _bind_methods();
 
 	virtual void on_register() const;
@@ -80,7 +85,13 @@ protected:
 	Ref<BluetoothAdvertiser::BluetoothAdvertiserCharacteristic> get_characteristic_by_uuid(String p_characteristic_uuid) const;
 
 public:
-	int get_id() const;
+	static BluetoothAdvertiser *create() {
+		if (!_create) {
+			return nullptr;
+		}
+		return _create();
+	}
+
 	bool is_active() const;
 	void set_active(bool p_is_active);
 
@@ -103,7 +114,6 @@ public:
 	bool get_characteristic_permission(String p_characteristic_uuid) const;
 	void set_characteristic_permission(String p_characteristic_uuid, bool p_permission);
 
-	BluetoothAdvertiser(int p_id);
 	BluetoothAdvertiser();
 	BluetoothAdvertiser(String p_service_uuid);
 	virtual ~BluetoothAdvertiser();

@@ -28,7 +28,6 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#include "bluetooth_macos.h"
 #include "bluetooth_enumerator_macos.h"
 #include "core/config/engine.h"
 #include "core/core_bind.h"
@@ -542,6 +541,14 @@ BluetoothEnumeratorMacOS::BluetoothEnumeratorMacOS() {
 BluetoothEnumeratorMacOS::~BluetoothEnumeratorMacOS() {
 	//MyCentralManagerDelegate *central_manager_delegate = (__bridge MyCentralManagerDelegate *)this->central_manager_delegate;
     CFRelease(this->central_manager_delegate);
+}
+
+void BluetoothEnumeratorMacOS::initialize() {
+    BluetoothEnumerator::_create = BluetoothEnumeratorMacOS::_create;
+}
+
+void BluetoothEnumeratorMacOS::deinitialize() {
+	// nothing to do here
 }
 
 bool BluetoothEnumeratorMacOS::start_scanning() const {

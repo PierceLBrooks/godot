@@ -37,11 +37,11 @@
 
 #include <chrono>
 
+BluetoothEnumerator *(*BluetoothEnumerator::_create)() = nullptr;
+
 void BluetoothEnumerator::_bind_methods() {
 	// The setters prefixed with _ are only exposed so we can have enumerators through GDExtension!
 	// They should not be called by the end user.
-
-	ClassDB::bind_method(D_METHOD("get_id"), &BluetoothEnumerator::get_id);
 
 	ClassDB::bind_method(D_METHOD("is_active"), &BluetoothEnumerator::is_active);
 	ClassDB::bind_method(D_METHOD("set_active", "active"), &BluetoothEnumerator::set_active);
@@ -62,19 +62,15 @@ void BluetoothEnumerator::_bind_methods() {
 	ADD_GROUP("Enumerator", "enumerator_");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "enumerator_is_active"), "set_active", "is_active");
 
-	ADD_SIGNAL(MethodInfo("bluetooth_service_enumeration_started", PropertyInfo(Variant::INT, "id")));
-	ADD_SIGNAL(MethodInfo("bluetooth_service_enumeration_stopped", PropertyInfo(Variant::INT, "id")));
-	ADD_SIGNAL(MethodInfo("bluetooth_peer_discovered", PropertyInfo(Variant::INT, "id"), PropertyInfo(Variant::STRING, "peer"), PropertyInfo(Variant::STRING, "name"), PropertyInfo(Variant::DICTIONARY, "advertisement_data")));
-	ADD_SIGNAL(MethodInfo("bluetooth_peer_connected", PropertyInfo(Variant::INT, "id"), PropertyInfo(Variant::STRING, "peer")));
-	ADD_SIGNAL(MethodInfo("bluetooth_peer_disconnected", PropertyInfo(Variant::INT, "id"), PropertyInfo(Variant::STRING, "peer")));
-	ADD_SIGNAL(MethodInfo("bluetooth_peer_characteristic_discovered", PropertyInfo(Variant::INT, "id"), PropertyInfo(Variant::STRING, "peer"), PropertyInfo(Variant::STRING, "service"), PropertyInfo(Variant::STRING, "characteristic"), PropertyInfo(Variant::BOOL, "writable_permission")));
-	ADD_SIGNAL(MethodInfo("bluetooth_peer_characteristic_read", PropertyInfo(Variant::INT, "id"), PropertyInfo(Variant::STRING, "peer"), PropertyInfo(Variant::STRING, "service"), PropertyInfo(Variant::STRING, "characteristic"), PropertyInfo(Variant::STRING, "value")));
-	ADD_SIGNAL(MethodInfo("bluetooth_peer_characteristic_wrote", PropertyInfo(Variant::INT, "id"), PropertyInfo(Variant::STRING, "peer"), PropertyInfo(Variant::STRING, "service"), PropertyInfo(Variant::STRING, "characteristic")));
-	ADD_SIGNAL(MethodInfo("bluetooth_peer_characteristic_error", PropertyInfo(Variant::INT, "id"), PropertyInfo(Variant::STRING, "peer"), PropertyInfo(Variant::STRING, "service"), PropertyInfo(Variant::STRING, "characteristic")));
-}
-
-int BluetoothEnumerator::get_id() const {
-	return id;
+	ADD_SIGNAL(MethodInfo("bluetooth_service_enumeration_started", PropertyInfo(Variant::ARRAY, "sought_services")));
+	ADD_SIGNAL(MethodInfo("bluetooth_service_enumeration_stopped", PropertyInfo(Variant::ARRAY, "sought_services")));
+	ADD_SIGNAL(MethodInfo("bluetooth_peer_discovered", PropertyInfo(Variant::ARRAY, "sought_services"), PropertyInfo(Variant::STRING, "peer"), PropertyInfo(Variant::STRING, "name"), PropertyInfo(Variant::DICTIONARY, "advertisement_data")));
+	ADD_SIGNAL(MethodInfo("bluetooth_peer_connected", PropertyInfo(Variant::ARRAY, "sought_services"), PropertyInfo(Variant::STRING, "peer")));
+	ADD_SIGNAL(MethodInfo("bluetooth_peer_disconnected", PropertyInfo(Variant::ARRAY, "sought_services"), PropertyInfo(Variant::STRING, "peer")));
+	ADD_SIGNAL(MethodInfo("bluetooth_peer_characteristic_discovered", PropertyInfo(Variant::ARRAY, "sought_services"), PropertyInfo(Variant::STRING, "peer"), PropertyInfo(Variant::STRING, "service"), PropertyInfo(Variant::STRING, "characteristic"), PropertyInfo(Variant::BOOL, "writable_permission")));
+	ADD_SIGNAL(MethodInfo("bluetooth_peer_characteristic_read", PropertyInfo(Variant::ARRAY, "sought_services"), PropertyInfo(Variant::STRING, "peer"), PropertyInfo(Variant::STRING, "service"), PropertyInfo(Variant::STRING, "characteristic"), PropertyInfo(Variant::STRING, "value")));
+	ADD_SIGNAL(MethodInfo("bluetooth_peer_characteristic_wrote", PropertyInfo(Variant::ARRAY, "sought_services"), PropertyInfo(Variant::STRING, "peer"), PropertyInfo(Variant::STRING, "service"), PropertyInfo(Variant::STRING, "characteristic")));
+	ADD_SIGNAL(MethodInfo("bluetooth_peer_characteristic_error", PropertyInfo(Variant::ARRAY, "sought_services"), PropertyInfo(Variant::STRING, "peer"), PropertyInfo(Variant::STRING, "service"), PropertyInfo(Variant::STRING, "characteristic")));
 }
 
 bool BluetoothEnumerator::is_active() const {
@@ -180,15 +176,8 @@ BluetoothEnumerator::BluetoothEnumeratorCharacteristic::BluetoothEnumeratorChara
 	uuid = p_characteristic_uuid;
 }
 
-BluetoothEnumerator::BluetoothEnumerator(int p_id) {
-	// initialize us
-	id = p_id;
-	active = false;
-}
-
 BluetoothEnumerator::BluetoothEnumerator() {
 	// initialize us
-	id = Bluetooth::get_singleton()->get_free_enumerator_id();
 	active = false;
 }
 
@@ -226,7 +215,7 @@ bool BluetoothEnumerator::on_start() const {
 			thread.start([](void *p_udata) {
 				Ref<BluetoothEnumerator>* enumerator = static_cast<Ref<BluetoothEnumerator>*>(p_udata);
 				if (enumerator->is_valid()) {
-					(*enumerator)->emit_signal(SNAME("bluetooth_service_enumeration_started"), (*enumerator)->get_id());
+					(*enumerator)->emit_signal(SNAME("bluetooth_service_enumeration_started"), (*enumerator)->get_sought_services());
 				}
 			}, reference);
 			thread.wait_to_finish();
@@ -246,7 +235,7 @@ bool BluetoothEnumerator::on_stop() const {
 				Ref<BluetoothEnumerator>* enumerator = static_cast<Ref<BluetoothEnumerator>*>(p_udata);
 				if (enumerator->is_valid()) {
 					(*enumerator)->active = false;
-					(*enumerator)->emit_signal(SNAME("bluetooth_service_enumeration_stopped"), (*enumerator)->get_id());
+					(*enumerator)->emit_signal(SNAME("bluetooth_service_enumeration_stopped"), (*enumerator)->get_sought_services());
 				}
 			}, reference);
 			thread.wait_to_finish();
@@ -278,7 +267,7 @@ bool BluetoothEnumerator::on_discover(String p_peer_uuid, String p_peer_name, St
 				Ref<BluetoothEnumerator::BluetoothEnumeratorPeer>* peer = static_cast<Ref<BluetoothEnumerator::BluetoothEnumeratorPeer>*>(p_udata);
 				if (peer->is_valid() && (*peer)->enumerator.is_valid()) {
 					(*peer)->enumerator->peers[(*peer)->uuid] = *peer;
-					(*peer)->enumerator->emit_signal(SNAME("bluetooth_peer_discovered"), (*peer)->enumerator->get_id(), (*peer)->uuid, (*peer)->name, (*peer)->advertisement_data);
+					(*peer)->enumerator->emit_signal(SNAME("bluetooth_peer_discovered"), (*peer)->enumerator->get_sought_services(), (*peer)->uuid, (*peer)->name, (*peer)->advertisement_data);
 				}
 			}, reference);
 			thread.wait_to_finish();
@@ -299,7 +288,7 @@ bool BluetoothEnumerator::on_connect(String p_peer_uuid) const {
 			thread.start([](void *p_udata) {
 				Ref<BluetoothEnumerator::BluetoothEnumeratorPeer>* peer = static_cast<Ref<BluetoothEnumerator::BluetoothEnumeratorPeer>*>(p_udata);
 				if (peer->is_valid() && (*peer)->enumerator.is_valid()) {
-					(*peer)->enumerator->emit_signal(SNAME("bluetooth_peer_connected"), (*peer)->enumerator->get_id(), (*peer)->uuid);
+					(*peer)->enumerator->emit_signal(SNAME("bluetooth_peer_connected"), (*peer)->enumerator->get_sought_services(), (*peer)->uuid);
 				}
 			}, reference);
 			thread.wait_to_finish();
@@ -321,7 +310,7 @@ bool BluetoothEnumerator::on_disconnect(String p_peer_uuid) const {
 				Ref<BluetoothEnumerator::BluetoothEnumeratorPeer>* peer = static_cast<Ref<BluetoothEnumerator::BluetoothEnumeratorPeer>*>(p_udata);
 				if (peer->is_valid() && (*peer)->enumerator.is_valid()) {
 					(*peer)->enumerator->peers.erase((*peer)->uuid);
-					(*peer)->enumerator->emit_signal(SNAME("bluetooth_peer_disconnected"), (*peer)->enumerator->get_id(), (*peer)->uuid);
+					(*peer)->enumerator->emit_signal(SNAME("bluetooth_peer_disconnected"), (*peer)->enumerator->get_sought_services(), (*peer)->uuid);
 				}
 			}, reference);
 			thread.wait_to_finish();
@@ -365,7 +354,7 @@ bool BluetoothEnumerator::on_discover_service_characteristic(String p_peer_uuid,
 						if (service->characteristics.find(uuid) == service->characteristics.end()) {
 							service->characteristics[uuid] = *characteristic;
 						}
-						(*characteristic)->peer->enumerator->emit_signal(SNAME("bluetooth_peer_characteristic_discovered"), (*characteristic)->peer->enumerator->get_id(), (*characteristic)->peer->uuid, service->uuid, uuid, (*characteristic)->permission);
+						(*characteristic)->peer->enumerator->emit_signal(SNAME("bluetooth_peer_characteristic_discovered"), (*characteristic)->peer->enumerator->get_sought_services(), (*characteristic)->peer->uuid, service->uuid, uuid, (*characteristic)->permission);
 					}
 				}
 			}, reference);
@@ -403,7 +392,7 @@ bool BluetoothEnumerator::on_read(String p_peer_uuid, String p_service_uuid, Str
 					thread.start([](void *p_udata) {
 						Ref<BluetoothEnumerator::BluetoothEnumeratorCharacteristic>* characteristic = static_cast<Ref<BluetoothEnumerator::BluetoothEnumeratorCharacteristic>*>(p_udata);
 						if (characteristic->is_valid() && (*characteristic)->peer.is_valid() && (*characteristic)->peer->enumerator.is_valid()) {
-							(*characteristic)->peer->enumerator->emit_signal(SNAME("bluetooth_peer_characteristic_read"), (*characteristic)->peer->enumerator->get_id(), (*characteristic)->peer->uuid, (*characteristic)->service, (*characteristic)->uuid, (*characteristic)->value);
+							(*characteristic)->peer->enumerator->emit_signal(SNAME("bluetooth_peer_characteristic_read"), (*characteristic)->peer->enumerator->get_sought_services(), (*characteristic)->peer->uuid, (*characteristic)->service, (*characteristic)->uuid, (*characteristic)->value);
 						}
 					}, reference);
 					thread.wait_to_finish();
@@ -441,7 +430,7 @@ bool BluetoothEnumerator::on_write(String p_peer_uuid, String p_service_uuid, St
 					thread.start([](void *p_udata) {
 						Ref<BluetoothEnumerator::BluetoothEnumeratorCharacteristic>* characteristic = static_cast<Ref<BluetoothEnumerator::BluetoothEnumeratorCharacteristic>*>(p_udata);
 						if (characteristic->is_valid() && (*characteristic)->peer.is_valid() && (*characteristic)->peer->enumerator.is_valid()) {
-							(*characteristic)->peer->enumerator->emit_signal(SNAME("bluetooth_peer_characteristic_wrote"), (*characteristic)->peer->enumerator->get_id(), (*characteristic)->peer->uuid, (*characteristic)->service, (*characteristic)->uuid);
+							(*characteristic)->peer->enumerator->emit_signal(SNAME("bluetooth_peer_characteristic_wrote"), (*characteristic)->peer->enumerator->get_sought_services(), (*characteristic)->peer->uuid, (*characteristic)->service, (*characteristic)->uuid);
 						}
 					}, reference);
 					thread.wait_to_finish();
@@ -479,7 +468,7 @@ bool BluetoothEnumerator::on_error(String p_peer_uuid, String p_service_uuid, St
 					thread.start([](void *p_udata) {
 						Ref<BluetoothEnumerator::BluetoothEnumeratorCharacteristic>* characteristic = static_cast<Ref<BluetoothEnumerator::BluetoothEnumeratorCharacteristic>*>(p_udata);
 						if (characteristic->is_valid() && (*characteristic)->peer.is_valid() && (*characteristic)->peer->enumerator.is_valid()) {
-							(*characteristic)->peer->enumerator->emit_signal(SNAME("bluetooth_peer_characteristic_error"), (*characteristic)->peer->enumerator->get_id(), (*characteristic)->peer->uuid, (*characteristic)->service, (*characteristic)->uuid);
+							(*characteristic)->peer->enumerator->emit_signal(SNAME("bluetooth_peer_characteristic_error"), (*characteristic)->peer->enumerator->get_sought_services(), (*characteristic)->peer->uuid, (*characteristic)->service, (*characteristic)->uuid);
 						}
 					}, reference);
 					thread.wait_to_finish();
