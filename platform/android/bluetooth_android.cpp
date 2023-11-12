@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  register_types.cpp                                                    */
+/*  bluetooth_android.cpp                                                 */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,37 +28,37 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#include "register_types.h"
+#include "bluetooth_android.h"
 
-#if defined(MACOS_ENABLED)
-#include "bluetooth_advertiser_macos.h"
-#include "bluetooth_enumerator_macos.h"
-#endif
+#include "java_godot_wrapper.h"
+#include "os_android.h"
+#include "string_android.h"
+#include "thread_jandroid.h"
 
-#include "core/config/engine.h"
-#include "core/os/os.h"
+jobject BluetoothAndroid::bluetooth = nullptr;
+jclass BluetoothAndroid::cls = nullptr;
 
-void initialize_bluetooth_module(ModuleInitializationLevel p_level) {
-	if (p_level == MODULE_INITIALIZATION_LEVEL_CORE) {
-		ClassDB::register_custom_instance_class<BluetoothAdvertiser>();
-		ClassDB::register_custom_instance_class<BluetoothEnumerator>();
-	}
-	if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE || Engine::get_singleton()->is_editor_hint()) {
-		return;
-	}
-#if defined(MACOS_ENABLED)
-	BluetoothAdvertiserMacOS::initialize();
-	BluetoothEnumeratorMacOS::initialize();
-#endif
-    print_line(String((std::string("Bluetooth module enabled: ")+std::to_string(OS::get_singleton()->has_feature("bluetooth_module"))).c_str()));
+jmethodID BluetoothAndroid::_is_supported = nullptr;
+
+void BluetoothAndroid::setup(jobject p_bluetooth) {
+	JNIEnv *env = get_jni_env();
+
+	bluetooth = env->NewGlobalRef(p_bluetooth);
+
+	jclass c = env->GetObjectClass(bluetooth);
+	cls = (jclass)env->NewGlobalRef(c);
+
+	_is_supported = env->GetMethodID(cls, "isSupported", "()Z");
 }
 
-void uninitialize_bluetooth_module(ModuleInitializationLevel p_level) {
-	if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE || Engine::get_singleton()->is_editor_hint()) {
-		return;
+bool BluetoothAndroid::is_supported() {
+	if (_is_supported) {
+		JNIEnv *env = get_jni_env();
+
+		ERR_FAIL_COND_V(env == nullptr, false);
+		return env->CallBooleanMethod(tts, _is_supported);
+	} else {
+		return false;
 	}
-#if defined(MACOS_ENABLED)
-	BluetoothAdvertiserMacOS::deinitialize();
-	BluetoothEnumeratorMacOS::deinitialize();
-#endif
 }
+

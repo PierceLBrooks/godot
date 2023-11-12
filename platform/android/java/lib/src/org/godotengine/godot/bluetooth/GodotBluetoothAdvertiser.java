@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  register_types.cpp                                                    */
+/*  GodotBluetoothAdvertiser.java                                         */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,37 +28,17 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#include "register_types.h"
+package org.godotengine.godot.bluetooth;
 
-#if defined(MACOS_ENABLED)
-#include "bluetooth_advertiser_macos.h"
-#include "bluetooth_enumerator_macos.h"
-#endif
+import org.godotengine.godot.*;
 
-#include "core/config/engine.h"
-#include "core/os/os.h"
+public class GodotBluetoothAdvertiser {
+	private static final String TAG = GodotBluetoothAdvertiser.class.getSimpleName();
 
-void initialize_bluetooth_module(ModuleInitializationLevel p_level) {
-	if (p_level == MODULE_INITIALIZATION_LEVEL_CORE) {
-		ClassDB::register_custom_instance_class<BluetoothAdvertiser>();
-		ClassDB::register_custom_instance_class<BluetoothEnumerator>();
+	private final GodotBluetooth bluetooth;
+
+	public GodotBluetoothAdvertiser(GodotBluetooth p_bluetooth) {
+		bluetooth = p_bluetooth;
 	}
-	if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE || Engine::get_singleton()->is_editor_hint()) {
-		return;
-	}
-#if defined(MACOS_ENABLED)
-	BluetoothAdvertiserMacOS::initialize();
-	BluetoothEnumeratorMacOS::initialize();
-#endif
-    print_line(String((std::string("Bluetooth module enabled: ")+std::to_string(OS::get_singleton()->has_feature("bluetooth_module"))).c_str()));
 }
 
-void uninitialize_bluetooth_module(ModuleInitializationLevel p_level) {
-	if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE || Engine::get_singleton()->is_editor_hint()) {
-		return;
-	}
-#if defined(MACOS_ENABLED)
-	BluetoothAdvertiserMacOS::deinitialize();
-	BluetoothEnumeratorMacOS::deinitialize();
-#endif
-}

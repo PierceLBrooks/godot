@@ -2,40 +2,37 @@ extends Node2D
 
 var enumerator: BluetoothEnumerator = null
 
-func _on_bluetooth_enumerator_added(id):
-	print("add: "+str(id))
+func _on_bluetooth_service_enumeration_started(sought_services):
+	print("start: "+str(sought_services))
 
-func _on_bluetooth_service_enumeration_started(id):
-	print("start: "+str(id))
+func _on_bluetooth_service_enumeration_stopped(sought_services):
+	print("stop: "+str(sought_services))
 
-func _on_bluetooth_service_enumeration_stopped(id):
-	print("stop: "+str(id))
-
-func _on_bluetooth_peer_discovered(id, peer, name, data):
-	print("discover: "+str(id)+" @ "+str(peer)+" & "+str(name)+" & "+str(JSON.stringify(str(data))))
+func _on_bluetooth_peer_discovered(sought_services, peer, name, data):
+	print("discover: "+str(peer)+" & "+str(name)+" & "+str(JSON.stringify(str(data))))
 	if ("Mac" in name):
 		enumerator.connect_peer(peer)
 
-func _on_bluetooth_peer_connected(id, peer):
-	print("connect: "+str(id)+" @ "+str(peer))
+func _on_bluetooth_peer_connected(sought_services, peer):
+	print("connect: "+str(peer))
 
-func _on_bluetooth_peer_disconnected(id, peer):
-	print("disconnect: "+str(id)+" @ "+str(peer))
+func _on_bluetooth_peer_disconnected(sought_services, peer):
+	print("disconnect: "+str(peer))
 
-func _on_bluetooth_peer_characteristic_discovered(id, peer, service, characteristic, writable):
-	print("characteristic: "+str(id)+" @ "+str(peer)+" & "+str(service)+" & "+str(characteristic))
+func _on_bluetooth_peer_characteristic_discovered(sought_services, peer, service, characteristic, writable):
+	print("characteristic: "+str(peer)+" & "+str(service)+" & "+str(characteristic))
 	if (writable and service == "29D7544B-6870-45A4-BB7E-D981535F4525" and characteristic == "B81672D5-396B-4803-82C2-029D34319015"):
-		BluetoothEnumerator.write_peer_service_characteristic(peer, service, characteristic, "Hello, world!")
+		enumerator.write_peer_service_characteristic(peer, service, characteristic, "Hello, world!")
 
-func _on_bluetooth_peer_characteristic_read(id, peer, service, characteristic, value):
-	print("read: "+str(id)+" @ "+str(peer)+" & "+str(service)+" & "+str(characteristic)+" = "+str(value))
+func _on_bluetooth_peer_characteristic_read(sought_services, peer, service, characteristic, value):
+	print("read: "+str(peer)+" & "+str(service)+" & "+str(characteristic)+" = "+str(value))
 
-func _on_bluetooth_peer_characteristic_wrote(id, peer, service, characteristic):
-	print("write: "+str(id)+" @ "+str(peer)+" & "+str(service)+" & "+str(characteristic))
+func _on_bluetooth_peer_characteristic_wrote(sought_services, peer, service, characteristic):
+	print("write: "+str(peer)+" & "+str(service)+" & "+str(characteristic))
 	enumerator.read_peer_service_characteristic(peer, service, characteristic)
 
-func _on_bluetooth_peer_characteristic_error(id, peer, service, characteristic):
-	print("error: "+str(id)+" @ "+str(peer)+" & "+str(service)+" & "+str(characteristic))
+func _on_bluetooth_peer_characteristic_error(sought_services, peer, service, characteristic):
+	print("error: "+str(peer)+" & "+str(service)+" & "+str(characteristic))
 
 # Called when the node enters the scene tree for the first time.
 func _ready():

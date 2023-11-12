@@ -36,9 +36,12 @@
 #include "core/io/file_access.h"
 #include "core/os/midi_driver.h"
 #include "core/version_generated.gen.h"
+#include "modules/modules_enabled.gen.h" // For is_module_enabled.
 
 #include <stdarg.h>
 #include <thread>
+
+#define IS_MODULE_ENABLED_FEATURE_SUFFIX "_module"
 
 OS *OS::singleton = nullptr;
 uint64_t OS::target_ticks = 0;
@@ -476,6 +479,10 @@ bool OS::has_feature(const String &p_feature) {
 	if (ProjectSettings::get_singleton()->has_custom_feature(p_feature)) {
 		return true;
 	}
+
+    if (p_feature.ends_with(String(IS_MODULE_ENABLED_FEATURE_SUFFIX)) && is_module_enabled(p_feature.substr(0, p_feature.length() - strlen(IS_MODULE_ENABLED_FEATURE_SUFFIX)))) {
+        return true;
+    }
 
 	return false;
 }

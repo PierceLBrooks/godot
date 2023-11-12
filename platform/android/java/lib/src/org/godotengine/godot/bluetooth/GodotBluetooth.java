@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  register_types.cpp                                                    */
+/*  GodotBluetooth.java                                                   */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,37 +28,50 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#include "register_types.h"
+package org.godotengine.godot.bluetooth;
 
-#if defined(MACOS_ENABLED)
-#include "bluetooth_advertiser_macos.h"
-#include "bluetooth_enumerator_macos.h"
-#endif
+import android.annotation.TargetApi;
+import android.app.Activity;
+import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothManager;
+import android.os.Build;
 
-#include "core/config/engine.h"
-#include "core/os/os.h"
+import org.godotengine.godot.*;
 
-void initialize_bluetooth_module(ModuleInitializationLevel p_level) {
-	if (p_level == MODULE_INITIALIZATION_LEVEL_CORE) {
-		ClassDB::register_custom_instance_class<BluetoothAdvertiser>();
-		ClassDB::register_custom_instance_class<BluetoothEnumerator>();
+public class GodotBluetooth {
+	private static final String TAG = GodotBluetooth.class.getSimpleName();
+
+	private final Activity activity;
+
+	private boolean supported;
+	private BluetoothAdapter adapter;
+	@TargetApi(Build.VERSION_CODES.JELLY_BEAN)
+	private BluetoothManager manager;
+
+	public GodotBluetooth(Activity p_activity) {
+		activity = p_activity;
+
+		supported = false;
+		if (activity != null && GodotLib.hasFeature("bluetooth_module")) {
+			if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.JELLY_BEAN_MR1) {
+				adapter = BluetoothAdapter.getDefaultAdapter();
+				if (adapter != null) {
+					supported = true;
+				}
+			} else {
+				manager = (BluetoothManager)activity.getSystemService(activity.BLUETOOTH_SERVICE);
+				if (manager != null) {
+					adapter = manager.getAdapter();
+					if (adapter != null && adapter.isMultipleAdvertisementSupported()) {
+						supported = true;
+					}
+				}
+			}
+		}
 	}
-	if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE || Engine::get_singleton()->is_editor_hint()) {
-		return;
+
+	public boolean isSupported() {
+		return supported;
 	}
-#if defined(MACOS_ENABLED)
-	BluetoothAdvertiserMacOS::initialize();
-	BluetoothEnumeratorMacOS::initialize();
-#endif
-    print_line(String((std::string("Bluetooth module enabled: ")+std::to_string(OS::get_singleton()->has_feature("bluetooth_module"))).c_str()));
 }
 
-void uninitialize_bluetooth_module(ModuleInitializationLevel p_level) {
-	if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE || Engine::get_singleton()->is_editor_hint()) {
-		return;
-	}
-#if defined(MACOS_ENABLED)
-	BluetoothAdvertiserMacOS::deinitialize();
-	BluetoothEnumeratorMacOS::deinitialize();
-#endif
-}

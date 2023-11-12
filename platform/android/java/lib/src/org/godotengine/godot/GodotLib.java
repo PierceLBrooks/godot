@@ -30,6 +30,7 @@
 
 package org.godotengine.godot;
 
+import org.godotengine.godot.bluetooth.GodotBluetooth;
 import org.godotengine.godot.gl.GodotRenderer;
 import org.godotengine.godot.io.directory.DirectoryAccessHandler;
 import org.godotengine.godot.io.file.FileAccessHandler;
@@ -62,7 +63,8 @@ public class GodotLib {
 			DirectoryAccessHandler directoryAccessHandler,
 			FileAccessHandler fileAccessHandler,
 			boolean use_apk_expansion,
-			GodotTTS tts);
+			GodotTTS tts,
+			GodotBluetooth bluetooth);
 
 	/**
 	 * Invoked on the main thread to clean up Godot native layer.
@@ -195,6 +197,13 @@ public class GodotLib {
 	 * @return String value of the setting
 	 */
 	public static native String getEditorSetting(String settingKey);
+
+	/**
+	 * Used to access Godot's features.
+	 * @param featureKey Feature key
+	 * @return Boolean value of the feature
+	 */
+	public static native boolean hasFeature(String featureKey);
 
 	/**
 	 * Invoke method |p_method| on the Godot object specified by |p_id|

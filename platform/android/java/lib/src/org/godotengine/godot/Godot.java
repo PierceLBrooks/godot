@@ -33,6 +33,7 @@ package org.godotengine.godot;
 import static android.content.Context.MODE_PRIVATE;
 import static android.content.Context.WINDOW_SERVICE;
 
+import org.godotengine.godot.bluetooth.GodotBluetooth;
 import org.godotengine.godot.input.GodotEditText;
 import org.godotengine.godot.io.directory.DirectoryAccessHandler;
 import org.godotengine.godot.io.file.FileAccessHandler;
@@ -180,6 +181,7 @@ public class Godot extends Fragment implements SensorEventListener, IDownloaderC
 	public GodotIO io;
 	public GodotNetUtils netUtils;
 	public GodotTTS tts;
+	public GodotBluetooth bluetooth;
 	DirectoryAccessHandler directoryAccessHandler;
 
 	public interface ResultCallback {
@@ -572,6 +574,7 @@ public class Godot extends Fragment implements SensorEventListener, IDownloaderC
 		}
 
 		final Activity activity = getActivity();
+		bluetooth = new GodotBluetooth(activity);
 		io = new GodotIO(activity);
 		netUtils = new GodotNetUtils(activity);
 		tts = new GodotTTS(activity);
@@ -592,7 +595,8 @@ public class Godot extends Fragment implements SensorEventListener, IDownloaderC
 				directoryAccessHandler,
 				fileAccessHandler,
 				use_apk_expansion,
-				tts);
+				tts,
+				bluetooth);
 
 		result_callback = null;
 	}

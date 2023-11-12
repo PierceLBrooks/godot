@@ -4,8 +4,8 @@ extends Node2D
 var register: String = "ABCD"
 var advertiser: BluetoothAdvertiser = null
 
-func _on_bluetooth_service_advertisement_started(service_uuid, characteristic_uuid):
-	print("start: "+service_uuid+" @ "+str(characteristic_uuid))
+func _on_bluetooth_service_advertisement_started(service_uuid):
+	print("start: "+service_uuid)
 
 func _on_bluetooth_service_characteristic_read(service_uuid, characteristic_uuid, request, peer):
 	print("read: "+service_uuid+" @ "+str(characteristic_uuid)+" = "+peer)

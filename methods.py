@@ -311,6 +311,7 @@ def write_disabled_classes(class_list):
 
 
 def write_modules(modules):
+    enabled_cpp = ""
     includes_cpp = ""
     initialize_cpp = ""
     uninitialize_cpp = ""
@@ -318,6 +319,9 @@ def write_modules(modules):
     for name, path in modules.items():
         try:
             with open(os.path.join(path, "register_types.h")):
+                enabled_cpp += "#ifdef MODULE_" + name.upper() + "_ENABLED\n"
+                enabled_cpp += "\tif (p_module_name == \"" + name + "\") return true;\n"
+                enabled_cpp += "#endif\n"
                 includes_cpp += '#include "' + path + '/register_types.h"\n'
                 initialize_cpp += "#ifdef MODULE_" + name.upper() + "_ENABLED\n"
                 initialize_cpp += "\tinitialize_" + name + "_module(p_level);\n"
@@ -334,6 +338,8 @@ def write_modules(modules):
 
 #include "modules/modules_enabled.gen.h"
 
+#include "core/string/ustring.h"
+
 %s
 
 void initialize_modules(ModuleInitializationLevel p_level) {
@@ -343,10 +349,16 @@ void initialize_modules(ModuleInitializationLevel p_level) {
 void uninitialize_modules(ModuleInitializationLevel p_level) {
 %s
 }
+
+bool is_module_enabled(String p_module_name) {
+%s
+\treturn false;
+}
 """ % (
         includes_cpp,
         initialize_cpp,
         uninitialize_cpp,
+        enabled_cpp
     )
 
     # NOTE: It is safe to generate this file here, since this is still executed serially
