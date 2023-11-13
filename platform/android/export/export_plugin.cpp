@@ -82,7 +82,10 @@ static const char *android_perms[] = {
 	"BIND_WALLPAPER",
 	"BLUETOOTH",
 	"BLUETOOTH_ADMIN",
+	"BLUETOOTH_ADVERTISE",
+	"BLUETOOTH_CONNECT",
 	"BLUETOOTH_PRIVILEGED",
+	"BLUETOOTH_SCAN",
 	"BRICK",
 	"BROADCAST_PACKAGE_REMOVED",
 	"BROADCAST_SMS",
@@ -807,9 +810,14 @@ bool EditorExportPlatformAndroid::_uses_vulkan() {
 }
 
 void EditorExportPlatformAndroid::_get_permissions(const Ref<EditorExportPreset> &p_preset, bool p_give_internet, Vector<String> &r_permissions) {
+	bool uses_bluetooth = OS::get_singleton()->has_feature("bluetooth_module");
 	const char **aperms = android_perms;
 	while (*aperms) {
-		bool enabled = p_preset->get("permissions/" + String(*aperms).to_lower());
+		String aperm = String(*aperms).to_lower();
+		if (uses_bluetooth && aperm.contains("bluetooth")) {
+			continue;
+		}
+		bool enabled = p_preset->get("permissions/" + aperm);
 		if (enabled) {
 			r_permissions.push_back("android.permission." + String(*aperms));
 		}
@@ -827,7 +835,13 @@ void EditorExportPlatformAndroid::_get_permissions(const Ref<EditorExportPreset>
 			r_permissions.push_back("android.permission.INTERNET");
 		}
 	}
-
+	if (uses_bluetooth) {
+		r_permissions.push_back("android.permission.BLUETOOTH");
+		r_permissions.push_back("android.permission.BLUETOOTH_ADMIN");
+		r_permissions.push_back("android.permission.BLUETOOTH_SCAN");
+		r_permissions.push_back("android.permission.BLUETOOTH_ADVERTISE");
+		r_permissions.push_back("android.permission.BLUETOOTH_CONNECT");
+	}
 	int xr_mode_index = p_preset->get("xr_features/xr_mode");
 	if (xr_mode_index == XR_MODE_OPENXR) {
 		int hand_tracking_index = p_preset->get("xr_features/hand_tracking"); // 0: none, 1: optional, 2: required
