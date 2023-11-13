@@ -32,6 +32,7 @@
 #include "core/config/engine.h"
 #include "core/core_bind.h"
 #include "core/variant/typed_array.h"
+#include "platform/android/bluetooth_android.h"
 
 BluetoothAdvertiserAndroid::BluetoothAdvertiserAndroid() {
 }
@@ -54,10 +55,16 @@ void BluetoothAdvertiserAndroid::respond_characteristic_write_request(String p_c
 }
 
 bool BluetoothAdvertiserAndroid::start_advertising() const {
+    if (!BluetoothAndroid::is_supported()) {
+        return false;
+    }
     return false;
 }
 
 bool BluetoothAdvertiserAndroid::stop_advertising() const {
+    if (!BluetoothAndroid::is_supported()) {
+        return false;
+    }
     return false;
 }
 

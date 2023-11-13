@@ -32,6 +32,7 @@
 #include "core/config/engine.h"
 #include "core/core_bind.h"
 #include "core/variant/typed_array.h"
+#include "platform/android/bluetooth_android.h"
 
 BluetoothEnumeratorAndroid::BluetoothEnumeratorAndroid() {
 }
@@ -48,10 +49,16 @@ void BluetoothEnumeratorAndroid::deinitialize() {
 }
 
 bool BluetoothEnumeratorAndroid::start_scanning() const {
+    if (!BluetoothAndroid::is_supported()) {
+        return false;
+    }
     return false;
 }
 
 bool BluetoothEnumeratorAndroid::stop_scanning() const {
+    if (!BluetoothAndroid::is_supported()) {
+        return false;
+    }
     return false;
 }
 
