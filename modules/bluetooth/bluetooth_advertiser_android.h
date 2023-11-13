@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  register_types.cpp                                                    */
+/*  bluetooth_advertiser_android.h                                        */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,54 +28,32 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#include "register_types.h"
+#ifndef BLUETOOTH_ADVERTISER_ANDROID_H
+#define BLUETOOTH_ADVERTISER_ANDROID_H
 
 #include "bluetooth_advertiser.h"
-#include "bluetooth_enumerator.h"
 
-#if defined(MACOS_ENABLED)
-#include "bluetooth_advertiser_macos.h"
-#include "bluetooth_enumerator_macos.h"
-#endif
-#if defined(ANDROID_ENABLED)
-#include "bluetooth_advertiser_android.h"
-#include "bluetooth_enumerator_android.h"
-#endif
+//////////////////////////////////////////////////////////////////////////
+// BluetoothAdvertiserAndroid - Subclass for bluetooth advertisers in Android
 
-#include "core/config/engine.h"
-#include "core/os/os.h"
+class BluetoothAdvertiserAndroid : public BluetoothAdvertiser {
+private:
+	static BluetoothAdvertiser *_create() { return memnew(BluetoothAdvertiserAndroid); }
+public:
+	BluetoothAdvertiserAndroid();
+	virtual ~BluetoothAdvertiserAndroid();
 
-void initialize_bluetooth_module(ModuleInitializationLevel p_level) {
-	if (p_level == MODULE_INITIALIZATION_LEVEL_CORE) {
-		ClassDB::register_custom_instance_class<BluetoothAdvertiser>();
-		ClassDB::register_custom_instance_class<BluetoothEnumerator>();
-	}
-	if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE || Engine::get_singleton()->is_editor_hint()) {
-		return;
-	}
-#if defined(MACOS_ENABLED)
-	BluetoothAdvertiserMacOS::initialize();
-	BluetoothEnumeratorMacOS::initialize();
-#endif
-#if defined(ANDROID_ENABLED)
-	BluetoothAdvertiserAndroid::initialize();
-	BluetoothEnumeratorAndroid::initialize();
-#endif
-#if defined(DEBUG_ENABLED)
-    print_line(String((std::string("Bluetooth module enabled: ")+std::to_string(OS::get_singleton()->has_feature("bluetooth_module"))).c_str()));
-#endif
-}
+	static void initialize();
+	static void deinitialize();
 
-void uninitialize_bluetooth_module(ModuleInitializationLevel p_level) {
-	if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE || Engine::get_singleton()->is_editor_hint()) {
-		return;
-	}
-#if defined(MACOS_ENABLED)
-	BluetoothAdvertiserMacOS::deinitialize();
-	BluetoothEnumeratorMacOS::deinitialize();
-#endif
-#if defined(ANDROID_ENABLED)
-	BluetoothAdvertiserAndroid::deinitialize();
-	BluetoothEnumeratorAndroid::deinitialize();
-#endif
-}
+    void respond_characteristic_read_request(String p_characteristic_uuid, String p_response, int p_request) const override;
+    void respond_characteristic_write_request(String p_characteristic_uuid, String p_response, int p_request) const override;
+
+	bool start_advertising() const override;
+	bool stop_advertising() const override;
+
+    void on_register() const override;
+    void on_unregister() const override;
+};
+
+#endif // BLUETOOTH_ADVERTISER_ANDROID_H

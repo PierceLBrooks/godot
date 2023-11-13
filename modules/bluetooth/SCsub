@@ -15,5 +15,5 @@ if env["platform"] == "macos":
 
 elif env["platform"] == "android":
     env_bluetooth.add_source_files(env.modules_sources, "register_types.cpp")
-    #env_bluetooth.add_source_files(env.modules_sources, "bluetooth_advertiser_android.cpp")
-    #env_bluetooth.add_source_files(env.modules_sources, "bluetooth_enumerator_android.cpp")
+    env_bluetooth.add_source_files(env.modules_sources, "bluetooth_advertiser_android.cpp")
+    env_bluetooth.add_source_files(env.modules_sources, "bluetooth_enumerator_android.cpp")
