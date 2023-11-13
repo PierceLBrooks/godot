@@ -30,10 +30,17 @@
 
 #include "register_types.h"
 
+#include "bluetooth_advertiser.h"
+#include "bluetooth_enumerator.h"
+
 #if defined(MACOS_ENABLED)
 #include "bluetooth_advertiser_macos.h"
 #include "bluetooth_enumerator_macos.h"
 #endif
+/*#if defined(ANDROID_ENABLED)
+#include "bluetooth_advertiser_android.h"
+#include "bluetooth_enumerator_android.h"
+#endif*/
 
 #include "core/config/engine.h"
 #include "core/os/os.h"
@@ -50,6 +57,10 @@ void initialize_bluetooth_module(ModuleInitializationLevel p_level) {
 	BluetoothAdvertiserMacOS::initialize();
 	BluetoothEnumeratorMacOS::initialize();
 #endif
+/*#if defined(ANDROID_ENABLED)
+	BluetoothAdvertiserAndroid::initialize();
+	BluetoothEnumeratorAndroid::initialize();
+#endif*/
     print_line(String((std::string("Bluetooth module enabled: ")+std::to_string(OS::get_singleton()->has_feature("bluetooth_module"))).c_str()));
 }
 
@@ -61,4 +72,8 @@ void uninitialize_bluetooth_module(ModuleInitializationLevel p_level) {
 	BluetoothAdvertiserMacOS::deinitialize();
 	BluetoothEnumeratorMacOS::deinitialize();
 #endif
+/*#if defined(ANDROID_ENABLED)
+	BluetoothAdvertiserAndroid::deinitialize();
+	BluetoothEnumeratorAndroid::deinitialize();
+#endif*/
 }

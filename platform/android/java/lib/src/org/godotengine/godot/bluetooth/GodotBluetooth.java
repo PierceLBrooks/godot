@@ -34,6 +34,7 @@ import android.annotation.TargetApi;
 import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothManager;
+import android.content.pm.PackageManager;
 import android.os.Build;
 
 import org.godotengine.godot.*;
@@ -45,28 +46,41 @@ public class GodotBluetooth {
 
 	private boolean supported;
 	private BluetoothAdapter adapter;
-	@TargetApi(Build.VERSION_CODES.JELLY_BEAN)
+	@TargetApi(Build.VERSION_CODES.JELLY_BEAN_MR2)
 	private BluetoothManager manager;
 
 	public GodotBluetooth(Activity p_activity) {
 		activity = p_activity;
 
-		supported = false;
-		if (activity != null && GodotLib.hasFeature("bluetooth_module")) {
-			if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.JELLY_BEAN_MR1) {
-				adapter = BluetoothAdapter.getDefaultAdapter();
-				if (adapter != null) {
-					supported = true;
+		supported = true;
+		try {
+			if (Build.VERSION.SDK_INT > Build.VERSION_CODES.JELLY_BEAN_MR1) {
+				if (activity == null || !activity.getPackageManager().hasSystemFeature(PackageManager.FEATURE_BLUETOOTH_LE)) {
+					supported = false;
 				}
-			} else {
-				manager = (BluetoothManager)activity.getSystemService(activity.BLUETOOTH_SERVICE);
-				if (manager != null) {
-					adapter = manager.getAdapter();
-					if (adapter != null && adapter.isMultipleAdvertisementSupported()) {
-						supported = true;
+			}
+			if (supported) {
+				supported = false;
+				if (activity != null && GodotLib.hasFeature("bluetooth_module")) {
+					if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.JELLY_BEAN_MR1) {
+						adapter = BluetoothAdapter.getDefaultAdapter();
+						if (adapter != null) {
+							supported = true;
+						}
+					} else {
+						manager = (BluetoothManager)activity.getSystemService(activity.BLUETOOTH_SERVICE);
+						if (manager != null) {
+							adapter = manager.getAdapter();
+							if (adapter != null && adapter.isMultipleAdvertisementSupported()) {
+								supported = true;
+							}
+						}
 					}
 				}
 			}
+		} catch (Exception exception) {
+			exception.printStackTrace();
+			supported = false;
 		}
 	}
 

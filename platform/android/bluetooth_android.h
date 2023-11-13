@@ -46,7 +46,7 @@ class BluetoothAndroid {
 public:
 	static void setup(jobject p_bluetooth);
 
-	static bool is_speaking();
+	static bool is_supported();
 };
 
 #endif // BLUETOOTH_ANDROID_H

@@ -56,7 +56,7 @@ bool BluetoothAndroid::is_supported() {
 		JNIEnv *env = get_jni_env();
 
 		ERR_FAIL_COND_V(env == nullptr, false);
-		return env->CallBooleanMethod(tts, _is_supported);
+		return env->CallBooleanMethod(bluetooth, _is_supported);
 	} else {
 		return false;
 	}

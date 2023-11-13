@@ -468,6 +468,7 @@ public class Godot extends Fragment implements SensorEventListener, IDownloaderC
 					});
 			AlertDialog dialog = builder.create();
 			dialog.show();
+			Log.e(TAG, "Alert: \""+title+"\n"+message+"\"");
 		});
 	}
 
