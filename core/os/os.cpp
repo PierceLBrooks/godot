@@ -36,7 +36,7 @@
 #include "core/io/file_access.h"
 #include "core/os/midi_driver.h"
 #include "core/version_generated.gen.h"
-#include "modules/modules_enabled.gen.h" // For is_module_enabled.
+#include "modules/register_module_types.h" // For is_module_enabled.
 
 #include <stdarg.h>
 #include <thread>

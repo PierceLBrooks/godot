@@ -338,9 +338,9 @@ def write_modules(modules):
 
 #include "modules/modules_enabled.gen.h"
 
-#include "core/string/ustring.h"
-
 %s
+
+extern "C" {
 
 void initialize_modules(ModuleInitializationLevel p_level) {
 %s
@@ -348,6 +348,8 @@ void initialize_modules(ModuleInitializationLevel p_level) {
 
 void uninitialize_modules(ModuleInitializationLevel p_level) {
 %s
+}
+
 }
 
 bool is_module_enabled(String p_module_name) {
