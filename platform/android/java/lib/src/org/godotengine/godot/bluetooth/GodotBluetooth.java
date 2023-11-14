@@ -30,6 +30,7 @@
 
 package org.godotengine.godot.bluetooth;
 
+import android.Manifest;
 import android.annotation.TargetApi;
 import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
@@ -37,21 +38,42 @@ import android.bluetooth.BluetoothManager;
 import android.content.pm.PackageManager;
 import android.os.Build;
 
+import androidx.core.content.ContextCompat;
+
+import java.util.HashMap;
+import java.util.concurrent.locks.ReentrantLock;
+
+import org.godotengine.godot.utils.PermissionsUtil;
 import org.godotengine.godot.*;
 
 public class GodotBluetooth {
+	public enum BluetoothReason {
+		SCANNING,
+		ADVERTISING,
+	}
+
 	private static final String TAG = GodotBluetooth.class.getSimpleName();
+	// Note: These constants must be in sync with BluetoothAndroid::BluetoothEvent enum from "platform/android/bluetooth_android.h".
+	public static final int EVENT_GET_SOUGHT_SERVICES = 0;
+	public static final int EVENT_ON_STOP_SCANNING = 1;
+	public static final int EVENT_ON_START_SCANNING = 2;
 
 	private final Activity activity;
 
 	private boolean supported;
+	private ReentrantLock lock;
 	private BluetoothAdapter adapter;
 	@TargetApi(Build.VERSION_CODES.JELLY_BEAN_MR2)
 	private BluetoothManager manager;
+	private HashMap<Integer, GodotBluetoothAdvertiser> advertisers;
+	private HashMap<Integer, GodotBluetoothEnumerator> enumerators;
 
 	public GodotBluetooth(Activity p_activity) {
 		activity = p_activity;
 
+		advertisers = new HashMap<Integer, GodotBluetoothAdvertiser>();
+		enumerators = new HashMap<Integer, GodotBluetoothEnumerator>();
+		lock = new ReentrantLock();
 		supported = true;
 		try {
 			if (Build.VERSION.SDK_INT > Build.VERSION_CODES.JELLY_BEAN_MR1) {
@@ -84,8 +106,177 @@ public class GodotBluetooth {
 		}
 	}
 
+	public BluetoothAdapter getAdapter(BluetoothReason reason) {
+		if (!supported) {
+			return null;
+		}
+		if (reason != null && Build.VERSION.SDK_INT > Build.VERSION_CODES.R) { // Bluetooth permissions are only considered dangerous at runtime above API level 30
+			switch (reason) {
+				case SCANNING:
+					if (ContextCompat.checkSelfPermission(activity, Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) {
+						PermissionsUtil.requestPermission("BLUETOOTH_SCAN", activity);
+						return null;
+					}
+					break;
+				case ADVERTISING:
+					if (ContextCompat.checkSelfPermission(activity, Manifest.permission.BLUETOOTH_ADVERTISE) != PackageManager.PERMISSION_GRANTED) {
+						PermissionsUtil.requestPermission("BLUETOOTH_ADVERTISE", activity);
+						return null;
+					}
+					break;
+				default:
+					return null;
+			}
+		}
+		return adapter;
+	}
+
 	public boolean isSupported() {
 		return supported;
+	}
+
+	public boolean startAdvertising(int p_advertiser_id) {
+		boolean success = false;
+		lock.lock();
+		try {
+			if (advertisers.containsKey(p_advertiser_id)) {
+				GodotBluetoothAdvertiser advertiser = advertisers.get(p_advertiser_id);
+				if (advertiser != null) {
+					success = advertiser.startAdvertising();
+				}
+			}
+		} catch (Exception exception) {
+			exception.printStackTrace();
+		} finally {
+			lock.unlock();
+		}
+		return success;
+	}
+
+	public boolean stopAdvertising(int p_advertiser_id) {
+		boolean success = false;
+		lock.lock();
+		try {
+			if (advertisers.containsKey(p_advertiser_id)) {
+				GodotBluetoothAdvertiser advertiser = advertisers.get(p_advertiser_id);
+				if (advertiser != null) {
+					success = advertiser.stopAdvertising();
+				}
+			}
+		} catch (Exception exception) {
+			exception.printStackTrace();
+		} finally {
+			lock.unlock();
+		}
+		return success;
+	}
+
+	public boolean startScanning(int p_enumerator_id) {
+		boolean success = false;
+		lock.lock();
+		try {
+			if (enumerators.containsKey(p_enumerator_id)) {
+				GodotBluetoothEnumerator enumerator = enumerators.get(p_enumerator_id);
+				if (enumerator != null) {
+					success = enumerator.startScanning();
+				}
+			}
+		} catch (Exception exception) {
+			exception.printStackTrace();
+		} finally {
+			lock.unlock();
+		}
+		return success;
+	}
+
+	public boolean stopScanning(int p_enumerator_id) {
+		boolean success = false;
+		lock.lock();
+		try {
+			if (enumerators.containsKey(p_enumerator_id)) {
+				GodotBluetoothEnumerator enumerator = enumerators.get(p_enumerator_id);
+				if (enumerator != null) {
+					success = enumerator.stopScanning();
+				}
+			}
+		} catch (Exception exception) {
+			exception.printStackTrace();
+		} finally {
+			lock.unlock();
+		}
+		return success;
+	}
+
+	public boolean registerAdvertiser(int p_advertiser_id) {
+		boolean success = false;
+		lock.lock();
+		try {
+			GodotBluetoothAdvertiser advertiser = new GodotBluetoothAdvertiser(this, p_advertiser_id);
+			advertisers.put(p_advertiser_id, advertiser);
+			success = true;
+		} catch (Exception exception) {
+			exception.printStackTrace();
+		} finally {
+			lock.unlock();
+		}
+		return success;
+	}
+
+	public boolean registerEnumerator(int p_enumerator_id) {
+		boolean success = false;
+		lock.lock();
+		try {
+			if (!enumerators.containsKey(p_enumerator_id)) {
+				GodotBluetoothEnumerator enumerator = new GodotBluetoothEnumerator(this, p_enumerator_id);
+				enumerators.put(p_enumerator_id, enumerator);
+				success = true;
+			}
+		} catch (Exception exception) {
+			exception.printStackTrace();
+		} finally {
+			lock.unlock();
+		}
+		return success;
+	}
+
+	public boolean unregisterAdvertiser(int p_advertiser_id) {
+		boolean success = false;
+		lock.lock();
+		try {
+			if (advertisers.containsKey(p_advertiser_id)) {
+				GodotBluetoothAdvertiser advertiser = advertisers.get(p_advertiser_id);
+				advertisers.remove(p_advertiser_id);
+				if (advertiser != null) {
+					advertiser.stopAdvertising();
+				}
+				success = true;
+			}
+		} catch (Exception exception) {
+			exception.printStackTrace();
+		} finally {
+			lock.unlock();
+		}
+		return success;
+	}
+
+	public boolean unregisterEnumerator(int p_enumerator_id) {
+		boolean success = false;
+		lock.lock();
+		try {
+			if (enumerators.containsKey(p_enumerator_id)) {
+				GodotBluetoothEnumerator enumerator = enumerators.get(p_enumerator_id);
+				enumerators.remove(p_enumerator_id);
+				if (enumerator != null) {
+					enumerator.stopScanning();
+				}
+				success = true;
+			}
+		} catch (Exception exception) {
+			exception.printStackTrace();
+		} finally {
+			lock.unlock();
+		}
+		return success;
 	}
 }
 

@@ -238,6 +238,10 @@ JNIEXPORT void JNICALL Java_org_godotengine_godot_GodotLib_ttsCallback(JNIEnv *e
 	TTS_Android::_java_utterance_callback(event, id, pos);
 }
 
+JNIEXPORT jobject JNICALL Java_org_godotengine_godot_GodotLib_bluetoothCallback(JNIEnv *env, jclass clazz, jint event, jint id) {
+    return BluetoothAndroid::_java_bluetooth_callback(event, id);
+}
+
 JNIEXPORT jboolean JNICALL Java_org_godotengine_godot_GodotLib_step(JNIEnv *env, jclass clazz) {
 	if (step.get() == -1) {
 		return true;

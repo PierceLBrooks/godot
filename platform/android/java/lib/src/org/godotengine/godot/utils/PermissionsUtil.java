@@ -57,6 +57,9 @@ public final class PermissionsUtil {
 	static final int REQUEST_RECORD_AUDIO_PERMISSION = 1;
 	static final int REQUEST_CAMERA_PERMISSION = 2;
 	static final int REQUEST_VIBRATE_PERMISSION = 3;
+	static final int REQUEST_BLUETOOTH_ADVERTISE_PERMISSION = 4;
+	static final int REQUEST_BLUETOOTH_CONNECT_PERMISSION = 5;
+	static final int REQUEST_BLUETOOTH_SCAN_PERMISSION = 6;
 	public static final int REQUEST_ALL_PERMISSION_REQ_CODE = 1001;
 	public static final int REQUEST_MANAGE_EXTERNAL_STORAGE_REQ_CODE = 2002;
 
@@ -89,6 +92,43 @@ public final class PermissionsUtil {
 			activity.requestPermissions(new String[] { Manifest.permission.VIBRATE }, REQUEST_VIBRATE_PERMISSION);
 			return false;
 		}
+
+		if (name.contains("BLUETOOTH") && Build.VERSION.SDK_INT > Build.VERSION_CODES.R) { // Bluetooth permissions are only considered dangerous at runtime above API level 30
+			int request = 0;
+			boolean connect = false;
+			String[] permissions = null;
+			if (ContextCompat.checkSelfPermission(activity, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+				connect = true;
+			}
+			if (name.equals("BLUETOOTH_ADVERTISE")) {
+				if (ContextCompat.checkSelfPermission(activity, Manifest.permission.BLUETOOTH_ADVERTISE) != PackageManager.PERMISSION_GRANTED) {
+					request = REQUEST_BLUETOOTH_ADVERTISE_PERMISSION;
+					if (connect) {
+						permissions = new String[] { Manifest.permission.BLUETOOTH_ADVERTISE, Manifest.permission.BLUETOOTH_CONNECT };
+					} else {
+						permissions = new String[] { Manifest.permission.BLUETOOTH_ADVERTISE };
+					}
+				}
+			} else if (name.equals("BLUETOOTH_SCAN")) {
+				if (ContextCompat.checkSelfPermission(activity, Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) {
+					request = REQUEST_BLUETOOTH_SCAN_PERMISSION;
+					if (connect) {
+						permissions = new String[] { Manifest.permission.BLUETOOTH_SCAN, Manifest.permission.BLUETOOTH_CONNECT };
+					} else {
+						permissions = new String[] { Manifest.permission.BLUETOOTH_SCAN };
+					}
+				}
+			}
+			if (permissions == null && connect) {
+				request = REQUEST_BLUETOOTH_CONNECT_PERMISSION;
+				permissions = new String[] { Manifest.permission.BLUETOOTH_CONNECT };
+			}
+			if (permissions != null) {
+				activity.requestPermissions(permissions, request);
+				return false;
+			}
+		}
+
 		return true;
 	}
 

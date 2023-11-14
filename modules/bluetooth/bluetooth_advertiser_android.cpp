@@ -35,9 +35,11 @@
 #include "platform/android/bluetooth_android.h"
 
 BluetoothAdvertiserAndroid::BluetoothAdvertiserAndroid() {
+    id = BluetoothAndroid::get_singleton()->register_advertiser(this);
 }
 
 BluetoothAdvertiserAndroid::~BluetoothAdvertiserAndroid() {
+    BluetoothAndroid::get_singleton()->unregister_advertiser(id);
 }
 
 void BluetoothAdvertiserAndroid::initialize() {
@@ -58,14 +60,14 @@ bool BluetoothAdvertiserAndroid::start_advertising() const {
     if (!BluetoothAndroid::is_supported()) {
         return false;
     }
-    return false;
+    return BluetoothAndroid::start_advertising(id);
 }
 
 bool BluetoothAdvertiserAndroid::stop_advertising() const {
     if (!BluetoothAndroid::is_supported()) {
         return false;
     }
-    return false;
+    return BluetoothAndroid::stop_advertising(id);
 }
 
 void BluetoothAdvertiserAndroid::on_register() const {

@@ -38,6 +38,7 @@
 
 class BluetoothAdvertiserAndroid : public BluetoothAdvertiser {
 private:
+    int id;
 	static BluetoothAdvertiser *_create() { return memnew(BluetoothAdvertiserAndroid); }
 public:
 	BluetoothAdvertiserAndroid();

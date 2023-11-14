@@ -814,7 +814,7 @@ void EditorExportPlatformAndroid::_get_permissions(const Ref<EditorExportPreset>
 	const char **aperms = android_perms;
 	while (*aperms) {
 		String aperm = String(*aperms).to_lower();
-		if (uses_bluetooth && aperm.contains("bluetooth")) {
+		if (uses_bluetooth && (aperm.contains("bluetooth") || aperm == "access_coarse_location")) {
 			continue;
 		}
 		bool enabled = p_preset->get("permissions/" + aperm);
@@ -841,6 +841,7 @@ void EditorExportPlatformAndroid::_get_permissions(const Ref<EditorExportPreset>
 		r_permissions.push_back("android.permission.BLUETOOTH_SCAN");
 		r_permissions.push_back("android.permission.BLUETOOTH_ADVERTISE");
 		r_permissions.push_back("android.permission.BLUETOOTH_CONNECT");
+		r_permissions.push_back("android.permission.ACCESS_COARSE_LOCATION");
 	}
 	int xr_mode_index = p_preset->get("xr_features/xr_mode");
 	if (xr_mode_index == XR_MODE_OPENXR) {

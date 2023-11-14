@@ -110,6 +110,11 @@ public class GodotLib {
 	public static native void ttsCallback(int event, int id, int pos);
 
 	/**
+	 * Bluetooth callback.
+	 */
+	public static native Object bluetoothCallback(int event, int id);
+
+	/**
 	 * Forward touch events.
 	 */
 	public static native void dispatchTouchEvent(int event, int pointer, int pointerCount, float[] positions, boolean doubleTap);

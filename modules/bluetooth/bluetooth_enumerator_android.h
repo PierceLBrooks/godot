@@ -38,6 +38,7 @@
 
 class BluetoothEnumeratorAndroid : public BluetoothEnumerator {
 private:
+    int id;
 	static BluetoothEnumerator *_create() { return memnew(BluetoothEnumeratorAndroid); }
 public:
 	BluetoothEnumeratorAndroid();

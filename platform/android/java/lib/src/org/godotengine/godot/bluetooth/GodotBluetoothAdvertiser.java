@@ -36,9 +36,19 @@ public class GodotBluetoothAdvertiser {
 	private static final String TAG = GodotBluetoothAdvertiser.class.getSimpleName();
 
 	private final GodotBluetooth bluetooth;
+	private final int id;
 
-	public GodotBluetoothAdvertiser(GodotBluetooth p_bluetooth) {
+	public GodotBluetoothAdvertiser(GodotBluetooth p_bluetooth, int p_id) {
 		bluetooth = p_bluetooth;
+		id = p_id;
+	}
+
+	public boolean startAdvertising() {
+		return false;
+	}
+
+	public boolean stopAdvertising() {
+		return false;
 	}
 }
 

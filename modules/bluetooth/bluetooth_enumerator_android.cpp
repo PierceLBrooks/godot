@@ -35,9 +35,11 @@
 #include "platform/android/bluetooth_android.h"
 
 BluetoothEnumeratorAndroid::BluetoothEnumeratorAndroid() {
+    id = BluetoothAndroid::get_singleton()->register_enumerator(this);
 }
 
 BluetoothEnumeratorAndroid::~BluetoothEnumeratorAndroid() {
+    BluetoothAndroid::get_singleton()->unregister_enumerator(id);
 }
 
 void BluetoothEnumeratorAndroid::initialize() {
@@ -52,14 +54,14 @@ bool BluetoothEnumeratorAndroid::start_scanning() const {
     if (!BluetoothAndroid::is_supported()) {
         return false;
     }
-    return false;
+    return BluetoothAndroid::start_scanning(id);
 }
 
 bool BluetoothEnumeratorAndroid::stop_scanning() const {
     if (!BluetoothAndroid::is_supported()) {
         return false;
     }
-    return false;
+    return BluetoothAndroid::stop_scanning(id);
 }
 
 void BluetoothEnumeratorAndroid::connect_peer(String p_peer_uuid) {
