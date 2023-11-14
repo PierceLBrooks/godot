@@ -52,6 +52,8 @@ class BluetoothAndroid {
 
     enum BluetoothEvent {
         BLUETOOTH_ENUMERATOR_GET_SOUGHT_SERVICES = 0,
+        BLUETOOTH_ENUMERATOR_ON_STOP_SCANNING = 1,
+        BLUETOOTH_ENUMERATOR_ON_START_SCANNING = 2,
     };
 
     static BluetoothAndroid *singleton;
