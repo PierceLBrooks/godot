@@ -138,6 +138,7 @@ public class GodotBluetoothEnumerator extends ScanCallback
 			}
 			scanner.stopScan(this);
 			scanner = null;
+			return true;
 		} catch (Exception exception) {
 			exception.printStackTrace();
 		}
