@@ -67,7 +67,7 @@ jobject BluetoothAndroid::_java_bluetooth_callback(int p_event, int p_id) {
 #ifdef MODULE_BLUETOOTH_ENABLED
     JNIEnv *env = get_jni_env();
 
-    ERR_FAIL_COND(env == nullptr);
+    ERR_FAIL_COND_V(env == nullptr, result);
     switch ((BluetoothEvent)p_event) {
         default:
             break;
@@ -113,7 +113,7 @@ bool BluetoothAndroid::is_supported() {
 	}
 }
 
-static bool BluetoothAndroid::start_advertising(int p_advertiser_id) {
+bool BluetoothAndroid::start_advertising(int p_advertiser_id) {
     if (_start_advertising) {
         JNIEnv *env = get_jni_env();
 
@@ -124,7 +124,7 @@ static bool BluetoothAndroid::start_advertising(int p_advertiser_id) {
     }
 }
 
-static bool BluetoothAndroid::stop_advertising(int p_advertiser_id) {
+bool BluetoothAndroid::stop_advertising(int p_advertiser_id) {
     if (_stop_advertising) {
         JNIEnv *env = get_jni_env();
 
@@ -135,7 +135,7 @@ static bool BluetoothAndroid::stop_advertising(int p_advertiser_id) {
     }
 }
 
-static bool BluetoothAndroid::start_scanning(int p_enumerator_id) {
+bool BluetoothAndroid::start_scanning(int p_enumerator_id) {
     if (_start_scanning) {
         JNIEnv *env = get_jni_env();
 
@@ -146,7 +146,7 @@ static bool BluetoothAndroid::start_scanning(int p_enumerator_id) {
     }
 }
 
-static bool BluetoothAndroid::stop_scanning(int p_enumerator_id) {
+bool BluetoothAndroid::stop_scanning(int p_enumerator_id) {
     if (_stop_scanning) {
         JNIEnv *env = get_jni_env();
 
