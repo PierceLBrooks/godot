@@ -51,6 +51,10 @@ void BluetoothEnumeratorAndroid::deinitialize() {
 }
 
 bool BluetoothEnumeratorAndroid::start_scanning() const {
+    if (id == -1) {
+        print_line("Registration failure");
+        return false;
+    }
     if (!BluetoothAndroid::is_supported()) {
         return false;
     }
@@ -58,6 +62,10 @@ bool BluetoothEnumeratorAndroid::start_scanning() const {
 }
 
 bool BluetoothEnumeratorAndroid::stop_scanning() const {
+    if (id == -1) {
+        print_line("Unregistration failure");
+        return false;
+    }
     if (!BluetoothAndroid::is_supported()) {
         return false;
     }
@@ -65,6 +73,7 @@ bool BluetoothEnumeratorAndroid::stop_scanning() const {
 }
 
 void BluetoothEnumeratorAndroid::connect_peer(String p_peer_uuid) {
+    BluetoothAndroid::connect_peer(id, p_peer_uuid);
 }
 
 void BluetoothEnumeratorAndroid::read_peer_service_characteristic(String p_peer_uuid, String p_service_uuid, String p_characteristic_uuid) {

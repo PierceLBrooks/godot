@@ -234,8 +234,10 @@ bool BluetoothEnumerator::on_stop() const {
 			thread.start([](void *p_udata) {
 				Ref<BluetoothEnumerator>* enumerator = static_cast<Ref<BluetoothEnumerator>*>(p_udata);
 				if (enumerator->is_valid()) {
-					(*enumerator)->active = false;
-					(*enumerator)->emit_signal(SNAME("bluetooth_service_enumeration_stopped"), (*enumerator)->get_sought_services());
+                    if ((*enumerator)->active) {
+					    (*enumerator)->active = false;
+					    (*enumerator)->emit_signal(SNAME("bluetooth_service_enumeration_stopped"), (*enumerator)->get_sought_services());
+                    }
 				}
 			}, reference);
 			thread.wait_to_finish();
@@ -249,9 +251,9 @@ bool BluetoothEnumerator::on_stop() const {
 bool BluetoothEnumerator::on_discover(String p_peer_uuid, String p_peer_name, String p_peer_advertisement_data) const {
 	Dictionary peer_advertisement_data;
 	if (!p_peer_advertisement_data.is_empty()) {
-		Variant advertisement_data = JSON::parse_string(core_bind::Marshalls::get_singleton()->base64_to_utf8(p_peer_advertisement_data));
+		Variant advertisement_data = JSON::parse_string(core_bind::Marshalls::get_singleton()->base64_to_utf8(p_peer_advertisement_data).strip_edges());
 		if (advertisement_data.get_type() == Variant::Type::DICTIONARY) {
-			peer_advertisement_data = advertisement_data;
+			peer_advertisement_data = sanitize(advertisement_data);
 		}
 	}
 	if (can_emit_signal(SNAME("bluetooth_peer_discovered"))) {
@@ -499,4 +501,55 @@ bool BluetoothEnumerator::can_emit_signal(const StringName &p_name) const {
 		return true;
 	}
 	return false;
+}
+
+Variant BluetoothEnumerator::sanitize(Variant p_variant) {
+    if (p_variant.is_array() || p_variant.get_type() == Variant::Type::DICTIONARY) {
+        int size = p_variant.get_indexed_size();
+        int idx = 0;
+        bool valid = true;
+        Variant iter;
+        if (idx < size && p_variant.iter_init(iter, valid) && valid) {
+            do  {
+                Variant key = p_variant.iter_get(iter, valid);
+                if (valid) {
+                    if (p_variant.is_array()) {
+                        if (key.get_type() == Variant::Type::STRING) {
+                            String string = key;
+                            if (!string.is_empty()) {
+                                Vector<uint8_t> sanitization = core_bind::Marshalls::get_singleton()->base64_to_raw(string);
+                                if (!sanitization.is_empty()) {
+                                    Array array = p_variant;
+                                    array.set(idx, sanitization);
+                                    p_variant = array;
+                                }
+                            }
+                        } else {
+                            Array array = p_variant;
+                            array.set(idx, sanitize(key));
+                            p_variant = array;
+                        }
+                    } else {
+                        Dictionary dictionary = p_variant;
+                        Variant value = dictionary.get(key, Variant());
+                        if (value.get_type() == Variant::Type::STRING) {
+                            String string = value;
+                            if (!string.is_empty()) {
+                                Vector<uint8_t> sanitization = core_bind::Marshalls::get_singleton()->base64_to_raw(string);
+                                if (!sanitization.is_empty()) {
+                                    dictionary[key] = sanitization;
+                                    p_variant = dictionary;
+                                }
+                            }
+                        } else {
+                            dictionary[key] = sanitize(value);
+                            p_variant = dictionary;
+                        }
+                    }
+                }
+                ++idx;
+            } while (idx < size && p_variant.iter_next(iter, valid) && valid);
+        }
+    }
+    return p_variant;
 }

@@ -39,13 +39,21 @@ jvalret _variant_to_jvalue(JNIEnv *env, Variant::Type p_type, const Variant *p_a
 				jclass bclass = env->FindClass("java/lang/Boolean");
 				jmethodID ctor = env->GetMethodID(bclass, "<init>", "(Z)V");
 				jvalue val;
-				val.z = (bool)(*p_arg);
+                if (p_arg) {
+                    val.z = (bool)(*p_arg);
+                } else {
+                    val.z = false;
+                }
 				jobject obj = env->NewObjectA(bclass, ctor, &val);
 				v.val.l = obj;
 				v.obj = obj;
 				env->DeleteLocalRef(bclass);
 			} else {
-				v.val.z = *p_arg;
+                if (p_arg) {
+                    v.val.z = (bool)(*p_arg);
+                } else {
+                    v.val.z = false;
+                }
 			}
 		} break;
 		case Variant::INT: {
@@ -53,14 +61,22 @@ jvalret _variant_to_jvalue(JNIEnv *env, Variant::Type p_type, const Variant *p_a
 				jclass bclass = env->FindClass("java/lang/Integer");
 				jmethodID ctor = env->GetMethodID(bclass, "<init>", "(I)V");
 				jvalue val;
-				val.i = (int)(*p_arg);
+                if (p_arg) {
+                    val.i = (int)(*p_arg);
+                } else {
+                    val.i = 0;
+                }
 				jobject obj = env->NewObjectA(bclass, ctor, &val);
 				v.val.l = obj;
 				v.obj = obj;
 				env->DeleteLocalRef(bclass);
 
 			} else {
-				v.val.i = *p_arg;
+                if (p_arg) {
+                    v.val.i = (int)(*p_arg);
+                } else {
+                    v.val.i = 0;
+                }
 			}
 		} break;
 		case Variant::FLOAT: {
@@ -68,80 +84,110 @@ jvalret _variant_to_jvalue(JNIEnv *env, Variant::Type p_type, const Variant *p_a
 				jclass bclass = env->FindClass("java/lang/Double");
 				jmethodID ctor = env->GetMethodID(bclass, "<init>", "(D)V");
 				jvalue val;
-				val.d = (double)(*p_arg);
+                if (p_arg) {
+                    val.d = (double)(*p_arg);
+                } else {
+                    val.d = 0.0;
+                }
 				jobject obj = env->NewObjectA(bclass, ctor, &val);
 				v.val.l = obj;
 				v.obj = obj;
 				env->DeleteLocalRef(bclass);
 
 			} else {
-				v.val.f = *p_arg;
+                if (p_arg) {
+                    v.val.f = (float)(*p_arg);
+                } else {
+                    v.val.f = 0.0f;
+                }
 			}
 		} break;
 		case Variant::STRING: {
-			String s = *p_arg;
-			jstring jStr = env->NewStringUTF(s.utf8().get_data());
+            jstring jStr;
+            if (p_arg) {
+                String s = *p_arg;
+                jStr = env->NewStringUTF(s.utf8().get_data());
+            } else {
+                jStr = env->NewStringUTF("");
+            }
 			v.val.l = jStr;
 			v.obj = jStr;
 		} break;
 		case Variant::PACKED_STRING_ARRAY: {
-			Vector<String> sarray = *p_arg;
-			jobjectArray arr = env->NewObjectArray(sarray.size(), env->FindClass("java/lang/String"), env->NewStringUTF(""));
+			Vector<String> sarray;
+            if (p_arg) {
+                sarray.append_array(*((Vector<String> *)(p_arg)));
+            }
+            jstring init = env->NewStringUTF("");
+			jobjectArray arr = env->NewObjectArray(sarray.size(), env->FindClass("java/lang/String"), init);
 
-			for (int j = 0; j < sarray.size(); j++) {
+            for (int j = 0; j < sarray.size(); j++) {
 				jstring str = env->NewStringUTF(sarray[j].utf8().get_data());
 				env->SetObjectArrayElement(arr, j, str);
 				env->DeleteLocalRef(str);
 			}
 			v.val.l = arr;
 			v.obj = arr;
+            env->DeleteLocalRef(init);
 
-		} break;
+        } break;
 
 		case Variant::DICTIONARY: {
-			Dictionary dict = *p_arg;
-			jclass dclass = env->FindClass("org/godotengine/godot/Dictionary");
-			jmethodID ctor = env->GetMethodID(dclass, "<init>", "()V");
-			jobject jdict = env->NewObject(dclass, ctor);
+            jclass dclass = env->FindClass("org/godotengine/godot/Dictionary");
+            jmethodID ctor = env->GetMethodID(dclass, "<init>", "()V");
 
-			Array keys = dict.keys();
+            if (p_arg) {
+                Dictionary dict = *p_arg;
+                jstring init = env->NewStringUTF("");
+                jobject jdict = env->NewObject(dclass, ctor);
 
-			jobjectArray jkeys = env->NewObjectArray(keys.size(), env->FindClass("java/lang/String"), env->NewStringUTF(""));
-			for (int j = 0; j < keys.size(); j++) {
-				jstring str = env->NewStringUTF(String(keys[j]).utf8().get_data());
-				env->SetObjectArrayElement(jkeys, j, str);
-				env->DeleteLocalRef(str);
-			}
+                Array keys = dict.keys();
 
-			jmethodID set_keys = env->GetMethodID(dclass, "set_keys", "([Ljava/lang/String;)V");
-			jvalue val;
-			val.l = jkeys;
-			env->CallVoidMethodA(jdict, set_keys, &val);
-			env->DeleteLocalRef(jkeys);
+                jobjectArray jkeys = env->NewObjectArray(keys.size(), env->FindClass("java/lang/String"), init);
+                for (int j = 0; j < keys.size(); j++) {
+                    jstring str = env->NewStringUTF(String(keys[j]).utf8().get_data());
+                    env->SetObjectArrayElement(jkeys, j, str);
+                    env->DeleteLocalRef(str);
+                }
 
-			jobjectArray jvalues = env->NewObjectArray(keys.size(), env->FindClass("java/lang/Object"), nullptr);
+                jmethodID set_keys = env->GetMethodID(dclass, "set_keys", "([Ljava/lang/String;)V");
+                jvalue val;
+                val.l = jkeys;
+                env->CallVoidMethodA(jdict, set_keys, &val);
+                env->DeleteLocalRef(jkeys);
 
-			for (int j = 0; j < keys.size(); j++) {
-				Variant var = dict[keys[j]];
-				jvalret valret = _variant_to_jvalue(env, var.get_type(), &var, true);
-				env->SetObjectArrayElement(jvalues, j, valret.val.l);
-				if (valret.obj) {
-					env->DeleteLocalRef(valret.obj);
-				}
-			}
+                jobjectArray jvalues = env->NewObjectArray(keys.size(), env->FindClass("java/lang/Object"), nullptr);
 
-			jmethodID set_values = env->GetMethodID(dclass, "set_values", "([Ljava/lang/Object;)V");
-			val.l = jvalues;
-			env->CallVoidMethodA(jdict, set_values, &val);
-			env->DeleteLocalRef(jvalues);
-			env->DeleteLocalRef(dclass);
+                for (int j = 0; j < keys.size(); j++) {
+                    Variant var = dict[keys[j]];
+                    jvalret valret = _variant_to_jvalue(env, var.get_type(), &var, true);
+                    env->SetObjectArrayElement(jvalues, j, valret.val.l);
+                    if (valret.obj) {
+                        env->DeleteLocalRef(valret.obj);
+                    }
+                }
 
-			v.val.l = jdict;
-			v.obj = jdict;
-		} break;
+                jmethodID set_values = env->GetMethodID(dclass, "set_values", "([Ljava/lang/Object;)V");
+                val.l = jvalues;
+                env->CallVoidMethodA(jdict, set_values, &val);
+                env->DeleteLocalRef(jvalues);
+                env->DeleteLocalRef(dclass);
+
+                v.val.l = jdict;
+                v.obj = jdict;
+                env->DeleteLocalRef(init);
+            } else {
+                jobject jdict = env->NewObject(dclass, ctor);
+                v.val.l = jdict;
+                v.obj = jdict;
+            }
+        } break;
 
 		case Variant::PACKED_INT32_ARRAY: {
-			Vector<int> array = *p_arg;
+			Vector<int> array;
+            if (p_arg) {
+                array.append_array(*((Vector<int> *)(p_arg)));
+            }
 			jintArray arr = env->NewIntArray(array.size());
 			const int *r = array.ptr();
 			env->SetIntArrayRegion(arr, 0, array.size(), r);
@@ -150,7 +196,10 @@ jvalret _variant_to_jvalue(JNIEnv *env, Variant::Type p_type, const Variant *p_a
 
 		} break;
 		case Variant::PACKED_INT64_ARRAY: {
-			Vector<int64_t> array = *p_arg;
+			Vector<int64_t> array;
+            if (p_arg) {
+                array.append_array(*((Vector<int64_t> *)(p_arg)));
+            }
 			jlongArray arr = env->NewLongArray(array.size());
 			const int64_t *r = array.ptr();
 			env->SetLongArrayRegion(arr, 0, array.size(), r);
@@ -159,7 +208,7 @@ jvalret _variant_to_jvalue(JNIEnv *env, Variant::Type p_type, const Variant *p_a
 
 		} break;
 		case Variant::PACKED_BYTE_ARRAY: {
-			Vector<uint8_t> array = *p_arg;
+			Vector<uint8_t> array;
 			jbyteArray arr = env->NewByteArray(array.size());
 			const uint8_t *r = array.ptr();
 			env->SetByteArrayRegion(arr, 0, array.size(), reinterpret_cast<const signed char *>(r));
@@ -168,7 +217,10 @@ jvalret _variant_to_jvalue(JNIEnv *env, Variant::Type p_type, const Variant *p_a
 
 		} break;
 		case Variant::PACKED_FLOAT32_ARRAY: {
-			Vector<float> array = *p_arg;
+			Vector<float> array;
+            if (p_arg) {
+                array.append_array(*((Vector<float> *)(p_arg)));
+            }
 			jfloatArray arr = env->NewFloatArray(array.size());
 			const float *r = array.ptr();
 			env->SetFloatArrayRegion(arr, 0, array.size(), r);
@@ -177,7 +229,10 @@ jvalret _variant_to_jvalue(JNIEnv *env, Variant::Type p_type, const Variant *p_a
 
 		} break;
 		case Variant::PACKED_FLOAT64_ARRAY: {
-			Vector<double> array = *p_arg;
+			Vector<double> array;
+            if (p_arg) {
+                array.append_array(*((Vector<double> *)(p_arg)));
+            }
 			jdoubleArray arr = env->NewDoubleArray(array.size());
 			const double *r = array.ptr();
 			env->SetDoubleArrayRegion(arr, 0, array.size(), r);
@@ -336,7 +391,7 @@ Variant _jobject_to_variant(JNIEnv *env, jobject obj) {
 		return varr;
 	}
 
-	if (name == "java.util.HashMap" || name == "org.godotengine.godot.Dictionary") {
+	if (name == "org.godotengine.godot.Dictionary") {
 		Dictionary ret;
 		jclass oclass = c;
 		jmethodID get_keys = env->GetMethodID(oclass, "get_keys", "()[Ljava/lang/String;");

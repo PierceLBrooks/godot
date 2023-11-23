@@ -54,6 +54,10 @@ class BluetoothAndroid {
         BLUETOOTH_ENUMERATOR_GET_SOUGHT_SERVICES = 0,
         BLUETOOTH_ENUMERATOR_ON_STOP_SCANNING = 1,
         BLUETOOTH_ENUMERATOR_ON_START_SCANNING = 2,
+        BLUETOOTH_ENUMERATOR_ON_DISCOVER = 3,
+        BLUETOOTH_ENUMERATOR_ON_CONNECT = 4,
+        BLUETOOTH_ENUMERATOR_ON_DISCONNECT = 5,
+        BLUETOOTH_ENUMERATOR_ON_DISCOVER_SERVICE_CHARACTERISTIC = 6,
     };
 
     static BluetoothAndroid *singleton;
@@ -68,6 +72,8 @@ class BluetoothAndroid {
     static jmethodID _start_scanning;
     static jmethodID _stop_scanning;
 
+    static jmethodID _connect_peer;
+
     static jmethodID _register_advertiser;
     static jmethodID _register_enumerator;
     static jmethodID _unregister_advertiser;
@@ -81,7 +87,7 @@ class BluetoothAndroid {
 public:
     static BluetoothAndroid *get_singleton();
 
-    static jobject _java_bluetooth_callback(int p_event, int p_id);
+    static jobject _java_bluetooth_callback(int p_event, int p_id, Variant p_arg);
 
     static void setup(jobject p_bluetooth);
 
@@ -91,6 +97,8 @@ public:
     static bool stop_advertising(int p_advertiser_id);
     static bool start_scanning(int p_enumerator_id);
     static bool stop_scanning(int p_enumerator_id);
+
+    static bool connect_peer(int p_enumerator_id, String p_peer_uuid);
 
     int register_advertiser(BluetoothAdvertiserAndroid* p_advertiser);
     int register_enumerator(BluetoothEnumeratorAndroid* p_enumerator);

@@ -57,6 +57,10 @@ void BluetoothAdvertiserAndroid::respond_characteristic_write_request(String p_c
 }
 
 bool BluetoothAdvertiserAndroid::start_advertising() const {
+    if (id == -1) {
+        print_line("Registration failure");
+        return false;
+    }
     if (!BluetoothAndroid::is_supported()) {
         return false;
     }
@@ -64,6 +68,10 @@ bool BluetoothAdvertiserAndroid::start_advertising() const {
 }
 
 bool BluetoothAdvertiserAndroid::stop_advertising() const {
+    if (id == -1) {
+        print_line("Unregistration failure");
+        return false;
+    }
     if (!BluetoothAndroid::is_supported()) {
         return false;
     }

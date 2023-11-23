@@ -48,13 +48,15 @@
 @property (atomic, strong) CBCentralManager* centralManager;
 @property (atomic, strong) NSMutableArray* peers;
 
-- (instancetype) initWithQueue:(dispatch_queue_t)btleQueue;
+- (instancetype) initWithQueue: (dispatch_queue_t)btleQueue;
 - (bool) startScanning;
 - (bool) stopScanning;
 - (bool) connectToPeer: (CBUUID *)uuid;
 - (void) discoverFromPeer: (CBPeripheral *)peer;
 - (bool) readAtPeerServiceCharacteristic: (NSMutableArray *)parameters;
 - (bool) writeAtPeerServiceCharacteristic: (NSMutableArray *)parameters;
+- (id)process: (id)object;
+- (id)process: (id)object depth: (int)depth parent: (id)parent;
 
 @end
 
@@ -80,7 +82,7 @@
     return [self initWithQueue:nil];
 }
 
-- (instancetype)initWithQueue:(dispatch_queue_t) btleQueue
+- (instancetype)initWithQueue: (dispatch_queue_t) btleQueue
 {
     //NSLog(@"init %d", [NSThread isMultiThreaded]);
     self = [super init];
@@ -94,6 +96,60 @@
         }
     }
     return self;
+}
+
+- (id)process: (id)object
+{
+    return [self process:object depth:0 parent:nil];
+}
+
+- (id)process: (id)object depth: (int)depth parent: (id)parent
+{
+    if ([object isKindOfClass:[NSDictionary class]])
+    {
+        NSMutableDictionary *dictionary = [(NSDictionary *)object mutableCopy];
+        for (NSString *key in [dictionary allKeys])
+        {
+            id child = [dictionary objectForKey:key];
+            [dictionary setObject:[self process:child depth:(depth + 1) parent:dictionary] forKey:key];
+        }
+        return dictionary;
+    }
+    else if ([object isKindOfClass:[NSMutableDictionary class]])
+    {
+        NSMutableDictionary *dictionary = (NSMutableDictionary *)object;
+        for (NSString *key in [dictionary allKeys])
+        {
+            id child = [dictionary objectForKey:key];
+            [dictionary setObject:[self process:child depth:(depth + 1) parent:object] forKey:key];
+        }
+        return dictionary;
+    }
+    else if ([object isKindOfClass:[NSArray class]])
+    {
+        NSMutableArray *array = [(NSArray *)object mutableCopy];
+        for (int i = 0; i < array.count; i++)
+        {
+            id child = [array objectAtIndex:i];
+            [array replaceObjectAtIndex:i withObject:[self process:child depth:(depth + 1) parent:array]];
+        }
+        return array;
+    }
+    else if ([object isKindOfClass:[NSMutableArray class]])
+    {
+        NSMutableArray *array = (NSMutableArray *)object;
+        for (int i = 0; i < array.count; i++)
+        {
+            id child = [array objectAtIndex:i];
+            [array replaceObjectAtIndex:i withObject:[self process:child depth:(depth + 1) parent:object]];
+        }
+        return array;
+    }
+    else if ([object isKindOfClass:[NSData class]])
+    {
+        return [object base64EncodedStringWithOptions:0];
+    }
+    return object;
 }
 
 #pragma mark CENTRAL FUNCTIONS
@@ -112,9 +168,10 @@
     if (advertisementData != nil)
     {
         NSData *jsonData = nil;
-        if ([NSJSONSerialization isValidJSONObject:advertisementData])
+        NSMutableDictionary *dictionary = [self process:advertisementData];
+        if ([NSJSONSerialization isValidJSONObject:dictionary])
         {
-            jsonData = [NSJSONSerialization dataWithJSONObject:advertisementData 
+            jsonData = [NSJSONSerialization dataWithJSONObject:dictionary
                                                        options:NSJSONWritingPrettyPrinted
                                                          error:&error];
         }
@@ -138,7 +195,7 @@
 - (void) centralManager: (CBCentralManager *)central
    didConnectPeripheral: (CBPeripheral *)peripheral
 {
-    if (![self.peers containsObject:peripheral]) 
+    if (![self.peers containsObject:peripheral])
     {
         [self.peers addObject:peripheral];
     }
@@ -157,9 +214,9 @@
  didRetrievePeripherals:(NSArray *)peripherals
 {
     NSLog(@"Retrieved peripheral: %lu - %@", [peripherals count], peripherals);
-    
+
     [self stopScanning];
-    
+
     for (int i = 0; i < peripherals.count; i++)
     {
         CBPeripheral *peripheral = [peripherals objectAtIndex:i];
@@ -179,7 +236,7 @@
         }
         else
         {
-            if (![self.peers containsObject:peripheral]) 
+            if (![self.peers containsObject:peripheral])
             {
                 [self.peers addObject:peripheral];
             }
@@ -192,7 +249,7 @@ didDisconnectPeripheral: (CBPeripheral *)peripheral
                   error: (NSError *)error
 {
     NSLog(@"didDisconnectPeripheral %@ with error = %@", peripheral, [error localizedDescription]);
-    if ([self.peers containsObject:peripheral]) 
+    if ([self.peers containsObject:peripheral])
     {
         [self.peers removeObject:peripheral];
     }
@@ -204,14 +261,14 @@ didFailToConnectPeripheral: (CBPeripheral *)peripheral
                      error: (NSError *)error
 {
     NSLog(@"Fail to connect to peripheral: %@ with error = %@", peripheral, [error localizedDescription]);
-    if ([self.peers containsObject:peripheral]) 
+    if ([self.peers containsObject:peripheral])
     {
         [self.peers removeObject:peripheral];
     }
     self.context->on_disconnect(peripheral.identifier.UUIDString.UTF8String);
 }
 
-- (void)peripheral:(CBPeripheral *)peripheral 
+- (void)peripheral:(CBPeripheral *)peripheral
  didModifyServices:(NSArray<CBService *> *)invalidatedServices
 {
     [self discoverFromPeer:peripheral];
@@ -288,7 +345,7 @@ didDiscoverCharacteristicsForService:(CBService *)service
     }
 }
 
-- (void)             peripheral:(CBPeripheral *)peripheral 
+- (void)             peripheral:(CBPeripheral *)peripheral
 didUpdateValueForCharacteristic:(CBCharacteristic *)characteristic
                           error:(NSError *)error
 {
@@ -305,7 +362,7 @@ didUpdateValueForCharacteristic:(CBCharacteristic *)characteristic
     self.context->on_read(peripheral.identifier.UUIDString.UTF8String, characteristic.service.UUID.UUIDString.UTF8String, characteristic.UUID.UUIDString.UTF8String, core_bind::Marshalls::get_singleton()->raw_to_base64(value));
 }
 
-- (void)             peripheral:(CBPeripheral *)peripheral 
+- (void)             peripheral:(CBPeripheral *)peripheral
  didWriteValueForCharacteristic:(CBCharacteristic *)characteristic
                           error:(NSError *)error
 {

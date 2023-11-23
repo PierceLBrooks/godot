@@ -54,6 +54,7 @@ private:
 	friend class Bluetooth;
 
 	bool can_emit_signal(const StringName &p_name) const;
+    static Variant sanitize(Variant p_variant);
 
 protected:
 	class BluetoothEnumeratorCharacteristic : public RefCounted {

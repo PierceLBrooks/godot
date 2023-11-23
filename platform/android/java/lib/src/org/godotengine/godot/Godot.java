@@ -598,6 +598,9 @@ public class Godot extends Fragment implements SensorEventListener, IDownloaderC
 				use_apk_expansion,
 				tts,
 				bluetooth);
+		if (godot_initialized) {
+			bluetooth.initialize();
+		}
 
 		result_callback = null;
 	}

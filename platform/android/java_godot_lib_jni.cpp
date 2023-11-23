@@ -238,8 +238,8 @@ JNIEXPORT void JNICALL Java_org_godotengine_godot_GodotLib_ttsCallback(JNIEnv *e
 	TTS_Android::_java_utterance_callback(event, id, pos);
 }
 
-JNIEXPORT jobject JNICALL Java_org_godotengine_godot_GodotLib_bluetoothCallback(JNIEnv *env, jclass clazz, jint event, jint id) {
-    return BluetoothAndroid::_java_bluetooth_callback(event, id);
+JNIEXPORT jobject JNICALL Java_org_godotengine_godot_GodotLib_bluetoothCallback(JNIEnv *env, jclass clazz, jint event, jint id, jobject arg) {
+   return BluetoothAndroid::_java_bluetooth_callback(event, id, _jobject_to_variant(env, arg));
 }
 
 JNIEXPORT jboolean JNICALL Java_org_godotengine_godot_GodotLib_step(JNIEnv *env, jclass clazz) {
@@ -549,5 +549,12 @@ JNIEXPORT void JNICALL Java_org_godotengine_godot_GodotLib_onRendererPaused(JNIE
 	if (os_android->get_main_loop()) {
 		os_android->get_main_loop()->notification(MainLoop::NOTIFICATION_APPLICATION_PAUSED);
 	}
+}
+
+JNIEXPORT void JNICALL Java_org_godotengine_godot_GodotLib_printLine(JNIEnv *env, jclass clazz, jstring line) {
+#ifdef DEBUG_ENABLED
+    String str_line = jstring_to_string(line, env);
+    print_line(str_line);
+#endif
 }
 }

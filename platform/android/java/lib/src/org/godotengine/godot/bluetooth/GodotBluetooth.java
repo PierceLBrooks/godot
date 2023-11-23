@@ -37,6 +37,7 @@ import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothManager;
 import android.content.pm.PackageManager;
 import android.os.Build;
+import android.util.Log;
 
 import androidx.core.content.ContextCompat;
 
@@ -50,6 +51,7 @@ public class GodotBluetooth {
 	public enum BluetoothReason {
 		SCANNING,
 		ADVERTISING,
+		CONNECTING,
 	}
 
 	private static final String TAG = GodotBluetooth.class.getSimpleName();
@@ -57,6 +59,10 @@ public class GodotBluetooth {
 	public static final int EVENT_GET_SOUGHT_SERVICES = 0;
 	public static final int EVENT_ON_STOP_SCANNING = 1;
 	public static final int EVENT_ON_START_SCANNING = 2;
+	public static final int EVENT_ON_DISCOVER = 3;
+	public static final int EVENT_ON_CONNECT = 4;
+	public static final int EVENT_ON_DISCONNECT = 5;
+	public static final int EVENT_ON_DISCOVER_SERVICE_CHARACTERISTIC = 6;
 
 	private final Activity activity;
 
@@ -70,14 +76,18 @@ public class GodotBluetooth {
 
 	public GodotBluetooth(Activity p_activity) {
 		activity = p_activity;
-
 		advertisers = new HashMap<Integer, GodotBluetoothAdvertiser>();
 		enumerators = new HashMap<Integer, GodotBluetoothEnumerator>();
 		lock = new ReentrantLock();
+		supported = false;
+	}
+
+	public void initialize() {
 		supported = true;
 		try {
 			if (Build.VERSION.SDK_INT > Build.VERSION_CODES.JELLY_BEAN_MR1) {
 				if (activity == null || !activity.getPackageManager().hasSystemFeature(PackageManager.FEATURE_BLUETOOTH_LE)) {
+					Log.w(TAG, "No activity or feature!");
 					supported = false;
 				}
 			}
@@ -88,6 +98,8 @@ public class GodotBluetooth {
 						adapter = BluetoothAdapter.getDefaultAdapter();
 						if (adapter != null) {
 							supported = true;
+						} else {
+							Log.w(TAG, "No adapter!");
 						}
 					} else {
 						manager = (BluetoothManager)activity.getSystemService(activity.BLUETOOTH_SERVICE);
@@ -95,33 +107,56 @@ public class GodotBluetooth {
 							adapter = manager.getAdapter();
 							if (adapter != null && adapter.isMultipleAdvertisementSupported()) {
 								supported = true;
+							} else {
+								Log.w(TAG, "No multiple advertisement support!");
 							}
+						} else {
+							Log.w(TAG, "No manager!");
 						}
 					}
+				} else {
+					Log.w(TAG, "No activity or module!");
 				}
 			}
 		} catch (Exception exception) {
-			exception.printStackTrace();
+			GodotLib.printStackTrace(exception);
 			supported = false;
 		}
+		if (!supported) {
+			Log.w(TAG, "Got no support!");
+		}
+	}
+
+	public Activity getActivity() {
+		return activity;
 	}
 
 	public BluetoothAdapter getAdapter(BluetoothReason reason) {
 		if (!supported) {
+			Log.w(TAG, "No support!");
 			return null;
 		}
 		if (reason != null && Build.VERSION.SDK_INT > Build.VERSION_CODES.R) { // Bluetooth permissions are only considered dangerous at runtime above API level 30
 			switch (reason) {
 				case SCANNING:
 					if (ContextCompat.checkSelfPermission(activity, Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) {
-						PermissionsUtil.requestPermission("BLUETOOTH_SCAN", activity);
-						return null;
+						if (!PermissionsUtil.requestPermission("BLUETOOTH_SCAN", activity)) {
+							return null;
+						}
 					}
 					break;
 				case ADVERTISING:
 					if (ContextCompat.checkSelfPermission(activity, Manifest.permission.BLUETOOTH_ADVERTISE) != PackageManager.PERMISSION_GRANTED) {
-						PermissionsUtil.requestPermission("BLUETOOTH_ADVERTISE", activity);
-						return null;
+						if (!PermissionsUtil.requestPermission("BLUETOOTH_ADVERTISE", activity)) {
+							return null;
+						}
+					}
+					break;
+				case CONNECTING:
+					if (ContextCompat.checkSelfPermission(activity, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+						if (!PermissionsUtil.requestPermission("BLUETOOTH_CONNECT", activity)) {
+							return null;
+						}
 					}
 					break;
 				default:
@@ -132,6 +167,9 @@ public class GodotBluetooth {
 	}
 
 	public boolean isSupported() {
+		if (!supported) {
+			Log.w(TAG, "Get no support!");
+		}
 		return supported;
 	}
 
@@ -146,7 +184,7 @@ public class GodotBluetooth {
 				}
 			}
 		} catch (Exception exception) {
-			exception.printStackTrace();
+			GodotLib.printStackTrace(exception);
 		} finally {
 			lock.unlock();
 		}
@@ -164,7 +202,7 @@ public class GodotBluetooth {
 				}
 			}
 		} catch (Exception exception) {
-			exception.printStackTrace();
+			GodotLib.printStackTrace(exception);
 		} finally {
 			lock.unlock();
 		}
@@ -179,10 +217,14 @@ public class GodotBluetooth {
 				GodotBluetoothEnumerator enumerator = enumerators.get(p_enumerator_id);
 				if (enumerator != null) {
 					success = enumerator.startScanning();
+				} else {
+					Log.w(TAG, "Null enumerator @ "+p_enumerator_id);
 				}
+			} else {
+				Log.w(TAG, "No enumerator @ "+p_enumerator_id);
 			}
 		} catch (Exception exception) {
-			exception.printStackTrace();
+			GodotLib.printStackTrace(exception);
 		} finally {
 			lock.unlock();
 		}
@@ -200,7 +242,28 @@ public class GodotBluetooth {
 				}
 			}
 		} catch (Exception exception) {
-			exception.printStackTrace();
+			GodotLib.printStackTrace(exception);
+		} finally {
+			lock.unlock();
+		}
+		return success;
+	}
+
+	public boolean connectPeer(int p_enumerator_id, String p_peer_uuid) {
+		boolean success = false;
+		if (p_peer_uuid == null) {
+			return success;
+		}
+		lock.lock();
+		try {
+			if (enumerators.containsKey(p_enumerator_id)) {
+				GodotBluetoothEnumerator enumerator = enumerators.get(p_enumerator_id);
+				if (enumerator != null) {
+					success = enumerator.connectPeer(p_peer_uuid);
+				}
+			}
+		} catch (Exception exception) {
+			GodotLib.printStackTrace(exception);
 		} finally {
 			lock.unlock();
 		}
@@ -215,9 +278,12 @@ public class GodotBluetooth {
 			advertisers.put(p_advertiser_id, advertiser);
 			success = true;
 		} catch (Exception exception) {
-			exception.printStackTrace();
+			GodotLib.printStackTrace(exception);
 		} finally {
 			lock.unlock();
+		}
+		if (success) {
+			Log.d(TAG, "New advertiser @ "+p_advertiser_id);
 		}
 		return success;
 	}
@@ -232,9 +298,12 @@ public class GodotBluetooth {
 				success = true;
 			}
 		} catch (Exception exception) {
-			exception.printStackTrace();
+			GodotLib.printStackTrace(exception);
 		} finally {
 			lock.unlock();
+		}
+		if (success) {
+			Log.d(TAG, "New enumerator @ "+p_enumerator_id);
 		}
 		return success;
 	}
@@ -252,9 +321,12 @@ public class GodotBluetooth {
 				success = true;
 			}
 		} catch (Exception exception) {
-			exception.printStackTrace();
+			GodotLib.printStackTrace(exception);
 		} finally {
 			lock.unlock();
+		}
+		if (success) {
+			Log.d(TAG, "Old advertiser @ "+p_advertiser_id);
 		}
 		return success;
 	}
@@ -272,9 +344,12 @@ public class GodotBluetooth {
 				success = true;
 			}
 		} catch (Exception exception) {
-			exception.printStackTrace();
+			GodotLib.printStackTrace(exception);
 		} finally {
 			lock.unlock();
+		}
+		if (success) {
+			Log.d(TAG, "Old enumerator @ "+p_enumerator_id);
 		}
 		return success;
 	}

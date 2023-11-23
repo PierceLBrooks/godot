@@ -43,6 +43,10 @@ public class GodotBluetoothAdvertiser {
 		id = p_id;
 	}
 
+	public int getIdentifier() {
+		return id;
+	}
+
 	public boolean startAdvertising() {
 		return false;
 	}

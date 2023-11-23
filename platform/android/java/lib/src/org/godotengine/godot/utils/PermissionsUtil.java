@@ -73,6 +73,8 @@ public final class PermissionsUtil {
 	 * @return true/false. "true" if permission was granted otherwise returns "false".
 	 */
 	public static boolean requestPermission(String name, Activity activity) {
+		Log.i(TAG, "Request permission @ "+name);
+
 		if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
 			// Not necessary, asked on install already
 			return true;

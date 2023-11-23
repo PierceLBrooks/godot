@@ -30,6 +30,7 @@
 
 #include "json.h"
 
+#include "core/core_bind.h"
 #include "core/config/engine.h"
 #include "core/string/print_string.h"
 
@@ -85,6 +86,12 @@ String JSON::_stringify(const Variant &p_var, const String &p_indent, int p_cur_
 				return String::num(num, 14 - (int)floor(log10(num)));
 			}
 		}
+#if 0
+        case Variant::PACKED_BYTE_ARRAY: {
+            Vector<uint8_t> v = p_var;
+            return core_bind::Marshalls::get_singleton()->raw_to_base64(v);
+        }
+#endif
 		case Variant::PACKED_INT32_ARRAY:
 		case Variant::PACKED_INT64_ARRAY:
 		case Variant::PACKED_FLOAT32_ARRAY:

@@ -42,15 +42,50 @@ import android.content.res.AssetManager;
 import android.hardware.SensorEvent;
 import android.view.Surface;
 
+import java.io.IOException;
+import java.io.OutputStream;
+import java.io.PrintStream;
+
 import javax.microedition.khronos.opengles.GL10;
 
 /**
  * Wrapper for native library
  */
 public class GodotLib {
+	private static class ThrowableStream extends OutputStream {
+		private final int flushTrigger;
+		private String buffer;
+
+		public ThrowableStream(int flushTrigger) {
+			this.flushTrigger = flushTrigger;
+		}
+
+		@Override
+		public void write(int character) throws IOException {
+			if (character == flushTrigger)
+			{
+				GodotLib.printLine(buffer);
+				buffer = "";
+				return;
+			}
+			buffer += (char)character;
+		}
+
+		public void triggerFlush() {
+			try {
+				write(flushTrigger);
+			} catch (Exception exception) {
+				exception.printStackTrace();
+			}
+		}
+	}
+
 	static {
 		System.loadLibrary("godot_android");
 	}
+
+	private static PrintStream printStream = null;
+	private static ThrowableStream throwableStream = null;
 
 	/**
 	 * Invoked on the main thread to initialize Godot native layer.
@@ -112,7 +147,7 @@ public class GodotLib {
 	/**
 	 * Bluetooth callback.
 	 */
-	public static native Object bluetoothCallback(int event, int id);
+	public static native Object bluetoothCallback(int event, int id, Object arg);
 
 	/**
 	 * Forward touch events.
@@ -250,4 +285,30 @@ public class GodotLib {
 	 * @see GodotRenderer#onActivityPaused()
 	 */
 	public static native void onRendererPaused();
+
+	/**
+	 * Invoke the core line printing facilities.
+	 */
+	public static native void printLine(String line);
+
+	/**
+	 * Use the core line printing facilities on exceptions.
+	 */
+	public static void printStackTrace(Throwable throwable) {
+		if (!hasFeature("debug")) {
+			return;
+		}
+		if (throwable != null) {
+			if (printStream == null) {
+				if (throwableStream == null) {
+					throwableStream = new ThrowableStream((int)'\n');
+				}
+				printStream = new PrintStream(throwableStream);
+			}
+			throwable.printStackTrace(printStream);
+			if (throwableStream != null) {
+				throwableStream.triggerFlush();
+			}
+		}
+	}
 }
