@@ -30,6 +30,7 @@
 
 package org.godotengine.godot.utils;
 
+import android.Manifest;
 import android.app.Activity;
 import android.content.Context;
 import android.net.wifi.WifiManager;
@@ -45,7 +46,7 @@ public class GodotNetUtils {
 	private WifiManager.MulticastLock multicastLock;
 
 	public GodotNetUtils(Activity p_activity) {
-		if (PermissionsUtil.hasManifestPermission(p_activity, "android.permission.CHANGE_WIFI_MULTICAST_STATE")) {
+		if (PermissionsUtil.hasManifestPermission(p_activity, Manifest.permission.CHANGE_WIFI_MULTICAST_STATE)) {
 			WifiManager wifi = (WifiManager)p_activity.getApplicationContext().getSystemService(Context.WIFI_SERVICE);
 			multicastLock = wifi.createMulticastLock("GodotMulticastLock");
 			multicastLock.setReferenceCounted(true);
