@@ -35,15 +35,15 @@
 #include "platform/android/bluetooth_android.h"
 
 BluetoothEnumeratorAndroid::BluetoothEnumeratorAndroid() {
-    id = BluetoothAndroid::get_singleton()->register_enumerator(this);
+	id = BluetoothAndroid::get_singleton()->register_enumerator(this);
 }
 
 BluetoothEnumeratorAndroid::~BluetoothEnumeratorAndroid() {
-    BluetoothAndroid::get_singleton()->unregister_enumerator(id);
+	BluetoothAndroid::get_singleton()->unregister_enumerator(id);
 }
 
 void BluetoothEnumeratorAndroid::initialize() {
-    BluetoothEnumerator::_create = BluetoothEnumeratorAndroid::_create;
+	BluetoothEnumerator::_create = BluetoothEnumeratorAndroid::_create;
 }
 
 void BluetoothEnumeratorAndroid::deinitialize() {
@@ -51,29 +51,29 @@ void BluetoothEnumeratorAndroid::deinitialize() {
 }
 
 bool BluetoothEnumeratorAndroid::start_scanning() const {
-    if (id == -1) {
-        print_line("Registration failure");
-        return false;
-    }
-    if (!BluetoothAndroid::is_supported()) {
-        return false;
-    }
-    return BluetoothAndroid::start_scanning(id);
+	if (id == -1) {
+		print_line("Registration failure");
+		return false;
+	}
+	if (!BluetoothAndroid::is_supported()) {
+		return false;
+	}
+	return BluetoothAndroid::start_scanning(id);
 }
 
 bool BluetoothEnumeratorAndroid::stop_scanning() const {
-    if (id == -1) {
-        print_line("Unregistration failure");
-        return false;
-    }
-    if (!BluetoothAndroid::is_supported()) {
-        return false;
-    }
-    return BluetoothAndroid::stop_scanning(id);
+	if (id == -1) {
+		print_line("Unregistration failure");
+		return false;
+	}
+	if (!BluetoothAndroid::is_supported()) {
+		return false;
+	}
+	return BluetoothAndroid::stop_scanning(id);
 }
 
 void BluetoothEnumeratorAndroid::connect_peer(String p_peer_uuid) {
-    BluetoothAndroid::connect_enumerator_peer(id, p_peer_uuid);
+	BluetoothAndroid::connect_enumerator_peer(id, p_peer_uuid);
 }
 
 void BluetoothEnumeratorAndroid::read_peer_service_characteristic(String p_peer_uuid, String p_service_uuid, String p_characteristic_uuid) {
@@ -89,5 +89,3 @@ void BluetoothEnumeratorAndroid::on_register() const {
 void BluetoothEnumeratorAndroid::on_unregister() const {
 	// nothing to do here
 }
-
-

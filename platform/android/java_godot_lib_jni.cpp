@@ -33,6 +33,7 @@
 #include "android_input_handler.h"
 #include "api/java_class_wrapper.h"
 #include "api/jni_singleton.h"
+#include "bluetooth_android.h"
 #include "dir_access_jandroid.h"
 #include "display_server_android.h"
 #include "file_access_android.h"
@@ -45,7 +46,6 @@
 #include "string_android.h"
 #include "thread_jandroid.h"
 #include "tts_android.h"
-#include "bluetooth_android.h"
 
 #include "core/config/engine.h"
 #include "core/config/project_settings.h"
@@ -238,7 +238,7 @@ JNIEXPORT void JNICALL Java_org_godotengine_godot_GodotLib_ttsCallback(JNIEnv *e
 }
 
 JNIEXPORT jobject JNICALL Java_org_godotengine_godot_GodotLib_bluetoothCallback(JNIEnv *env, jclass clazz, jint event, jint id, jobject arg) {
-   return BluetoothAndroid::_java_bluetooth_callback(event, id, _jobject_to_variant(env, arg));
+	return BluetoothAndroid::_java_bluetooth_callback(event, id, _jobject_to_variant(env, arg));
 }
 
 JNIEXPORT jboolean JNICALL Java_org_godotengine_godot_GodotLib_step(JNIEnv *env, jclass clazz) {
@@ -449,11 +449,11 @@ JNIEXPORT jstring JNICALL Java_org_godotengine_godot_GodotLib_getEditorSetting(J
 }
 
 JNIEXPORT jboolean JNICALL Java_org_godotengine_godot_GodotLib_hasFeature(JNIEnv *env, jclass clazz, jstring p_feature_key) {
-    String js = jstring_to_string(p_feature_key, env);
+	String js = jstring_to_string(p_feature_key, env);
 
-    ERR_FAIL_NULL_V(os_android, false);
+	ERR_FAIL_NULL_V(os_android, false);
 
-    return os_android->has_feature(js);
+	return os_android->has_feature(js);
 }
 
 JNIEXPORT void JNICALL Java_org_godotengine_godot_GodotLib_callobject(JNIEnv *env, jclass clazz, jlong ID, jstring method, jobjectArray params) {
@@ -507,8 +507,8 @@ JNIEXPORT void JNICALL Java_org_godotengine_godot_GodotLib_requestPermissionResu
 		AudioDriver::get_singleton()->input_start();
 	}
 
-    ERR_FAIL_NULL(os_android);
-    if (os_android->get_main_loop()) {
+	ERR_FAIL_NULL(os_android);
+	if (os_android->get_main_loop()) {
 		os_android->get_main_loop()->emit_signal(SNAME("on_request_permissions_result"), permission, p_result == JNI_TRUE);
 	}
 }
@@ -520,8 +520,8 @@ JNIEXPORT void JNICALL Java_org_godotengine_godot_GodotLib_onRendererResumed(JNI
 
 	// We force redraw to ensure we render at least once when resuming the app.
 	Main::force_redraw();
-    ERR_FAIL_NULL(os_android);
-    if (os_android->get_main_loop()) {
+	ERR_FAIL_NULL(os_android);
+	if (os_android->get_main_loop()) {
 		os_android->get_main_loop()->notification(MainLoop::NOTIFICATION_APPLICATION_RESUMED);
 	}
 }
@@ -531,7 +531,7 @@ JNIEXPORT void JNICALL Java_org_godotengine_godot_GodotLib_onRendererPaused(JNIE
 		return;
 	}
 
-    ERR_FAIL_NULL(os_android);
+	ERR_FAIL_NULL(os_android);
 	if (os_android->get_main_loop()) {
 		os_android->get_main_loop()->notification(MainLoop::NOTIFICATION_APPLICATION_PAUSED);
 	}
@@ -539,8 +539,8 @@ JNIEXPORT void JNICALL Java_org_godotengine_godot_GodotLib_onRendererPaused(JNIE
 
 JNIEXPORT void JNICALL Java_org_godotengine_godot_GodotLib_printLine(JNIEnv *env, jclass clazz, jstring line) {
 #ifdef DEBUG_ENABLED
-    String str_line = jstring_to_string(line, env);
-    print_line(str_line);
+	String str_line = jstring_to_string(line, env);
+	print_line(str_line);
 #endif
 }
 }

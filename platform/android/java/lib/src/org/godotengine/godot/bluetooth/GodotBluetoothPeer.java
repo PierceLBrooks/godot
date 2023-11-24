@@ -30,6 +30,8 @@
 
 package org.godotengine.godot.bluetooth;
 
+import org.godotengine.godot.GodotLib;
+
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
@@ -42,8 +44,6 @@ import android.bluetooth.BluetoothProfile;
 import android.os.Build;
 import android.util.Log;
 
-import org.godotengine.godot.GodotLib;
-
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -51,18 +51,18 @@ public class GodotBluetoothPeer extends BluetoothGattCallback {
 	private static final String TAG = GodotBluetoothPeer.class.getSimpleName();
 
 	private int id;
-    private BluetoothDevice device;
+	private BluetoothDevice device;
 	private BluetoothAdapter adapter;
 	private BluetoothGatt gatt;
 	private AtomicBoolean connection;
 
-    GodotBluetoothPeer(int p_id, BluetoothDevice p_device) {
+	GodotBluetoothPeer(int p_id, BluetoothDevice p_device) {
 		id = p_id;
-        device = p_device;
+		device = p_device;
 		connection = new AtomicBoolean(false);
 		gatt = null;
 		adapter = null;
-    }
+	}
 
 	@SuppressLint("MissingPermission")
 	public boolean connect(GodotBluetooth p_bluetooth) {
@@ -109,9 +109,9 @@ public class GodotBluetoothPeer extends BluetoothGattCallback {
 		return success;
 	}
 
-    public BluetoothDevice getDevice() {
-        return device;
-    }
+	public BluetoothDevice getDevice() {
+		return device;
+	}
 
 	@SuppressLint("MissingPermission")
 	@Override
@@ -176,7 +176,7 @@ public class GodotBluetoothPeer extends BluetoothGattCallback {
 										if ((characteristic.getProperties() & BluetoothGattCharacteristic.PROPERTY_WRITE) != 0) {
 											permission = true;
 										}
-										GodotLib.bluetoothCallback(GodotBluetooth.EVENT_ON_DISCOVER_SERVICE_CHARACTERISTIC, id, new String[]{device.getAddress(), service.getUuid().toString(), characteristic.getUuid().toString(), String.valueOf(permission), ""});
+										GodotLib.bluetoothCallback(GodotBluetooth.EVENT_ON_DISCOVER_SERVICE_CHARACTERISTIC, id, new String[] { device.getAddress(), service.getUuid().toString(), characteristic.getUuid().toString(), String.valueOf(permission), "" });
 									} catch (Exception exception) {
 										GodotLib.printStackTrace(exception);
 									}

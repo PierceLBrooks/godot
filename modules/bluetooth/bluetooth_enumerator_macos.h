@@ -40,6 +40,7 @@ class BluetoothEnumeratorMacOS : public BluetoothEnumerator {
 private:
 	void *central_manager_delegate;
 	static BluetoothEnumerator *_create() { return memnew(BluetoothEnumeratorMacOS); }
+
 public:
 	BluetoothEnumeratorMacOS();
 	virtual ~BluetoothEnumeratorMacOS();
@@ -54,8 +55,8 @@ public:
 	void read_peer_service_characteristic(String p_peer_uuid, String p_service_uuid, String p_characteristic_uuid) override;
 	void write_peer_service_characteristic(String p_peer_uuid, String p_service_uuid, String p_characteristic_uuid, String p_value) override;
 
-    void on_register() const override;
-    void on_unregister() const override;
+	void on_register() const override;
+	void on_unregister() const override;
 };
 
 #endif // BLUETOOTH_ENUMERATOR_MACOS_H

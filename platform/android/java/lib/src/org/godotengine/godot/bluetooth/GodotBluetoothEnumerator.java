@@ -30,6 +30,8 @@
 
 package org.godotengine.godot.bluetooth;
 
+import org.godotengine.godot.*;
+
 import android.annotation.SuppressLint;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
@@ -52,11 +54,9 @@ import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReentrantLock;
 
-import org.godotengine.godot.*;
 import org.json.JSONObject;
 
-public class GodotBluetoothEnumerator extends ScanCallback
-{
+public class GodotBluetoothEnumerator extends ScanCallback {
 	private static final String TAG = GodotBluetoothEnumerator.class.getSimpleName();
 
 	private final GodotBluetooth bluetooth;
@@ -122,7 +122,7 @@ public class GodotBluetoothEnumerator extends ScanCallback
 		if (peer != null) {
 			success = peer.connect(bluetooth);
 		} else {
-			Log.w(TAG, "Null peer @ "+p_peer_uuid);
+			Log.w(TAG, "Null peer @ " + p_peer_uuid);
 		}
 		return success;
 	}
@@ -324,4 +324,3 @@ public class GodotBluetoothEnumerator extends ScanCallback
 		}
 	}
 }
-

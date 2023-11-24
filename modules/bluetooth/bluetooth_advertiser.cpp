@@ -29,10 +29,10 @@
 /**************************************************************************/
 
 #include "bluetooth_advertiser.h"
-#include "core/variant/typed_array.h"
 #include "core/core_bind.h"
-#include "core/os/thread.h"
 #include "core/object/script_language.h"
+#include "core/os/thread.h"
+#include "core/variant/typed_array.h"
 
 #include <chrono>
 
@@ -88,7 +88,7 @@ void BluetoothAdvertiser::set_active(bool p_is_active) {
 		if (start_advertising()) {
 			print_line("Advertise " + service_uuid);
 		} else {
-			print_line("Advertise failure "+ service_uuid);
+			print_line("Advertise failure " + service_uuid);
 			active = false;
 		}
 	} else {
@@ -268,15 +268,16 @@ void BluetoothAdvertiser::on_unregister() const {
 
 bool BluetoothAdvertiser::on_start() const {
 	if (can_emit_signal(SNAME("bluetooth_service_advertisement_started"))) {
-		Ref<BluetoothAdvertiser>* reference = new Ref<BluetoothAdvertiser>(const_cast<BluetoothAdvertiser*>(this));
+		Ref<BluetoothAdvertiser> *reference = new Ref<BluetoothAdvertiser>(const_cast<BluetoothAdvertiser *>(this));
 		if (reference->is_valid()) {
 			Thread thread;
 			thread.start([](void *p_udata) {
-				Ref<BluetoothAdvertiser>* advertiser = static_cast<Ref<BluetoothAdvertiser>*>(p_udata);
+				Ref<BluetoothAdvertiser> *advertiser = static_cast<Ref<BluetoothAdvertiser> *>(p_udata);
 				if (advertiser->is_valid()) {
 					(*advertiser)->emit_signal(SNAME("bluetooth_service_advertisement_started"), (*advertiser)->get_service_uuid());
 				}
-			}, reference);
+			},
+					reference);
 			thread.wait_to_finish();
 		}
 		delete reference;
@@ -287,16 +288,17 @@ bool BluetoothAdvertiser::on_start() const {
 
 bool BluetoothAdvertiser::on_stop() const {
 	if (can_emit_signal(SNAME("bluetooth_service_advertisement_stopped"))) {
-		Ref<BluetoothAdvertiser>* reference = new Ref<BluetoothAdvertiser>(const_cast<BluetoothAdvertiser*>(this));
+		Ref<BluetoothAdvertiser> *reference = new Ref<BluetoothAdvertiser>(const_cast<BluetoothAdvertiser *>(this));
 		if (reference->is_valid()) {
 			Thread thread;
 			thread.start([](void *p_udata) {
-				Ref<BluetoothAdvertiser>* advertiser = static_cast<Ref<BluetoothAdvertiser>*>(p_udata);
+				Ref<BluetoothAdvertiser> *advertiser = static_cast<Ref<BluetoothAdvertiser> *>(p_udata);
 				if (advertiser->is_valid()) {
 					(*advertiser)->active = false;
 					(*advertiser)->emit_signal(SNAME("bluetooth_service_advertisement_stopped"), (*advertiser)->get_service_uuid());
 				}
-			}, reference);
+			},
+					reference);
 			thread.wait_to_finish();
 		}
 		delete reference;
@@ -310,20 +312,21 @@ bool BluetoothAdvertiser::on_read(String p_characteristic_uuid, int p_request, S
 		return false;
 	}
 	if (can_emit_signal(SNAME("bluetooth_service_characteristic_read"))) {
-		Ref<BluetoothAdvertiser::BluetoothAdvertiserCharacteristic>* reference = new Ref<BluetoothAdvertiser::BluetoothAdvertiserCharacteristic>(get_characteristic_by_uuid(p_characteristic_uuid));
+		Ref<BluetoothAdvertiser::BluetoothAdvertiserCharacteristic> *reference = new Ref<BluetoothAdvertiser::BluetoothAdvertiserCharacteristic>(get_characteristic_by_uuid(p_characteristic_uuid));
 		if (reference->is_valid()) {
 			Thread thread;
 			(*reference)->peer = p_peer_uuid;
 			(*reference)->readRequest = p_request;
-			(*reference)->advertiser = Ref<BluetoothAdvertiser>(const_cast<BluetoothAdvertiser*>(this));
+			(*reference)->advertiser = Ref<BluetoothAdvertiser>(const_cast<BluetoothAdvertiser *>(this));
 			thread.start([](void *p_udata) {
-				Ref<BluetoothAdvertiser::BluetoothAdvertiserCharacteristic>* characteristic = static_cast<Ref<BluetoothAdvertiser::BluetoothAdvertiserCharacteristic>*>(p_udata);
+				Ref<BluetoothAdvertiser::BluetoothAdvertiserCharacteristic> *characteristic = static_cast<Ref<BluetoothAdvertiser::BluetoothAdvertiserCharacteristic> *>(p_udata);
 				if (characteristic->is_valid() && (*characteristic)->advertiser.is_valid()) {
 					(*characteristic)->advertiser->emit_signal(SNAME("bluetooth_service_characteristic_read"), (*characteristic)->advertiser->get_service_uuid(), (*characteristic)->uuid, (*characteristic)->readRequest, (*characteristic)->peer);
 				}
-			}, reference);
+			},
+					reference);
 			thread.wait_to_finish();
-			(*reference)->advertiser.reference_ptr(static_cast<BluetoothAdvertiser*>(nullptr));
+			(*reference)->advertiser.reference_ptr(static_cast<BluetoothAdvertiser *>(nullptr));
 			(*reference)->readRequest = -1;
 			(*reference)->peer = "";
 		}
@@ -338,21 +341,22 @@ bool BluetoothAdvertiser::on_write(String p_characteristic_uuid, int p_request, 
 		return false;
 	}
 	if (can_emit_signal(SNAME("bluetooth_service_characteristic_write"))) {
-		Ref<BluetoothAdvertiser::BluetoothAdvertiserCharacteristic>* reference = new Ref<BluetoothAdvertiser::BluetoothAdvertiserCharacteristic>(get_characteristic_by_uuid(p_characteristic_uuid));
+		Ref<BluetoothAdvertiser::BluetoothAdvertiserCharacteristic> *reference = new Ref<BluetoothAdvertiser::BluetoothAdvertiserCharacteristic>(get_characteristic_by_uuid(p_characteristic_uuid));
 		if (reference->is_valid()) {
 			Thread thread;
 			(*reference)->value = core_bind::Marshalls::get_singleton()->base64_to_utf8(p_value_base64);
 			(*reference)->peer = p_peer_uuid;
 			(*reference)->writeRequest = p_request;
-			(*reference)->advertiser = Ref<BluetoothAdvertiser>(const_cast<BluetoothAdvertiser*>(this));
+			(*reference)->advertiser = Ref<BluetoothAdvertiser>(const_cast<BluetoothAdvertiser *>(this));
 			thread.start([](void *p_udata) {
-				Ref<BluetoothAdvertiser::BluetoothAdvertiserCharacteristic>* characteristic = static_cast<Ref<BluetoothAdvertiser::BluetoothAdvertiserCharacteristic>*>(p_udata);
+				Ref<BluetoothAdvertiser::BluetoothAdvertiserCharacteristic> *characteristic = static_cast<Ref<BluetoothAdvertiser::BluetoothAdvertiserCharacteristic> *>(p_udata);
 				if (characteristic->is_valid() && (*characteristic)->advertiser.is_valid()) {
 					(*characteristic)->advertiser->emit_signal(SNAME("bluetooth_service_characteristic_write"), (*characteristic)->advertiser->get_service_uuid(), (*characteristic)->uuid, (*characteristic)->writeRequest, (*characteristic)->peer, (*characteristic)->value);
 				}
-			}, reference);
+			},
+					reference);
 			thread.wait_to_finish();
-			(*reference)->advertiser.reference_ptr(static_cast<BluetoothAdvertiser*>(nullptr));
+			(*reference)->advertiser.reference_ptr(static_cast<BluetoothAdvertiser *>(nullptr));
 			(*reference)->writeRequest = -1;
 			(*reference)->peer = "";
 		}

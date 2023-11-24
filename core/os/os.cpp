@@ -519,9 +519,9 @@ bool OS::has_feature(const String &p_feature) {
 		return true;
 	}
 
-    if (p_feature.ends_with(String(IS_MODULE_ENABLED_FEATURE_SUFFIX)) && is_module_enabled(p_feature.substr(0, p_feature.length() - strlen(IS_MODULE_ENABLED_FEATURE_SUFFIX)))) {
-        return true;
-    }
+	if (p_feature.ends_with(String(IS_MODULE_ENABLED_FEATURE_SUFFIX)) && is_module_enabled(p_feature.substr(0, p_feature.length() - strlen(IS_MODULE_ENABLED_FEATURE_SUFFIX)))) {
+		return true;
+	}
 
 	return false;
 }

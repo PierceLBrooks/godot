@@ -30,6 +30,9 @@
 
 package org.godotengine.godot.bluetooth;
 
+import org.godotengine.godot.*;
+import org.godotengine.godot.utils.PermissionsUtil;
+
 import android.Manifest;
 import android.annotation.TargetApi;
 import android.app.Activity;
@@ -43,9 +46,6 @@ import androidx.core.content.ContextCompat;
 
 import java.util.HashMap;
 import java.util.concurrent.locks.ReentrantLock;
-
-import org.godotengine.godot.utils.PermissionsUtil;
-import org.godotengine.godot.*;
 
 public class GodotBluetooth {
 	public enum BluetoothReason {
@@ -219,7 +219,7 @@ public class GodotBluetooth {
 			if (enumerators.containsKey(p_enumerator_id)) {
 				enumerator = enumerators.get(p_enumerator_id);
 			} else {
-				Log.w(TAG, "No enumerator @ "+p_enumerator_id);
+				Log.w(TAG, "No enumerator @ " + p_enumerator_id);
 			}
 		} catch (Exception exception) {
 			GodotLib.printStackTrace(exception);
@@ -270,7 +270,7 @@ public class GodotBluetooth {
 		if (enumerator != null) {
 			success = enumerator.connectPeer(p_peer_uuid);
 		} else {
-			Log.w(TAG, "Null enumerator @ "+p_peer_uuid);
+			Log.w(TAG, "Null enumerator @ " + p_peer_uuid);
 		}
 		return success;
 	}
@@ -288,7 +288,7 @@ public class GodotBluetooth {
 			lock.unlock();
 		}
 		if (success) {
-			Log.d(TAG, "New advertiser @ "+p_advertiser_id);
+			Log.d(TAG, "New advertiser @ " + p_advertiser_id);
 		}
 		return success;
 	}
@@ -308,7 +308,7 @@ public class GodotBluetooth {
 			lock.unlock();
 		}
 		if (success) {
-			Log.d(TAG, "New enumerator @ "+p_enumerator_id);
+			Log.d(TAG, "New enumerator @ " + p_enumerator_id);
 		}
 		return success;
 	}
@@ -331,7 +331,7 @@ public class GodotBluetooth {
 			lock.unlock();
 		}
 		if (success) {
-			Log.d(TAG, "Old advertiser @ "+p_advertiser_id);
+			Log.d(TAG, "Old advertiser @ " + p_advertiser_id);
 		}
 		return success;
 	}
@@ -354,9 +354,8 @@ public class GodotBluetooth {
 			lock.unlock();
 		}
 		if (success) {
-			Log.d(TAG, "Old enumerator @ "+p_enumerator_id);
+			Log.d(TAG, "Old enumerator @ " + p_enumerator_id);
 		}
 		return success;
 	}
 }
-

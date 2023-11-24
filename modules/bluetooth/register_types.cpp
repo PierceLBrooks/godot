@@ -62,7 +62,7 @@ void initialize_bluetooth_module(ModuleInitializationLevel p_level) {
 	BluetoothEnumeratorAndroid::initialize();
 #endif
 #if defined(DEBUG_ENABLED)
-    print_line(String((std::string("Bluetooth module enabled: ")+std::to_string(OS::get_singleton()->has_feature("bluetooth_module"))).c_str()));
+	print_line(String((std::string("Bluetooth module enabled: ") + std::to_string(OS::get_singleton()->has_feature("bluetooth_module"))).c_str()));
 #endif
 }
 

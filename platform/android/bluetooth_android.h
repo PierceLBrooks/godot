@@ -41,69 +41,69 @@
 #include "modules/bluetooth/bluetooth_advertiser_android.h"
 #include "modules/bluetooth/bluetooth_enumerator_android.h"
 #else
-typedef void* BluetoothAdvertiserAndroid;
-typedef void* BluetoothEnumeratorAndroid;
+typedef void *BluetoothAdvertiserAndroid;
+typedef void *BluetoothEnumeratorAndroid;
 #endif
 
 #include <jni.h>
 
 class BluetoothAndroid {
-    _THREAD_SAFE_CLASS_
+	_THREAD_SAFE_CLASS_
 
-    enum BluetoothEvent {
-        BLUETOOTH_ENUMERATOR_GET_SOUGHT_SERVICES = 0,
-        BLUETOOTH_ENUMERATOR_ON_STOP_SCANNING = 1,
-        BLUETOOTH_ENUMERATOR_ON_START_SCANNING = 2,
-        BLUETOOTH_ENUMERATOR_ON_DISCOVER = 3,
-        BLUETOOTH_ENUMERATOR_ON_CONNECT = 4,
-        BLUETOOTH_ENUMERATOR_ON_DISCONNECT = 5,
-        BLUETOOTH_ENUMERATOR_ON_DISCOVER_SERVICE_CHARACTERISTIC = 6,
-    };
+	enum BluetoothEvent {
+		BLUETOOTH_ENUMERATOR_GET_SOUGHT_SERVICES = 0,
+		BLUETOOTH_ENUMERATOR_ON_STOP_SCANNING = 1,
+		BLUETOOTH_ENUMERATOR_ON_START_SCANNING = 2,
+		BLUETOOTH_ENUMERATOR_ON_DISCOVER = 3,
+		BLUETOOTH_ENUMERATOR_ON_CONNECT = 4,
+		BLUETOOTH_ENUMERATOR_ON_DISCONNECT = 5,
+		BLUETOOTH_ENUMERATOR_ON_DISCOVER_SERVICE_CHARACTERISTIC = 6,
+	};
 
-    static BluetoothAndroid *singleton;
+	static BluetoothAndroid *singleton;
 
 	static jobject bluetooth;
 	static jclass cls;
 
 	static jmethodID _is_supported;
 
-    static jmethodID _start_advertising;
-    static jmethodID _stop_advertising;
-    static jmethodID _start_scanning;
-    static jmethodID _stop_scanning;
+	static jmethodID _start_advertising;
+	static jmethodID _stop_advertising;
+	static jmethodID _start_scanning;
+	static jmethodID _stop_scanning;
 
-    static jmethodID _connect_enumerator_peer;
+	static jmethodID _connect_enumerator_peer;
 
-    static jmethodID _register_advertiser;
-    static jmethodID _register_enumerator;
-    static jmethodID _unregister_advertiser;
-    static jmethodID _unregister_enumerator;
+	static jmethodID _register_advertiser;
+	static jmethodID _register_enumerator;
+	static jmethodID _unregister_advertiser;
+	static jmethodID _unregister_enumerator;
 
-    static HashMap<int, BluetoothAdvertiserAndroid*> advertisers;
-    static HashMap<int, BluetoothEnumeratorAndroid*> enumerators;
-    static int advertiser_id;
-    static int enumerator_id;
+	static HashMap<int, BluetoothAdvertiserAndroid *> advertisers;
+	static HashMap<int, BluetoothEnumeratorAndroid *> enumerators;
+	static int advertiser_id;
+	static int enumerator_id;
 
 public:
-    static BluetoothAndroid *get_singleton();
+	static BluetoothAndroid *get_singleton();
 
-    static jobject _java_bluetooth_callback(int p_event, int p_id, Variant p_arg);
+	static jobject _java_bluetooth_callback(int p_event, int p_id, Variant p_arg);
 
-    static void setup(jobject p_bluetooth);
+	static void setup(jobject p_bluetooth);
 
 	static bool is_supported();
 
-    static bool start_advertising(int p_advertiser_id);
-    static bool stop_advertising(int p_advertiser_id);
-    static bool start_scanning(int p_enumerator_id);
-    static bool stop_scanning(int p_enumerator_id);
+	static bool start_advertising(int p_advertiser_id);
+	static bool stop_advertising(int p_advertiser_id);
+	static bool start_scanning(int p_enumerator_id);
+	static bool stop_scanning(int p_enumerator_id);
 
-    static bool connect_enumerator_peer(int p_enumerator_id, String p_peer_uuid);
+	static bool connect_enumerator_peer(int p_enumerator_id, String p_peer_uuid);
 
-    int register_advertiser(BluetoothAdvertiserAndroid* p_advertiser);
-    int register_enumerator(BluetoothEnumeratorAndroid* p_enumerator);
-    bool unregister_advertiser(int p_advertiser_id);
-    bool unregister_enumerator(int p_enumerator_id);
+	int register_advertiser(BluetoothAdvertiserAndroid *p_advertiser);
+	int register_enumerator(BluetoothEnumeratorAndroid *p_enumerator);
+	bool unregister_advertiser(int p_advertiser_id);
+	bool unregister_enumerator(int p_enumerator_id);
 };
 
 #endif // BLUETOOTH_ANDROID_H

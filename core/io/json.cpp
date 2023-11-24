@@ -30,8 +30,8 @@
 
 #include "json.h"
 
-#include "core/core_bind.h"
 #include "core/config/engine.h"
+#include "core/core_bind.h"
 #include "core/string/print_string.h"
 
 const char *JSON::tk_name[TK_MAX] = {

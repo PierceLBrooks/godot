@@ -38,8 +38,9 @@
 
 class BluetoothAdvertiserAndroid : public BluetoothAdvertiser {
 private:
-    int id;
+	int id;
 	static BluetoothAdvertiser *_create() { return memnew(BluetoothAdvertiserAndroid); }
+
 public:
 	BluetoothAdvertiserAndroid();
 	virtual ~BluetoothAdvertiserAndroid();
@@ -47,14 +48,14 @@ public:
 	static void initialize();
 	static void deinitialize();
 
-    void respond_characteristic_read_request(String p_characteristic_uuid, String p_response, int p_request) const override;
-    void respond_characteristic_write_request(String p_characteristic_uuid, String p_response, int p_request) const override;
+	void respond_characteristic_read_request(String p_characteristic_uuid, String p_response, int p_request) const override;
+	void respond_characteristic_write_request(String p_characteristic_uuid, String p_response, int p_request) const override;
 
 	bool start_advertising() const override;
 	bool stop_advertising() const override;
 
-    void on_register() const override;
-    void on_unregister() const override;
+	void on_register() const override;
+	void on_unregister() const override;
 };
 
 #endif // BLUETOOTH_ADVERTISER_ANDROID_H

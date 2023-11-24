@@ -35,15 +35,15 @@
 #include "platform/android/bluetooth_android.h"
 
 BluetoothAdvertiserAndroid::BluetoothAdvertiserAndroid() {
-    id = BluetoothAndroid::get_singleton()->register_advertiser(this);
+	id = BluetoothAndroid::get_singleton()->register_advertiser(this);
 }
 
 BluetoothAdvertiserAndroid::~BluetoothAdvertiserAndroid() {
-    BluetoothAndroid::get_singleton()->unregister_advertiser(id);
+	BluetoothAndroid::get_singleton()->unregister_advertiser(id);
 }
 
 void BluetoothAdvertiserAndroid::initialize() {
-    BluetoothAdvertiser::_create = BluetoothAdvertiserAndroid::_create;
+	BluetoothAdvertiser::_create = BluetoothAdvertiserAndroid::_create;
 }
 
 void BluetoothAdvertiserAndroid::deinitialize() {
@@ -57,25 +57,25 @@ void BluetoothAdvertiserAndroid::respond_characteristic_write_request(String p_c
 }
 
 bool BluetoothAdvertiserAndroid::start_advertising() const {
-    if (id == -1) {
-        print_line("Registration failure");
-        return false;
-    }
-    if (!BluetoothAndroid::is_supported()) {
-        return false;
-    }
-    return BluetoothAndroid::start_advertising(id);
+	if (id == -1) {
+		print_line("Registration failure");
+		return false;
+	}
+	if (!BluetoothAndroid::is_supported()) {
+		return false;
+	}
+	return BluetoothAndroid::start_advertising(id);
 }
 
 bool BluetoothAdvertiserAndroid::stop_advertising() const {
-    if (id == -1) {
-        print_line("Unregistration failure");
-        return false;
-    }
-    if (!BluetoothAndroid::is_supported()) {
-        return false;
-    }
-    return BluetoothAndroid::stop_advertising(id);
+	if (id == -1) {
+		print_line("Unregistration failure");
+		return false;
+	}
+	if (!BluetoothAndroid::is_supported()) {
+		return false;
+	}
+	return BluetoothAndroid::stop_advertising(id);
 }
 
 void BluetoothAdvertiserAndroid::on_register() const {
@@ -85,4 +85,3 @@ void BluetoothAdvertiserAndroid::on_register() const {
 void BluetoothAdvertiserAndroid::on_unregister() const {
 	// nothing to do here
 }
-

@@ -30,6 +30,8 @@
 
 package org.godotengine.godot.utils;
 
+import org.godotengine.godot.BuildConfig;
+
 import android.Manifest;
 import android.app.Activity;
 import android.content.Context;
@@ -43,12 +45,9 @@ import android.os.Environment;
 import android.provider.Settings;
 import android.util.Log;
 
-
 import androidx.annotation.Nullable;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
-
-import org.godotengine.godot.BuildConfig;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -136,56 +135,56 @@ public final class PermissionsUtil {
 				}
 				return true;
 
-            case "BLUETOOTH":
-            case "BLUETOOTH_ADMIN":
-            case "BLUETOOTH_ADVERTISE":
-            case "BLUETOOTH_CONNECT":
-            case "BLUETOOTH_SCAN":
-            case Manifest.permission.BLUETOOTH:
-            case Manifest.permission.BLUETOOTH_ADMIN:
-            case Manifest.permission.BLUETOOTH_ADVERTISE:
-            case Manifest.permission.BLUETOOTH_CONNECT:
-            case Manifest.permission.BLUETOOTH_SCAN:
-                if (Build.VERSION.SDK_INT > Build.VERSION_CODES.R) { // Bluetooth permissions are only considered dangerous at runtime above API level 30
-			        int request = 0;
-			        boolean connect = false;
-			        String[] permissions = null;
-			        if (ContextCompat.checkSelfPermission(activity, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
-				        connect = true;
-			        }
-			        if (name.equals("BLUETOOTH_ADVERTISE")) {
-				        if (ContextCompat.checkSelfPermission(activity, Manifest.permission.BLUETOOTH_ADVERTISE) != PackageManager.PERMISSION_GRANTED) {
-					        request = REQUEST_BLUETOOTH_ADVERTISE_PERMISSION;
-					        if (connect) {
-						        permissions = new String[] { Manifest.permission.BLUETOOTH_ADVERTISE, Manifest.permission.BLUETOOTH_CONNECT };
-					        } else {
-						        permissions = new String[] { Manifest.permission.BLUETOOTH_ADVERTISE };
-					        }
-				        }
-			        } else if (name.equals("BLUETOOTH_SCAN")) {
-				        if (ContextCompat.checkSelfPermission(activity, Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) {
-					        request = REQUEST_BLUETOOTH_SCAN_PERMISSION;
-					        if (connect) {
-						        permissions = new String[] { Manifest.permission.BLUETOOTH_SCAN, Manifest.permission.BLUETOOTH_CONNECT };
-					        } else {
-						        permissions = new String[] { Manifest.permission.BLUETOOTH_SCAN };
-					        }
-				        }
-			        }
-			        if (permissions == null && connect) {
-				        request = REQUEST_BLUETOOTH_CONNECT_PERMISSION;
-				        permissions = new String[] { Manifest.permission.BLUETOOTH_CONNECT };
-			        }
-			        if (permissions != null) {
-				        return requestPermissions(activity, permissions, request);
-			        }
-                }
-                return true;
+			case "BLUETOOTH":
+			case "BLUETOOTH_ADMIN":
+			case "BLUETOOTH_ADVERTISE":
+			case "BLUETOOTH_CONNECT":
+			case "BLUETOOTH_SCAN":
+			case Manifest.permission.BLUETOOTH:
+			case Manifest.permission.BLUETOOTH_ADMIN:
+			case Manifest.permission.BLUETOOTH_ADVERTISE:
+			case Manifest.permission.BLUETOOTH_CONNECT:
+			case Manifest.permission.BLUETOOTH_SCAN:
+				if (Build.VERSION.SDK_INT > Build.VERSION_CODES.R) { // Bluetooth permissions are only considered dangerous at runtime above API level 30
+					int request = 0;
+					boolean connect = false;
+					String[] permissions = null;
+					if (ContextCompat.checkSelfPermission(activity, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+						connect = true;
+					}
+					if (name.equals("BLUETOOTH_ADVERTISE")) {
+						if (ContextCompat.checkSelfPermission(activity, Manifest.permission.BLUETOOTH_ADVERTISE) != PackageManager.PERMISSION_GRANTED) {
+							request = REQUEST_BLUETOOTH_ADVERTISE_PERMISSION;
+							if (connect) {
+								permissions = new String[] { Manifest.permission.BLUETOOTH_ADVERTISE, Manifest.permission.BLUETOOTH_CONNECT };
+							} else {
+								permissions = new String[] { Manifest.permission.BLUETOOTH_ADVERTISE };
+							}
+						}
+					} else if (name.equals("BLUETOOTH_SCAN")) {
+						if (ContextCompat.checkSelfPermission(activity, Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) {
+							request = REQUEST_BLUETOOTH_SCAN_PERMISSION;
+							if (connect) {
+								permissions = new String[] { Manifest.permission.BLUETOOTH_SCAN, Manifest.permission.BLUETOOTH_CONNECT };
+							} else {
+								permissions = new String[] { Manifest.permission.BLUETOOTH_SCAN };
+							}
+						}
+					}
+					if (permissions == null && connect) {
+						request = REQUEST_BLUETOOTH_CONNECT_PERMISSION;
+						permissions = new String[] { Manifest.permission.BLUETOOTH_CONNECT };
+					}
+					if (permissions != null) {
+						return requestPermissions(activity, permissions, request);
+					}
+				}
+				return true;
 
 			default:
 				// Check if the given permission is a dangerous permission
 				if (isDangerousPermission(activity, permissionName)) {
-				    return requestPermissions(activity, new String[] { permissionName }, REQUEST_SINGLE_PERMISSION_REQ_CODE);
+					return requestPermissions(activity, new String[] { permissionName }, REQUEST_SINGLE_PERMISSION_REQ_CODE);
 				} else {
 					// Unknown permission - return false as it can't be granted.
 					Log.w(TAG, "Unable to identify permission " + permissionName, e);
@@ -194,7 +193,7 @@ public final class PermissionsUtil {
 				break;
 		}
 
-        return true;
+		return true;
 	}
 
 	/**
