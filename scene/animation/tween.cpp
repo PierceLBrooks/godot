@@ -50,6 +50,7 @@ Tween::interpolater Tween::interpolaters[Tween::TRANS_MAX][Tween::EASE_MAX] = {
 	{ &circ::in, &circ::out, &circ::in_out, &circ::out_in },
 	{ &bounce::in, &bounce::out, &bounce::in_out, &bounce::out_in },
 	{ &back::in, &back::out, &back::in_out, &back::out_in },
+	{ &spring::in, &spring::out, &spring::in_out, &spring::out_in },
 };
 
 void Tweener::set_tween(const Ref<Tween> &p_tween) {
@@ -103,7 +104,15 @@ Ref<PropertyTweener> Tween::tween_property(const Object *p_target, const NodePat
 	CHECK_VALID();
 
 	Vector<StringName> property_subnames = p_property.get_as_property_path().get_subnames();
-	if (!_validate_type_match(p_target->get_indexed(property_subnames), p_to)) {
+#ifdef DEBUG_ENABLED
+	bool prop_valid;
+	const Variant &prop_value = p_target->get_indexed(property_subnames, &prop_valid);
+	ERR_FAIL_COND_V_MSG(!prop_valid, nullptr, vformat("The tweened property \"%s\" does not exist in object \"%s\".", p_property, p_target));
+#else
+	const Variant &prop_value = p_target->get_indexed(property_subnames);
+#endif
+
+	if (!_validate_type_match(prop_value, p_to)) {
 		return nullptr;
 	}
 
@@ -283,10 +292,6 @@ bool Tween::step(double p_delta) {
 		return false;
 	}
 
-	if (!running) {
-		return true;
-	}
-
 	if (is_bound) {
 		Node *node = get_bound_node();
 		if (node) {
@@ -296,6 +301,10 @@ bool Tween::step(double p_delta) {
 		} else {
 			return false;
 		}
+	}
+
+	if (!running) {
+		return true;
 	}
 
 	if (!started) {
@@ -411,13 +420,8 @@ Variant Tween::interpolate_variant(const Variant &p_initial_val, const Variant &
 	ERR_FAIL_INDEX_V(p_trans, TransitionType::TRANS_MAX, Variant());
 	ERR_FAIL_INDEX_V(p_ease, EaseType::EASE_MAX, Variant());
 
-	// Special case for bool.
-	if (p_initial_val.get_type() == Variant::BOOL) {
-		return run_equation(p_trans, p_ease, p_time, p_initial_val, p_delta_val, p_duration) >= 0.5;
-	}
-
 	Variant ret = Animation::add_variant(p_initial_val, p_delta_val);
-	ret = Animation::interpolate_variant(p_initial_val, ret, run_equation(p_trans, p_ease, p_time, 0.0, 1.0, p_duration));
+	ret = Animation::interpolate_variant(p_initial_val, ret, run_equation(p_trans, p_ease, p_time, 0.0, 1.0, p_duration), p_initial_val.is_string());
 	return ret;
 }
 
@@ -483,6 +487,7 @@ void Tween::_bind_methods() {
 	BIND_ENUM_CONSTANT(TRANS_CIRC);
 	BIND_ENUM_CONSTANT(TRANS_BOUNCE);
 	BIND_ENUM_CONSTANT(TRANS_BACK);
+	BIND_ENUM_CONSTANT(TRANS_SPRING);
 
 	BIND_ENUM_CONSTANT(EASE_IN);
 	BIND_ENUM_CONSTANT(EASE_OUT);
@@ -544,8 +549,9 @@ void PropertyTweener::start() {
 		return;
 	}
 
-	if (do_continue) {
+	if (do_continue && Math::is_zero_approx(delay)) {
 		initial_val = target_instance->get_indexed(property);
+		do_continue = false;
 	}
 
 	if (relative) {
@@ -570,6 +576,10 @@ bool PropertyTweener::step(double &r_delta) {
 	if (elapsed_time < delay) {
 		r_delta = 0;
 		return true;
+	} else if (do_continue && !Math::is_zero_approx(delay)) {
+		initial_val = target_instance->get_indexed(property);
+		delta_val = Animation::subtract_variant(final_val, initial_val);
+		do_continue = false;
 	}
 
 	double time = MIN(elapsed_time - delay, duration);
@@ -668,6 +678,10 @@ bool CallbackTweener::step(double &r_delta) {
 		return false;
 	}
 
+	if (!callback.is_valid()) {
+		return false;
+	}
+
 	elapsed_time += r_delta;
 	if (elapsed_time >= delay) {
 		Variant result;
@@ -726,6 +740,10 @@ void MethodTweener::start() {
 
 bool MethodTweener::step(double &r_delta) {
 	if (finished) {
+		return false;
+	}
+
+	if (!callback.is_valid()) {
 		return false;
 	}
 

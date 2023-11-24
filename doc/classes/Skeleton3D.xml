@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<class name="Skeleton3D" inherits="Node3D" version="4.1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../class.xsd">
+<class name="Skeleton3D" inherits="Node3D" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../class.xsd">
 	<brief_description>
-		Skeleton for characters and animated objects.
+		A node containing a bone hierarchy, used to create a 3D skeletal animation.
 	</brief_description>
 	<description>
-		Skeleton3D provides a hierarchical interface for managing bones, including pose, rest and animation (see [Animation]). It can also use ragdoll physics.
-		The overall transform of a bone with respect to the skeleton is determined by the following hierarchical order: rest pose, custom pose and pose.
-		Note that "global pose" below refers to the overall transform of the bone with respect to skeleton, so it not the actual global/world transform of the bone.
+		[Skeleton3D] provides an interface for managing a hierarchy of bones, including pose, rest and animation (see [Animation]). It can also use ragdoll physics.
+		The overall transform of a bone with respect to the skeleton is determined by bone pose. Bone rest defines the initial transform of the bone pose.
+		Note that "global pose" below refers to the overall transform of the bone with respect to skeleton, so it is not the actual global/world transform of the bone.
 		To setup different types of inverse kinematics, consider using [SkeletonIK3D], or add a custom IK implementation in [method Node._process] as a child node.
 	</description>
 	<tutorials>
@@ -49,6 +49,7 @@
 			<return type="void" />
 			<description>
 				Force updates the bone transforms/poses for all bones in the skeleton.
+				[i]Deprecated.[/i] Do not use.
 			</description>
 		</method>
 		<method name="force_update_bone_child_transform">
@@ -118,25 +119,28 @@
 			<return type="Transform3D" />
 			<param index="0" name="bone_idx" type="int" />
 			<description>
-				Returns the pose transform of the specified bone. Pose is applied on top of the custom pose, which is applied on top the rest pose.
+				Returns the pose transform of the specified bone.
 			</description>
 		</method>
 		<method name="get_bone_pose_position" qualifiers="const">
 			<return type="Vector3" />
 			<param index="0" name="bone_idx" type="int" />
 			<description>
+				Returns the pose position of the bone at [param bone_idx]. The returned [Vector3] is in the local coordinate space of the [Skeleton3D] node.
 			</description>
 		</method>
 		<method name="get_bone_pose_rotation" qualifiers="const">
 			<return type="Quaternion" />
 			<param index="0" name="bone_idx" type="int" />
 			<description>
+				Returns the pose rotation of the bone at [param bone_idx]. The returned [Quaternion] is local to the bone with respect to the rotation of any parent bones.
 			</description>
 		</method>
 		<method name="get_bone_pose_scale" qualifiers="const">
 			<return type="Vector3" />
 			<param index="0" name="bone_idx" type="int" />
 			<description>
+				Returns the pose scale of the bone at [param bone_idx].
 			</description>
 		</method>
 		<method name="get_bone_rest" qualifiers="const">
@@ -264,6 +268,7 @@
 			<param index="0" name="bone_idx" type="int" />
 			<param index="1" name="position" type="Vector3" />
 			<description>
+				Sets the pose position of the bone at [param bone_idx] to [param position]. [param position] is a [Vector3] describing a position local to the [Skeleton3D] node.
 			</description>
 		</method>
 		<method name="set_bone_pose_rotation">
@@ -271,6 +276,7 @@
 			<param index="0" name="bone_idx" type="int" />
 			<param index="1" name="rotation" type="Quaternion" />
 			<description>
+				Sets the pose rotation of the bone at [param bone_idx] to [param rotation]. [param rotation] is a [Quaternion] describing a rotation in the bone's local coordinate space with respect to the rotation of any parent bones.
 			</description>
 		</method>
 		<method name="set_bone_pose_scale">
@@ -278,6 +284,7 @@
 			<param index="0" name="bone_idx" type="int" />
 			<param index="1" name="scale" type="Vector3" />
 			<description>
+				Sets the pose scale of the bone at [param bone_idx] to [param scale].
 			</description>
 		</method>
 		<method name="set_bone_rest">
@@ -300,7 +307,7 @@
 		<member name="animate_physical_bones" type="bool" setter="set_animate_physical_bones" getter="get_animate_physical_bones" default="true">
 		</member>
 		<member name="motion_scale" type="float" setter="set_motion_scale" getter="get_motion_scale" default="1.0">
-			Multiplies the position 3D track animation.
+			Multiplies the 3D position track animation.
 			[b]Note:[/b] Unless this value is [code]1.0[/code], the key value in animation will not match the actual position value.
 		</member>
 		<member name="show_rest_only" type="bool" setter="set_show_rest_only" getter="is_show_rest_only" default="false">

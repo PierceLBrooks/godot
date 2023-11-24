@@ -31,11 +31,9 @@
 #include "primitive_meshes.h"
 
 #include "core/config/project_settings.h"
-#include "core/core_string_names.h"
 #include "scene/resources/theme.h"
 #include "scene/theme/theme_db.h"
 #include "servers/rendering_server.h"
-#include "thirdparty/misc/clipper.hpp"
 #include "thirdparty/misc/polypartition.h"
 
 #define PADDING_REF_SIZE 1024.0
@@ -183,7 +181,7 @@ TypedArray<Array> PrimitiveMesh::surface_get_blend_shape_arrays(int p_surface) c
 BitField<Mesh::ArrayFormat> PrimitiveMesh::surface_get_format(int p_idx) const {
 	ERR_FAIL_INDEX_V(p_idx, 1, 0);
 
-	uint32_t mesh_format = RS::ARRAY_FORMAT_VERTEX | RS::ARRAY_FORMAT_NORMAL | RS::ARRAY_FORMAT_TANGENT | RS::ARRAY_FORMAT_TEX_UV | RS::ARRAY_FORMAT_INDEX;
+	uint64_t mesh_format = RS::ARRAY_FORMAT_VERTEX | RS::ARRAY_FORMAT_NORMAL | RS::ARRAY_FORMAT_TANGENT | RS::ARRAY_FORMAT_TEX_UV | RS::ARRAY_FORMAT_INDEX;
 	if (add_uv2) {
 		mesh_format |= RS::ARRAY_FORMAT_TEX_UV2;
 	}
@@ -1302,7 +1300,11 @@ void PlaneMesh::_create_mesh_array(Array &p_arr) const {
 				points.push_back(Vector3(-x, z, 0.0) + center_offset);
 			}
 			normals.push_back(normal);
-			ADD_TANGENT(1.0, 0.0, 0.0, 1.0);
+			if (orientation == FACE_X) {
+				ADD_TANGENT(0.0, 0.0, -1.0, 1.0);
+			} else {
+				ADD_TANGENT(1.0, 0.0, 0.0, 1.0);
+			}
 			uvs.push_back(Vector2(1.0 - u, 1.0 - v)); /* 1.0 - uv to match orientation with Quad */
 			point++;
 
@@ -2068,8 +2070,8 @@ void TorusMesh::_bind_methods() {
 
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "inner_radius", PROPERTY_HINT_RANGE, "0.001,1000.0,0.001,or_greater,exp"), "set_inner_radius", "get_inner_radius");
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "outer_radius", PROPERTY_HINT_RANGE, "0.001,1000.0,0.001,or_greater,exp"), "set_outer_radius", "get_outer_radius");
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "rings", PROPERTY_HINT_RANGE, "3,128,1"), "set_rings", "get_rings");
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "ring_segments", PROPERTY_HINT_RANGE, "3,64,1"), "set_ring_segments", "get_ring_segments");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "rings", PROPERTY_HINT_RANGE, "3,128,1,or_greater"), "set_rings", "get_rings");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "ring_segments", PROPERTY_HINT_RANGE, "3,64,1,or_greater"), "set_ring_segments", "get_ring_segments");
 }
 
 void TorusMesh::set_inner_radius(const float p_inner_radius) {
@@ -2195,11 +2197,11 @@ void TubeTrailMesh::set_curve(const Ref<Curve> &p_curve) {
 		return;
 	}
 	if (curve.is_valid()) {
-		curve->disconnect("changed", callable_mp(this, &TubeTrailMesh::_curve_changed));
+		curve->disconnect_changed(callable_mp(this, &TubeTrailMesh::_curve_changed));
 	}
 	curve = p_curve;
 	if (curve.is_valid()) {
-		curve->connect("changed", callable_mp(this, &TubeTrailMesh::_curve_changed));
+		curve->connect_changed(callable_mp(this, &TubeTrailMesh::_curve_changed));
 	}
 	_request_update();
 }
@@ -2534,11 +2536,11 @@ void RibbonTrailMesh::set_curve(const Ref<Curve> &p_curve) {
 		return;
 	}
 	if (curve.is_valid()) {
-		curve->disconnect("changed", callable_mp(this, &RibbonTrailMesh::_curve_changed));
+		curve->disconnect_changed(callable_mp(this, &RibbonTrailMesh::_curve_changed));
 	}
 	curve = p_curve;
 	if (curve.is_valid()) {
-		curve->connect("changed", callable_mp(this, &RibbonTrailMesh::_curve_changed));
+		curve->connect_changed(callable_mp(this, &RibbonTrailMesh::_curve_changed));
 	}
 	_request_update();
 }
@@ -2724,7 +2726,6 @@ void TextMesh::_generate_glyph_mesh_data(const GlyphMeshKey &p_key, const Glyph 
 	GlyphMeshData &gl_data = cache[p_key];
 
 	Dictionary d = TS->font_get_glyph_contours(p_gl.font_rid, p_gl.font_size, p_gl.index);
-	Vector2 origin = Vector2(p_gl.x_off, p_gl.y_off) * pixel_size;
 
 	PackedVector3Array points = d["points"];
 	PackedInt32Array contours = d["contours"];
@@ -2744,7 +2745,7 @@ void TextMesh::_generate_glyph_mesh_data(const GlyphMeshKey &p_key, const Glyph 
 		for (int32_t j = start; j <= end; j++) {
 			if (points[j].z == TextServer::CONTOUR_CURVE_TAG_ON) {
 				// Point on the curve.
-				Vector2 p = Vector2(points[j].x, points[j].y) * pixel_size + origin;
+				Vector2 p = Vector2(points[j].x, points[j].y) * pixel_size;
 				polygon.push_back(ContourPoint(p, true));
 			} else if (points[j].z == TextServer::CONTOUR_CURVE_TAG_OFF_CONIC) {
 				// Conic Bezier arc.
@@ -2778,7 +2779,7 @@ void TextMesh::_generate_glyph_mesh_data(const GlyphMeshKey &p_key, const Glyph 
 					real_t t2 = t * t;
 
 					Vector2 point = p1 + omt2 * (p0 - p1) + t2 * (p2 - p1);
-					Vector2 p = point * pixel_size + origin;
+					Vector2 p = point * pixel_size;
 					polygon.push_back(ContourPoint(p, false));
 					t += step;
 				}
@@ -2812,7 +2813,7 @@ void TextMesh::_generate_glyph_mesh_data(const GlyphMeshKey &p_key, const Glyph 
 				real_t t = step;
 				while (t < 1.0) {
 					Vector2 point = p0.bezier_interpolate(p1, p2, p3, t);
-					Vector2 p = point * pixel_size + origin;
+					Vector2 p = point * pixel_size;
 					polygon.push_back(ContourPoint(p, false));
 					t += step;
 				}
@@ -2909,9 +2910,6 @@ void TextMesh::_create_mesh_array(Array &p_arr) const {
 
 		String txt = (uppercase) ? TS->string_to_upper(xl_text, language) : xl_text;
 		TS->shaped_text_add_string(text_rid, txt, font->get_rids(), font_size, font->get_opentype_features(), language);
-		for (int i = 0; i < TextServer::SPACING_MAX; i++) {
-			TS->shaped_text_set_spacing(text_rid, TextServer::SpacingType(i), font->get_spacing(TextServer::SpacingType(i)));
-		}
 
 		TypedArray<Vector3i> stt;
 		if (st_parser == TextServer::STRUCTURED_TEXT_CUSTOM) {
@@ -2928,9 +2926,6 @@ void TextMesh::_create_mesh_array(Array &p_arr) const {
 		int spans = TS->shaped_get_span_count(text_rid);
 		for (int i = 0; i < spans; i++) {
 			TS->shaped_set_span_update_font(text_rid, i, font->get_rids(), font_size, font->get_opentype_features());
-		}
-		for (int i = 0; i < TextServer::SPACING_MAX; i++) {
-			TS->shaped_text_set_spacing(text_rid, TextServer::SpacingType(i), font->get_spacing(TextServer::SpacingType(i)));
 		}
 
 		dirty_font = false;
@@ -2967,8 +2962,24 @@ void TextMesh::_create_mesh_array(Array &p_arr) const {
 		}
 
 		if (horizontal_alignment == HORIZONTAL_ALIGNMENT_FILL) {
-			for (int i = 0; i < lines_rid.size() - 1; i++) {
-				TS->shaped_text_fit_to_width(lines_rid[i], (width > 0) ? width : max_line_w, TextServer::JUSTIFICATION_WORD_BOUND | TextServer::JUSTIFICATION_KASHIDA);
+			int jst_to_line = lines_rid.size();
+			if (lines_rid.size() == 1 && jst_flags.has_flag(TextServer::JUSTIFICATION_DO_NOT_SKIP_SINGLE_LINE)) {
+				jst_to_line = lines_rid.size();
+			} else {
+				if (jst_flags.has_flag(TextServer::JUSTIFICATION_SKIP_LAST_LINE)) {
+					jst_to_line = lines_rid.size() - 1;
+				}
+				if (jst_flags.has_flag(TextServer::JUSTIFICATION_SKIP_LAST_LINE_WITH_VISIBLE_CHARS)) {
+					for (int i = lines_rid.size() - 1; i >= 0; i--) {
+						if (TS->shaped_text_has_visible_chars(lines_rid[i])) {
+							jst_to_line = i;
+							break;
+						}
+					}
+				}
+			}
+			for (int i = 0; i < jst_to_line; i++) {
+				TS->shaped_text_fit_to_width(lines_rid[i], (width > 0) ? width : max_line_w, jst_flags);
 			}
 		}
 		dirty_lines = false;
@@ -3037,6 +3048,7 @@ void TextMesh::_create_mesh_array(Array &p_arr) const {
 				GlyphMeshKey key = GlyphMeshKey(glyphs[j].font_rid.get_id(), glyphs[j].index);
 				_generate_glyph_mesh_data(key, glyphs[j]);
 				GlyphMeshData &gl_data = cache[key];
+				const Vector2 gl_of = Vector2(glyphs[j].x_off, glyphs[j].y_off) * pixel_size;
 
 				p_size += glyphs[j].repeat * gl_data.triangles.size() * ((has_depth) ? 2 : 1);
 				i_size += glyphs[j].repeat * gl_data.triangles.size() * ((has_depth) ? 2 : 1);
@@ -3049,10 +3061,10 @@ void TextMesh::_create_mesh_array(Array &p_arr) const {
 				}
 
 				for (int r = 0; r < glyphs[j].repeat; r++) {
-					min_p.x = MIN(gl_data.min_p.x + offset.x, min_p.x);
-					min_p.y = MIN(gl_data.min_p.y - offset.y, min_p.y);
-					max_p.x = MAX(gl_data.max_p.x + offset.x, max_p.x);
-					max_p.y = MAX(gl_data.max_p.y - offset.y, max_p.y);
+					min_p.x = MIN(gl_data.min_p.x + offset.x + gl_of.x, min_p.x);
+					min_p.y = MIN(gl_data.min_p.y - offset.y + gl_of.y, min_p.y);
+					max_p.x = MAX(gl_data.max_p.x + offset.x + gl_of.x, max_p.x);
+					max_p.y = MAX(gl_data.max_p.y - offset.y + gl_of.y, max_p.y);
 
 					offset.x += glyphs[j].advance * pixel_size;
 				}
@@ -3118,12 +3130,13 @@ void TextMesh::_create_mesh_array(Array &p_arr) const {
 
 				int64_t ts = gl_data.triangles.size();
 				const Vector2 *ts_ptr = gl_data.triangles.ptr();
+				const Vector2 gl_of = Vector2(glyphs[j].x_off, glyphs[j].y_off) * pixel_size;
 
 				for (int r = 0; r < glyphs[j].repeat; r++) {
 					for (int k = 0; k < ts; k += 3) {
 						// Add front face.
 						for (int l = 0; l < 3; l++) {
-							Vector3 point = Vector3(ts_ptr[k + l].x + offset.x, -ts_ptr[k + l].y + offset.y, depth / 2.0);
+							Vector3 point = Vector3(ts_ptr[k + l].x + offset.x + gl_of.x, -ts_ptr[k + l].y + offset.y - gl_of.y, depth / 2.0);
 							vertices_ptr[p_idx] = point;
 							normals_ptr[p_idx] = Vector3(0.0, 0.0, 1.0);
 							if (has_depth) {
@@ -3141,7 +3154,7 @@ void TextMesh::_create_mesh_array(Array &p_arr) const {
 						if (has_depth) {
 							// Add back face.
 							for (int l = 2; l >= 0; l--) {
-								Vector3 point = Vector3(ts_ptr[k + l].x + offset.x, -ts_ptr[k + l].y + offset.y, -depth / 2.0);
+								Vector3 point = Vector3(ts_ptr[k + l].x + offset.x + gl_of.x, -ts_ptr[k + l].y + offset.y - gl_of.y, -depth / 2.0);
 								vertices_ptr[p_idx] = point;
 								normals_ptr[p_idx] = Vector3(0.0, 0.0, -1.0);
 								uvs_ptr[p_idx] = Vector2(Math::remap(point.x, min_p.x, max_p.x, real_t(0.0), real_t(1.0)), Math::remap(point.y, -max_p.y, -min_p.y, real_t(0.8), real_t(0.4)));
@@ -3174,10 +3187,10 @@ void TextMesh::_create_mesh_array(Array &p_arr) const {
 								real_t seg_len = (ps_ptr[next].point - ps_ptr[l].point).length();
 
 								Vector3 quad_faces[4] = {
-									Vector3(ps_ptr[l].point.x + offset.x, -ps_ptr[l].point.y + offset.y, -depth / 2.0),
-									Vector3(ps_ptr[next].point.x + offset.x, -ps_ptr[next].point.y + offset.y, -depth / 2.0),
-									Vector3(ps_ptr[l].point.x + offset.x, -ps_ptr[l].point.y + offset.y, depth / 2.0),
-									Vector3(ps_ptr[next].point.x + offset.x, -ps_ptr[next].point.y + offset.y, depth / 2.0),
+									Vector3(ps_ptr[l].point.x + offset.x + gl_of.x, -ps_ptr[l].point.y + offset.y - gl_of.y, -depth / 2.0),
+									Vector3(ps_ptr[next].point.x + offset.x + gl_of.x, -ps_ptr[next].point.y + offset.y - gl_of.y, -depth / 2.0),
+									Vector3(ps_ptr[l].point.x + offset.x + gl_of.x, -ps_ptr[l].point.y + offset.y - gl_of.y, depth / 2.0),
+									Vector3(ps_ptr[next].point.x + offset.x + gl_of.x, -ps_ptr[next].point.y + offset.y - gl_of.y, depth / 2.0),
 								};
 								for (int m = 0; m < 4; m++) {
 									const Vector2 &d = ((m % 2) == 0) ? d1 : d2;
@@ -3293,6 +3306,9 @@ void TextMesh::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_autowrap_mode", "autowrap_mode"), &TextMesh::set_autowrap_mode);
 	ClassDB::bind_method(D_METHOD("get_autowrap_mode"), &TextMesh::get_autowrap_mode);
 
+	ClassDB::bind_method(D_METHOD("set_justification_flags", "justification_flags"), &TextMesh::set_justification_flags);
+	ClassDB::bind_method(D_METHOD("get_justification_flags"), &TextMesh::get_justification_flags);
+
 	ClassDB::bind_method(D_METHOD("set_depth", "depth"), &TextMesh::set_depth);
 	ClassDB::bind_method(D_METHOD("get_depth"), &TextMesh::get_depth);
 
@@ -3335,6 +3351,7 @@ void TextMesh::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "uppercase"), "set_uppercase", "is_uppercase");
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "line_spacing", PROPERTY_HINT_NONE, "suffix:px"), "set_line_spacing", "get_line_spacing");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "autowrap_mode", PROPERTY_HINT_ENUM, "Off,Arbitrary,Word,Word (Smart)"), "set_autowrap_mode", "get_autowrap_mode");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "justification_flags", PROPERTY_HINT_FLAGS, "Kashida Justification:1,Word Justification:2,Justify Only After Last Tab:8,Skip Last Line:32,Skip Last Line With Visible Characters:64,Do Not Skip Single Line:128"), "set_justification_flags", "get_justification_flags");
 
 	ADD_GROUP("Mesh", "");
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "pixel_size", PROPERTY_HINT_RANGE, "0.0001,128,0.0001,suffix:m"), "set_pixel_size", "get_pixel_size");
@@ -3427,13 +3444,13 @@ void TextMesh::_font_changed() {
 void TextMesh::set_font(const Ref<Font> &p_font) {
 	if (font_override != p_font) {
 		if (font_override.is_valid()) {
-			font_override->disconnect(CoreStringNames::get_singleton()->changed, Callable(this, "_font_changed"));
+			font_override->disconnect_changed(Callable(this, "_font_changed"));
 		}
 		font_override = p_font;
 		dirty_font = true;
 		dirty_cache = true;
 		if (font_override.is_valid()) {
-			font_override->connect(CoreStringNames::get_singleton()->changed, Callable(this, "_font_changed"));
+			font_override->connect_changed(Callable(this, "_font_changed"));
 		}
 		_request_update();
 	}
@@ -3448,32 +3465,24 @@ Ref<Font> TextMesh::_get_font_or_default() const {
 		return font_override;
 	}
 
-	// Check the project-defined Theme resource.
-	if (ThemeDB::get_singleton()->get_project_theme().is_valid()) {
-		List<StringName> theme_types;
-		ThemeDB::get_singleton()->get_project_theme()->get_type_dependencies(get_class_name(), StringName(), &theme_types);
+	StringName theme_name = "font";
+	List<StringName> theme_types;
+	ThemeDB::get_singleton()->get_native_type_dependencies(get_class_name(), &theme_types);
+
+	ThemeContext *global_context = ThemeDB::get_singleton()->get_default_theme_context();
+	for (const Ref<Theme> &theme : global_context->get_themes()) {
+		if (theme.is_null()) {
+			continue;
+		}
 
 		for (const StringName &E : theme_types) {
-			if (ThemeDB::get_singleton()->get_project_theme()->has_theme_item(Theme::DATA_TYPE_FONT, "font", E)) {
-				return ThemeDB::get_singleton()->get_project_theme()->get_theme_item(Theme::DATA_TYPE_FONT, "font", E);
+			if (theme->has_font(theme_name, E)) {
+				return theme->get_font(theme_name, E);
 			}
 		}
 	}
 
-	// Lastly, fall back on the items defined in the default Theme, if they exist.
-	{
-		List<StringName> theme_types;
-		ThemeDB::get_singleton()->get_default_theme()->get_type_dependencies(get_class_name(), StringName(), &theme_types);
-
-		for (const StringName &E : theme_types) {
-			if (ThemeDB::get_singleton()->get_default_theme()->has_theme_item(Theme::DATA_TYPE_FONT, "font", E)) {
-				return ThemeDB::get_singleton()->get_default_theme()->get_theme_item(Theme::DATA_TYPE_FONT, "font", E);
-			}
-		}
-	}
-
-	// If they don't exist, use any type to return the default/empty value.
-	return ThemeDB::get_singleton()->get_default_theme()->get_theme_item(Theme::DATA_TYPE_FONT, "font", StringName());
+	return global_context->get_fallback_theme()->get_font(theme_name, StringName());
 }
 
 void TextMesh::set_font_size(int p_size) {
@@ -3510,6 +3519,18 @@ void TextMesh::set_autowrap_mode(TextServer::AutowrapMode p_mode) {
 
 TextServer::AutowrapMode TextMesh::get_autowrap_mode() const {
 	return autowrap_mode;
+}
+
+void TextMesh::set_justification_flags(BitField<TextServer::JustificationFlag> p_flags) {
+	if (jst_flags != p_flags) {
+		jst_flags = p_flags;
+		dirty_lines = true;
+		_request_update();
+	}
+}
+
+BitField<TextServer::JustificationFlag> TextMesh::get_justification_flags() const {
+	return jst_flags;
 }
 
 void TextMesh::set_depth(real_t p_depth) {

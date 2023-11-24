@@ -32,6 +32,7 @@ package org.godotengine.godot.utils;
 
 import android.Manifest;
 import android.app.Activity;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
@@ -42,6 +43,8 @@ import android.os.Environment;
 import android.provider.Settings;
 import android.util.Log;
 
+
+import androidx.annotation.Nullable;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
@@ -49,11 +52,11 @@ import org.godotengine.godot.BuildConfig;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 /**
  * This class includes utility functions for Android permissions related operations.
  */
-
 public final class PermissionsUtil {
 	private static final String TAG = PermissionsUtil.class.getSimpleName();
 
@@ -64,6 +67,7 @@ public final class PermissionsUtil {
 	static final int REQUEST_BLUETOOTH_CONNECT_PERMISSION = 5;
 	static final int REQUEST_BLUETOOTH_SCAN_PERMISSION = 6;
 	public static final int REQUEST_ALL_PERMISSION_REQ_CODE = 1001;
+	public static final int REQUEST_SINGLE_PERMISSION_REQ_CODE = 1002;
 	public static final int REQUEST_MANAGE_EXTERNAL_STORAGE_REQ_CODE = 2002;
 
 	private PermissionsUtil() {
@@ -96,13 +100,13 @@ public final class PermissionsUtil {
 
 	/**
 	 * Request a dangerous permission. name must be specified in <a href="https://github.com/aosp-mirror/platform_frameworks_base/blob/master/core/res/AndroidManifest.xml">this</a>
-	 * @param name the name of the requested permission.
+	 * @param permissionName the name of the requested permission.
 	 * @param activity the caller activity for this method.
 	 * @return true/false. "true" if permission was granted otherwise returns "false".
 	 */
-	public static boolean requestPermission(String name, Activity activity) {
+	public static boolean requestPermission(String permissionName, Activity activity) {
 		if ("debug".equalsIgnoreCase(BuildConfig.BUILD_TYPE)) {
-			Log.i(TAG, "Request permission @ " + name);
+			Log.i(TAG, "Request permission @ " + permissionName);
 		}
 
 		if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
@@ -110,54 +114,87 @@ public final class PermissionsUtil {
 			return true;
 		}
 
-		if (name.equals("RECORD_AUDIO") && ContextCompat.checkSelfPermission(activity, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-			return requestPermissions(activity, new String[] { Manifest.permission.RECORD_AUDIO }, REQUEST_RECORD_AUDIO_PERMISSION);
-		}
-
-		if (name.equals("CAMERA") && ContextCompat.checkSelfPermission(activity, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
-			return requestPermissions(activity, new String[] { Manifest.permission.CAMERA }, REQUEST_CAMERA_PERMISSION);
-		}
-
-		if (name.equals("VIBRATE") && ContextCompat.checkSelfPermission(activity, Manifest.permission.VIBRATE) != PackageManager.PERMISSION_GRANTED) {
-			return requestPermissions(activity, new String[] { Manifest.permission.VIBRATE }, REQUEST_VIBRATE_PERMISSION);
-		}
-
-		if (name.contains("BLUETOOTH") && Build.VERSION.SDK_INT > Build.VERSION_CODES.R) { // Bluetooth permissions are only considered dangerous at runtime above API level 30
-			int request = 0;
-			boolean connect = false;
-			String[] permissions = null;
-			if (ContextCompat.checkSelfPermission(activity, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
-				connect = true;
-			}
-			if (name.equals("BLUETOOTH_ADVERTISE")) {
-				if (ContextCompat.checkSelfPermission(activity, Manifest.permission.BLUETOOTH_ADVERTISE) != PackageManager.PERMISSION_GRANTED) {
-					request = REQUEST_BLUETOOTH_ADVERTISE_PERMISSION;
-					if (connect) {
-						permissions = new String[] { Manifest.permission.BLUETOOTH_ADVERTISE, Manifest.permission.BLUETOOTH_CONNECT };
-					} else {
-						permissions = new String[] { Manifest.permission.BLUETOOTH_ADVERTISE };
-					}
+		switch (permissionName) {
+			case "RECORD_AUDIO":
+			case Manifest.permission.RECORD_AUDIO:
+				if (ContextCompat.checkSelfPermission(activity, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+					return requestPermissions(activity, new String[] { Manifest.permission.RECORD_AUDIO }, REQUEST_RECORD_AUDIO_PERMISSION);
 				}
-			} else if (name.equals("BLUETOOTH_SCAN")) {
-				if (ContextCompat.checkSelfPermission(activity, Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) {
-					request = REQUEST_BLUETOOTH_SCAN_PERMISSION;
-					if (connect) {
-						permissions = new String[] { Manifest.permission.BLUETOOTH_SCAN, Manifest.permission.BLUETOOTH_CONNECT };
-					} else {
-						permissions = new String[] { Manifest.permission.BLUETOOTH_SCAN };
-					}
+				return true;
+
+			case "CAMERA":
+			case Manifest.permission.CAMERA:
+				if (ContextCompat.checkSelfPermission(activity, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+					return requestPermissions(activity, new String[] { Manifest.permission.CAMERA }, REQUEST_CAMERA_PERMISSION);
 				}
-			}
-			if (permissions == null && connect) {
-				request = REQUEST_BLUETOOTH_CONNECT_PERMISSION;
-				permissions = new String[] { Manifest.permission.BLUETOOTH_CONNECT };
-			}
-			if (permissions != null) {
-				return requestPermissions(activity, permissions, request);
-			}
+				return true;
+
+			case "VIBRATE":
+			case Manifest.permission.VIBRATE:
+				if (ContextCompat.checkSelfPermission(activity, Manifest.permission.VIBRATE) != PackageManager.PERMISSION_GRANTED) {
+					return requestPermissions(activity, new String[] { Manifest.permission.VIBRATE }, REQUEST_VIBRATE_PERMISSION);
+				}
+				return true;
+
+            case "BLUETOOTH":
+            case "BLUETOOTH_ADMIN":
+            case "BLUETOOTH_ADVERTISE":
+            case "BLUETOOTH_CONNECT":
+            case "BLUETOOTH_SCAN":
+            case Manifest.permission.BLUETOOTH:
+            case Manifest.permission.BLUETOOTH_ADMIN:
+            case Manifest.permission.BLUETOOTH_ADVERTISE:
+            case Manifest.permission.BLUETOOTH_CONNECT:
+            case Manifest.permission.BLUETOOTH_SCAN:
+                if (Build.VERSION.SDK_INT > Build.VERSION_CODES.R) { // Bluetooth permissions are only considered dangerous at runtime above API level 30
+			        int request = 0;
+			        boolean connect = false;
+			        String[] permissions = null;
+			        if (ContextCompat.checkSelfPermission(activity, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+				        connect = true;
+			        }
+			        if (name.equals("BLUETOOTH_ADVERTISE")) {
+				        if (ContextCompat.checkSelfPermission(activity, Manifest.permission.BLUETOOTH_ADVERTISE) != PackageManager.PERMISSION_GRANTED) {
+					        request = REQUEST_BLUETOOTH_ADVERTISE_PERMISSION;
+					        if (connect) {
+						        permissions = new String[] { Manifest.permission.BLUETOOTH_ADVERTISE, Manifest.permission.BLUETOOTH_CONNECT };
+					        } else {
+						        permissions = new String[] { Manifest.permission.BLUETOOTH_ADVERTISE };
+					        }
+				        }
+			        } else if (name.equals("BLUETOOTH_SCAN")) {
+				        if (ContextCompat.checkSelfPermission(activity, Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) {
+					        request = REQUEST_BLUETOOTH_SCAN_PERMISSION;
+					        if (connect) {
+						        permissions = new String[] { Manifest.permission.BLUETOOTH_SCAN, Manifest.permission.BLUETOOTH_CONNECT };
+					        } else {
+						        permissions = new String[] { Manifest.permission.BLUETOOTH_SCAN };
+					        }
+				        }
+			        }
+			        if (permissions == null && connect) {
+				        request = REQUEST_BLUETOOTH_CONNECT_PERMISSION;
+				        permissions = new String[] { Manifest.permission.BLUETOOTH_CONNECT };
+			        }
+			        if (permissions != null) {
+				        return requestPermissions(activity, permissions, request);
+			        }
+                }
+                return true;
+
+			default:
+				// Check if the given permission is a dangerous permission
+				if (isDangerousPermission(activity, permissionName)) {
+				    return requestPermissions(activity, new String[] { permissionName }, REQUEST_SINGLE_PERMISSION_REQ_CODE);
+				} else {
+					// Unknown permission - return false as it can't be granted.
+					Log.w(TAG, "Unable to identify permission " + permissionName, e);
+					return false;
+				}
+				break;
 		}
 
-		return true;
+        return true;
 	}
 
 	/**
@@ -166,6 +203,16 @@ public final class PermissionsUtil {
 	 * @return true/false. "true" if all permissions were granted otherwise returns "false".
 	 */
 	public static boolean requestManifestPermissions(Activity activity) {
+		return requestManifestPermissions(activity, null);
+	}
+
+	/**
+	 * Request dangerous permissions which are defined in the Android manifest file from the user.
+	 * @param activity the caller activity for this method.
+	 * @param excludes Set of permissions to exclude from the request
+	 * @return true/false. "true" if all permissions were granted otherwise returns "false".
+	 */
+	public static boolean requestManifestPermissions(Activity activity, @Nullable Set<String> excludes) {
 		if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
 			return true;
 		}
@@ -183,9 +230,13 @@ public final class PermissionsUtil {
 
 		List<String> requestedPermissions = new ArrayList<>();
 		for (String manifestPermission : manifestPermissions) {
+			if (excludes != null && excludes.contains(manifestPermission)) {
+				continue;
+			}
 			try {
 				if (manifestPermission.equals(Manifest.permission.MANAGE_EXTERNAL_STORAGE)) {
 					if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !Environment.isExternalStorageManager()) {
+						Log.d(TAG, "Requesting permission " + manifestPermission);
 						try {
 							Intent intent = new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
 							intent.setData(Uri.parse(String.format("package:%s", activity.getPackageName())));
@@ -197,6 +248,7 @@ public final class PermissionsUtil {
 					}
 				} else {
 					if (isPermissionDangerous(activity, manifestPermission) && ContextCompat.checkSelfPermission(activity, manifestPermission) != PackageManager.PERMISSION_GRANTED) {
+						Log.d(TAG, "Requesting permission " + manifestPermission);
 						requestedPermissions.add(manifestPermission);
 					}
 				}
@@ -211,19 +263,19 @@ public final class PermissionsUtil {
 			return true;
 		}
 
-		activity.requestPermissions(requestedPermissions.toArray(new String[0]), REQUEST_ALL_PERMISSION_REQ_CODE);
+		requestPermissions(activity, requestedPermissions.toArray(new String[0]), REQUEST_ALL_PERMISSION_REQ_CODE);
 		return false;
 	}
 
 	/**
 	 * With this function you can get the list of dangerous permissions that have been granted to the Android application.
-	 * @param activity the caller activity for this method.
+	 * @param context the caller context for this method.
 	 * @return granted permissions list
 	 */
-	public static String[] getGrantedPermissions(Activity activity) {
+	public static String[] getGrantedPermissions(Context context) {
 		String[] manifestPermissions = null;
 		try {
-			manifestPermissions = getManifestPermissions(activity);
+			manifestPermissions = getManifestPermissions(context);
 		} catch (PackageManager.NameNotFoundException e) {
 			e.printStackTrace();
 			return new String[0];
@@ -254,13 +306,13 @@ public final class PermissionsUtil {
 
 	/**
 	 * Check if the given permission is in the AndroidManifest.xml file.
-	 * @param activity the caller activity for this method.
+	 * @param context the caller context for this method.
 	 * @param permission the permession to look for in the manifest file.
 	 * @return "true" if the permission is in the manifest file of the activity, "false" otherwise.
 	 */
-	public static boolean hasManifestPermission(Activity activity, String permission) {
+	public static boolean hasManifestPermission(Context context, String permission) {
 		try {
-			for (String p : getManifestPermissions(activity)) {
+			for (String p : getManifestPermissions(context)) {
 				if (permission.equals(p))
 					return true;
 			}
@@ -272,13 +324,13 @@ public final class PermissionsUtil {
 
 	/**
 	 * Returns the permissions defined in the AndroidManifest.xml file.
-	 * @param activity the caller activity for this method.
+	 * @param context the caller context for this method.
 	 * @return manifest permissions list
 	 * @throws PackageManager.NameNotFoundException the exception is thrown when a given package, application, or component name cannot be found.
 	 */
-	private static String[] getManifestPermissions(Activity activity) throws PackageManager.NameNotFoundException {
-		PackageManager packageManager = activity.getPackageManager();
-		PackageInfo packageInfo = packageManager.getPackageInfo(activity.getPackageName(), PackageManager.GET_PERMISSIONS);
+	private static String[] getManifestPermissions(Context context) throws PackageManager.NameNotFoundException {
+		PackageManager packageManager = context.getPackageManager();
+		PackageInfo packageInfo = packageManager.getPackageInfo(context.getPackageName(), PackageManager.GET_PERMISSIONS);
 		if (packageInfo.requestedPermissions == null)
 			return new String[0];
 		return packageInfo.requestedPermissions;
@@ -286,13 +338,13 @@ public final class PermissionsUtil {
 
 	/**
 	 * Returns the information of the desired permission.
-	 * @param activity the caller activity for this method.
+	 * @param context the caller context for this method.
 	 * @param permission the name of the permission.
 	 * @return permission info object
 	 * @throws PackageManager.NameNotFoundException the exception is thrown when a given package, application, or component name cannot be found.
 	 */
-	private static PermissionInfo getPermissionInfo(Activity activity, String permission) throws PackageManager.NameNotFoundException {
-		PackageManager packageManager = activity.getPackageManager();
+	private static PermissionInfo getPermissionInfo(Context context, String permission) throws PackageManager.NameNotFoundException {
+		PackageManager packageManager = context.getPackageManager();
 		return packageManager.getPermissionInfo(permission, 0);
 	}
 

@@ -108,9 +108,7 @@ public class GodotLib {
 			GodotNetUtils netUtils,
 			DirectoryAccessHandler directoryAccessHandler,
 			FileAccessHandler fileAccessHandler,
-			boolean use_apk_expansion,
-			GodotTTS tts,
-			GodotBluetooth bluetooth);
+			boolean use_apk_expansion);
 
 	/**
 	 * Invoked on the main thread to clean up Godot native layer.
@@ -122,7 +120,7 @@ public class GodotLib {
 	 * Invoked on the GL thread to complete setup for the Godot native layer logic.
 	 * @param p_cmdline Command line arguments used to configure Godot native layer components.
 	 */
-	public static native boolean setup(String[] p_cmdline);
+	public static native boolean setup(String[] p_cmdline, GodotTTS tts, GodotBluetooth bluetooth);
 
 	/**
 	 * Invoked on the GL thread when the underlying Android surface has changed size.
@@ -168,7 +166,7 @@ public class GodotLib {
 	/**
 	 * Dispatch mouse events
 	 */
-	public static native void dispatchMouseEvent(int event, int buttonMask, float x, float y, float deltaX, float deltaY, boolean doubleClick, boolean sourceMouseRelative);
+	public static native void dispatchMouseEvent(int event, int buttonMask, float x, float y, float deltaX, float deltaY, boolean doubleClick, boolean sourceMouseRelative, float pressure, float tiltX, float tiltY);
 
 	public static native void magnify(float x, float y, float factor);
 
@@ -201,7 +199,7 @@ public class GodotLib {
 	/**
 	 * Forward regular key events.
 	 */
-	public static native void key(int p_physical_keycode, int p_unicode, int p_key_label, boolean p_pressed);
+	public static native void key(int p_physical_keycode, int p_unicode, int p_key_label, boolean p_pressed, boolean p_echo);
 
 	/**
 	 * Forward game device's key events.

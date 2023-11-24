@@ -373,6 +373,8 @@ protected:
 
 	static void _bind_methods();
 
+	static bool inform_variant_array(int &r_min, int &r_max); // Returns true if max and min are swapped.
+
 public:
 	int add_track(TrackType p_type, int p_at_pos = -1);
 	void remove_track(int p_track);
@@ -410,19 +412,23 @@ public:
 
 	int position_track_insert_key(int p_track, double p_time, const Vector3 &p_position);
 	Error position_track_get_key(int p_track, int p_key, Vector3 *r_position) const;
-	Error position_track_interpolate(int p_track, double p_time, Vector3 *r_interpolation) const;
+	Error try_position_track_interpolate(int p_track, double p_time, Vector3 *r_interpolation) const;
+	Vector3 position_track_interpolate(int p_track, double p_time) const;
 
 	int rotation_track_insert_key(int p_track, double p_time, const Quaternion &p_rotation);
 	Error rotation_track_get_key(int p_track, int p_key, Quaternion *r_rotation) const;
-	Error rotation_track_interpolate(int p_track, double p_time, Quaternion *r_interpolation) const;
+	Error try_rotation_track_interpolate(int p_track, double p_time, Quaternion *r_interpolation) const;
+	Quaternion rotation_track_interpolate(int p_track, double p_time) const;
 
 	int scale_track_insert_key(int p_track, double p_time, const Vector3 &p_scale);
 	Error scale_track_get_key(int p_track, int p_key, Vector3 *r_scale) const;
-	Error scale_track_interpolate(int p_track, double p_time, Vector3 *r_interpolation) const;
+	Error try_scale_track_interpolate(int p_track, double p_time, Vector3 *r_interpolation) const;
+	Vector3 scale_track_interpolate(int p_track, double p_time) const;
 
 	int blend_shape_track_insert_key(int p_track, double p_time, float p_blend);
 	Error blend_shape_track_get_key(int p_track, int p_key, float *r_blend) const;
-	Error blend_shape_track_interpolate(int p_track, double p_time, float *r_blend) const;
+	Error try_blend_shape_track_interpolate(int p_track, double p_time, float *r_blend) const;
+	float blend_shape_track_interpolate(int p_track, double p_time) const;
 
 	void track_set_interpolation_type(int p_track, InterpolationType p_interp);
 	InterpolationType track_get_interpolation_type(int p_track) const;
@@ -483,11 +489,19 @@ public:
 	void optimize(real_t p_allowed_velocity_err = 0.01, real_t p_allowed_angular_err = 0.01, int p_precision = 3);
 	void compress(uint32_t p_page_size = 8192, uint32_t p_fps = 120, float p_split_tolerance = 4.0); // 4.0 seems to be the split tolerance sweet spot from many tests
 
-	// Helper math functions for Variant.
+	// Helper functions for Variant.
+	static bool is_variant_interpolatable(const Variant p_value);
+
+	static Variant cast_to_blendwise(const Variant p_value);
+	static Variant cast_from_blendwise(const Variant p_value, const Variant::Type p_type);
+
+	static Variant string_to_array(const Variant p_value);
+	static Variant array_to_string(const Variant p_value);
+
 	static Variant add_variant(const Variant &a, const Variant &b);
 	static Variant subtract_variant(const Variant &a, const Variant &b);
 	static Variant blend_variant(const Variant &a, const Variant &b, float c);
-	static Variant interpolate_variant(const Variant &a, const Variant &b, float c);
+	static Variant interpolate_variant(const Variant &a, const Variant &b, float c, bool p_snap_array_element = false);
 
 	Animation();
 	~Animation();

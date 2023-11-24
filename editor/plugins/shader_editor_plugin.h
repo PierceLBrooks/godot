@@ -40,6 +40,11 @@ class ShaderCreateDialog;
 class TabContainer;
 class TextShaderEditor;
 class VisualShaderEditor;
+class WindowWrapper;
+
+#ifdef MINGW_ENABLED
+#undef FILE_OPEN
+#endif
 
 class ShaderEditorPlugin : public EditorPlugin {
 	GDCLASS(ShaderEditorPlugin, EditorPlugin);
@@ -49,6 +54,7 @@ class ShaderEditorPlugin : public EditorPlugin {
 		Ref<ShaderInclude> shader_inc;
 		TextShaderEditor *shader_editor = nullptr;
 		VisualShaderEditor *visual_shader_editor = nullptr;
+		String path;
 	};
 
 	LocalVector<EditedShader> edited_shaders;
@@ -74,6 +80,9 @@ class ShaderEditorPlugin : public EditorPlugin {
 	Button *button = nullptr;
 	MenuButton *file_menu = nullptr;
 
+	WindowWrapper *window_wrapper = nullptr;
+	Button *make_floating = nullptr;
+
 	ShaderCreateDialog *shader_create_dialog = nullptr;
 
 	void _update_shader_list();
@@ -82,6 +91,8 @@ class ShaderEditorPlugin : public EditorPlugin {
 	void _menu_item_pressed(int p_index);
 	void _resource_saved(Object *obj);
 	void _close_shader(int p_index);
+	void _close_builtin_shaders_from_scene(const String &p_scene);
+	void _file_removed(const String &p_removed_file);
 
 	void _shader_created(Ref<Shader> p_shader);
 	void _shader_include_created(Ref<ShaderInclude> p_shader_inc);
@@ -91,6 +102,11 @@ class ShaderEditorPlugin : public EditorPlugin {
 	Variant get_drag_data_fw(const Point2 &p_point, Control *p_from);
 	bool can_drop_data_fw(const Point2 &p_point, const Variant &p_data, Control *p_from) const;
 	void drop_data_fw(const Point2 &p_point, const Variant &p_data, Control *p_from);
+
+	void _window_changed(bool p_visible);
+
+protected:
+	void _notification(int p_what);
 
 public:
 	virtual String get_name() const override { return "Shader"; }
@@ -102,6 +118,10 @@ public:
 	TextShaderEditor *get_shader_editor(const Ref<Shader> &p_for_shader);
 	VisualShaderEditor *get_visual_shader_editor(const Ref<Shader> &p_for_shader);
 
+	virtual void set_window_layout(Ref<ConfigFile> p_layout) override;
+	virtual void get_window_layout(Ref<ConfigFile> p_layout) override;
+
+	virtual String get_unsaved_status(const String &p_for_scene) const override;
 	virtual void save_external_data() override;
 	virtual void apply_changes() override;
 

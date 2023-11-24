@@ -261,8 +261,9 @@ void EditorFileSystem::_scan_filesystem() {
 					cpath = name;
 
 				} else {
-					Vector<String> split = l.split("::");
-					ERR_CONTINUE(split.size() != 9);
+					// The last section (deps) may contain the same splitter, so limit the maxsplit to 8 to get the complete deps.
+					Vector<String> split = l.split("::", true, 8);
+					ERR_CONTINUE(split.size() < 9);
 					String name = split[0];
 					String file;
 
@@ -544,7 +545,7 @@ bool EditorFileSystem::_scan_import_support(Vector<String> reimports) {
 	}
 
 	for (int i = 0; i < reimports.size(); i++) {
-		HashMap<String, int>::Iterator E = import_support_test.find(reimports[i].get_extension());
+		HashMap<String, int>::Iterator E = import_support_test.find(reimports[i].get_extension().to_lower());
 		if (E) {
 			import_support_tested.write[E->value] = true;
 		}
@@ -968,7 +969,7 @@ void EditorFileSystem::_scan_fs_changes(EditorFileSystemDirectory *p_dir, const 
 		p_dir->modified_time = current_mtime;
 		//ooooops, dir changed, see what's going on
 
-		//first mark everything as veryfied
+		//first mark everything as verified
 
 		for (int i = 0; i < p_dir->files.size(); i++) {
 			p_dir->files[i]->verified = false;
@@ -1256,7 +1257,9 @@ void EditorFileSystem::_notification(int p_what) {
 					if (scanning_changes_done) {
 						set_process(false);
 
-						thread_sources.wait_to_finish();
+						if (thread_sources.is_started()) {
+							thread_sources.wait_to_finish();
+						}
 						bool changed = _update_scan_actions();
 						_update_pending_script_classes();
 						if (changed) {
@@ -1504,6 +1507,16 @@ void EditorFileSystem::_save_late_updated_files() {
 }
 
 Vector<String> EditorFileSystem::_get_dependencies(const String &p_path) {
+	// Avoid error spam on first opening of a not yet imported project by treating the following situation
+	// as a benign one, not letting the file open error happen: the resource is of an importable type but
+	// it has not been imported yet.
+	if (ResourceFormatImporter::get_singleton()->recognize_path(p_path)) {
+		const String &internal_path = ResourceFormatImporter::get_singleton()->get_internal_resource_path(p_path);
+		if (!internal_path.is_empty() && !FileAccess::exists(internal_path)) { // If path is empty (error), keep the code flow to the error.
+			return Vector<String>();
+		}
+	}
+
 	List<String> deps;
 	ResourceLoader::get_dependencies(p_path, &deps);
 
@@ -1623,6 +1636,7 @@ void EditorFileSystem::_queue_update_script_class(const String &p_path) {
 }
 
 void EditorFileSystem::update_file(const String &p_file) {
+	ERR_FAIL_COND(p_file.is_empty());
 	EditorFileSystemDirectory *fs = nullptr;
 	int cpos = -1;
 
@@ -1999,6 +2013,11 @@ Error EditorFileSystem::_reimport_file(const String &p_file, const HashMap<Strin
 		}
 	}
 
+	if (FileAccess::exists(p_file + ".import")) {
+		// We only want to handle compat for existing files, not new ones.
+		importer->handle_compatibility_options(params);
+	}
+
 	//mix with default params, in case a parameter is missing
 
 	List<ResourceImporter::ImportOption> opts;
@@ -2318,6 +2337,7 @@ void EditorFileSystem::reimport_files(const Vector<String> &p_files) {
 	ResourceUID::get_singleton()->update_cache(); // After reimporting, update the cache.
 
 	_save_filesystem_cache();
+	_update_pending_script_classes();
 	importing = false;
 	if (!is_scanning()) {
 		emit_signal(SNAME("filesystem_changed"));
@@ -2348,12 +2368,15 @@ bool EditorFileSystem::_should_skip_directory(const String &p_path) {
 	}
 
 	if (FileAccess::exists(p_path.path_join("project.godot"))) {
-		// skip if another project inside this
+		// Skip if another project inside this.
+		if (EditorFileSystem::get_singleton()->first_scan) {
+			WARN_PRINT_ONCE(vformat("Detected another project.godot at %s. The folder will be ignored.", p_path));
+		}
 		return true;
 	}
 
 	if (FileAccess::exists(p_path.path_join(".gdignore"))) {
-		// skip if a `.gdignore` file is inside this
+		// Skip if a `.gdignore` file is inside this.
 		return true;
 	}
 
@@ -2495,17 +2518,13 @@ bool EditorFileSystem::_scan_extensions() {
 	bool needs_restart = false;
 	for (int i = 0; i < extensions_added.size(); i++) {
 		GDExtensionManager::LoadStatus st = GDExtensionManager::get_singleton()->load_extension(extensions_added[i]);
-		if (st == GDExtensionManager::LOAD_STATUS_FAILED) {
-			EditorNode::get_singleton()->add_io_error("Error loading extension: " + extensions_added[i]);
-		} else if (st == GDExtensionManager::LOAD_STATUS_NEEDS_RESTART) {
+		if (st == GDExtensionManager::LOAD_STATUS_NEEDS_RESTART) {
 			needs_restart = true;
 		}
 	}
 	for (int i = 0; i < extensions_removed.size(); i++) {
 		GDExtensionManager::LoadStatus st = GDExtensionManager::get_singleton()->unload_extension(extensions_removed[i]);
-		if (st == GDExtensionManager::LOAD_STATUS_FAILED) {
-			EditorNode::get_singleton()->add_io_error("Error removing extension: " + extensions_added[i]);
-		} else if (st == GDExtensionManager::LOAD_STATUS_NEEDS_RESTART) {
+		if (st == GDExtensionManager::LOAD_STATUS_NEEDS_RESTART) {
 			needs_restart = true;
 		}
 	}

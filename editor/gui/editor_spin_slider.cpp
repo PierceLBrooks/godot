@@ -34,6 +34,7 @@
 #include "core/math/expression.h"
 #include "core/os/keyboard.h"
 #include "editor/editor_scale.h"
+#include "editor/editor_settings.h"
 
 String EditorSpinSlider::get_tooltip(const Point2 &p_pos) const {
 	if (grabber->is_visible()) {
@@ -103,9 +104,9 @@ void EditorSpinSlider::gui_input(const Ref<InputEvent> &p_event) {
 			if (mm->is_shift_pressed() && grabbing_spinner) {
 				diff_x *= 0.1;
 			}
-			grabbing_spinner_dist_cache += diff_x;
+			grabbing_spinner_dist_cache += diff_x * grabbing_spinner_speed;
 
-			if (!grabbing_spinner && ABS(grabbing_spinner_dist_cache) > 4 * EDSCALE) {
+			if (!grabbing_spinner && ABS(grabbing_spinner_dist_cache) > 4 * grabbing_spinner_speed * EDSCALE) {
 				Input::get_singleton()->set_mouse_mode(Input::MOUSE_MODE_CAPTURED);
 				grabbing_spinner = true;
 			}
@@ -202,7 +203,6 @@ void EditorSpinSlider::_value_input_gui_input(const Ref<InputEvent> &p_event) {
 	Ref<InputEventKey> k = p_event;
 	if (k.is_valid() && k->is_pressed() && !is_read_only()) {
 		double step = get_step();
-		double real_step = step;
 		if (step < 1) {
 			double divisor = 1.0 / get_step();
 
@@ -211,7 +211,7 @@ void EditorSpinSlider::_value_input_gui_input(const Ref<InputEvent> &p_event) {
 			}
 		}
 
-		if (k->is_ctrl_pressed()) {
+		if (k->is_command_or_control_pressed()) {
 			step *= 100.0;
 		} else if (k->is_shift_pressed()) {
 			step *= 10.0;
@@ -220,30 +220,22 @@ void EditorSpinSlider::_value_input_gui_input(const Ref<InputEvent> &p_event) {
 		}
 
 		Key code = k->get_keycode();
+
 		switch (code) {
-			case Key::UP: {
-				_evaluate_input_text();
-
-				double last_value = get_value();
-				set_value(last_value + step);
-				double new_value = get_value();
-
-				if (new_value < CLAMP(last_value + step, get_min(), get_max())) {
-					set_value(last_value + real_step);
-				}
-
-				value_input_dirty = true;
-				set_process_internal(true);
-			} break;
+			case Key::UP:
 			case Key::DOWN: {
 				_evaluate_input_text();
 
 				double last_value = get_value();
-				set_value(last_value - step);
+				if (code == Key::DOWN) {
+					step *= -1;
+				}
+				set_value(last_value + step);
 				double new_value = get_value();
 
-				if (new_value > CLAMP(last_value - step, get_min(), get_max())) {
-					set_value(last_value - real_step);
+				double clamp_value = CLAMP(new_value, get_min(), get_max());
+				if (new_value != clamp_value) {
+					set_value(clamp_value);
 				}
 
 				value_input_dirty = true;
@@ -335,9 +327,6 @@ void EditorSpinSlider::_draw_spin_slider() {
 	int suffix_start = numstr.length();
 	RID num_rid = TS->create_shaped_text();
 	TS->shaped_text_add_string(num_rid, numstr + U"\u2009" + suffix, font->get_rids(), font_size, font->get_opentype_features());
-	for (int i = 0; i < TextServer::SPACING_MAX; i++) {
-		TS->shaped_text_set_spacing(num_rid, TextServer::SpacingType(i), font->get_spacing(TextServer::SpacingType(i)));
-	}
 
 	float text_start = rtl ? Math::round(sb->get_offset().x) : Math::round(sb->get_offset().x + label_width + sep);
 	Vector2 text_ofs = rtl ? Vector2(text_start + (number_width - TS->shaped_text_get_width(num_rid)), vofs) : Vector2(text_start, vofs);
@@ -439,7 +428,11 @@ void EditorSpinSlider::_draw_spin_slider() {
 
 void EditorSpinSlider::_notification(int p_what) {
 	switch (p_what) {
-		case NOTIFICATION_ENTER_TREE:
+		case NOTIFICATION_ENTER_TREE: {
+			grabbing_spinner_speed = EditorSettings::get_singleton()->get("interface/inspector/float_drag_speed");
+			_update_value_input_stylebox();
+		} break;
+
 		case NOTIFICATION_THEME_CHANGED: {
 			_update_value_input_stylebox();
 		} break;
@@ -532,17 +525,24 @@ String EditorSpinSlider::get_suffix() const {
 }
 
 void EditorSpinSlider::_evaluate_input_text() {
-	// Replace comma with dot to support it as decimal separator (GH-6028).
-	// This prevents using functions like `pow()`, but using functions
-	// in EditorSpinSlider is a barely known (and barely used) feature.
-	// Instead, we'd rather support German/French keyboard layouts out of the box.
-	const String text = TS->parse_number(value_input->get_text().replace(",", "."));
-
 	Ref<Expression> expr;
 	expr.instantiate();
+
+	// Convert commas ',' to dots '.' for French/German etc. keyboard layouts.
+	String text = value_input->get_text().replace(",", ".");
+	text = text.replace(";", ",");
+	text = TS->parse_number(text);
+
 	Error err = expr->parse(text);
 	if (err != OK) {
-		return;
+		// If the expression failed try without converting commas to dots - they might have been for parameter separation.
+		text = value_input->get_text();
+		text = TS->parse_number(text);
+
+		err = expr->parse(text);
+		if (err != OK) {
+			return;
+		}
 	}
 
 	Variant v = expr->execute(Array(), nullptr, false, true);
@@ -573,8 +573,13 @@ void EditorSpinSlider::_value_focus_exited() {
 		return;
 	}
 
+	if (is_read_only()) {
+		// Spin slider has become read only while it was being edited.
+		return;
+	}
+
 	_evaluate_input_text();
-	// focus is not on the same element after the vlalue_input was exited
+	// focus is not on the same element after the value_input was exited
 	// -> focus is on next element
 	// -> TAB was pressed
 	// -> modal_close was not called
@@ -604,6 +609,10 @@ void EditorSpinSlider::_grabber_mouse_exited() {
 
 void EditorSpinSlider::set_read_only(bool p_enable) {
 	read_only = p_enable;
+	if (read_only && value_input) {
+		value_input->release_focus();
+	}
+
 	queue_redraw();
 }
 
