@@ -53,7 +53,7 @@ jmethodID BluetoothAndroid::_stop_advertising = nullptr;
 jmethodID BluetoothAndroid::_start_scanning = nullptr;
 jmethodID BluetoothAndroid::_stop_scanning = nullptr;
 
-jmethodID BluetoothAndroid::_connect_peer = nullptr;
+jmethodID BluetoothAndroid::_connect_enumerator_peer = nullptr;
 
 HashMap<int, BluetoothAdvertiserAndroid*> BluetoothAndroid::advertisers;
 HashMap<int, BluetoothEnumeratorAndroid*> BluetoothAndroid::enumerators;
@@ -75,7 +75,9 @@ jobject BluetoothAndroid::_java_bluetooth_callback(int p_event, int p_id, Varian
 #ifdef MODULE_BLUETOOTH_ENABLED
     JNIEnv *env = get_jni_env();
 
+#ifdef DEBUG_ENABLED
     print_line(String((std::string("Bluetooth event ")+std::to_string(p_event)+" @ "+std::to_string(p_id)).c_str())+" = "+p_arg.stringify());
+#endif
 
     ERR_FAIL_COND_V(env == nullptr, result.obj);
 
@@ -108,12 +110,12 @@ jobject BluetoothAndroid::_java_bluetooth_callback(int p_event, int p_id, Varian
 #ifdef DEBUG_ENABLED
                         print_line("Unscan");
 #endif
-                        result = _variant_to_jvalue(env, Variant::Type::BOOL, &truth);
+                        result = _variant_to_jvalue(env, Variant::Type::BOOL, &truth, true);
                     }
                 }
             }
             if (!result.obj) {
-                result = _variant_to_jvalue(env, Variant::Type::BOOL, &falsehood);
+                result = _variant_to_jvalue(env, Variant::Type::BOOL, &falsehood, true);
             }
             break;
         case BLUETOOTH_ENUMERATOR_ON_START_SCANNING:
@@ -124,12 +126,12 @@ jobject BluetoothAndroid::_java_bluetooth_callback(int p_event, int p_id, Varian
 #ifdef DEBUG_ENABLED
                         print_line("Scan");
 #endif
-                        result = _variant_to_jvalue(env, Variant::Type::BOOL, &truth);
+                        result = _variant_to_jvalue(env, Variant::Type::BOOL, &truth, true);
                     }
                 }
             }
             if (!result.obj) {
-                result = _variant_to_jvalue(env, Variant::Type::BOOL, &falsehood);
+                result = _variant_to_jvalue(env, Variant::Type::BOOL, &falsehood, true);
             }
             break;
         case BLUETOOTH_ENUMERATOR_ON_DISCOVER:
@@ -161,12 +163,12 @@ jobject BluetoothAndroid::_java_bluetooth_callback(int p_event, int p_id, Varian
 #ifdef DEBUG_ENABLED
                         print_line("Discover");
 #endif
-                        result = _variant_to_jvalue(env, Variant::Type::BOOL, &truth);
+                        result = _variant_to_jvalue(env, Variant::Type::BOOL, &truth, true);
                     }
                 }
             }
             if (!result.obj) {
-                result = _variant_to_jvalue(env, Variant::Type::BOOL, &falsehood);
+                result = _variant_to_jvalue(env, Variant::Type::BOOL, &falsehood, true);
             }
             break;
         case BLUETOOTH_ENUMERATOR_ON_CONNECT:
@@ -177,12 +179,12 @@ jobject BluetoothAndroid::_java_bluetooth_callback(int p_event, int p_id, Varian
 #ifdef DEBUG_ENABLED
                         print_line("Connect");
 #endif
-                        result = _variant_to_jvalue(env, Variant::Type::BOOL, &truth);
+                        result = _variant_to_jvalue(env, Variant::Type::BOOL, &truth, true);
                     }
                 }
             }
             if (!result.obj) {
-                result = _variant_to_jvalue(env, Variant::Type::BOOL, &falsehood);
+                result = _variant_to_jvalue(env, Variant::Type::BOOL, &falsehood, true);
             }
             break;
         case BLUETOOTH_ENUMERATOR_ON_DISCONNECT:
@@ -193,12 +195,12 @@ jobject BluetoothAndroid::_java_bluetooth_callback(int p_event, int p_id, Varian
 #ifdef DEBUG_ENABLED
                         print_line("Disconnect");
 #endif
-                        result = _variant_to_jvalue(env, Variant::Type::BOOL, &truth);
+                        result = _variant_to_jvalue(env, Variant::Type::BOOL, &truth, true);
                     }
                 }
             }
             if (!result.obj) {
-                result = _variant_to_jvalue(env, Variant::Type::BOOL, &falsehood);
+                result = _variant_to_jvalue(env, Variant::Type::BOOL, &falsehood, true);
             }
             break;
         case BLUETOOTH_ENUMERATOR_ON_DISCOVER_SERVICE_CHARACTERISTIC:
@@ -231,12 +233,12 @@ jobject BluetoothAndroid::_java_bluetooth_callback(int p_event, int p_id, Varian
 #ifdef DEBUG_ENABLED
                         print_line("Characteristic");
 #endif
-                        result = _variant_to_jvalue(env, Variant::Type::BOOL, &truth);
+                        result = _variant_to_jvalue(env, Variant::Type::BOOL, &truth, true);
                     }
                 }
             }
             if (!result.obj) {
-                result = _variant_to_jvalue(env, Variant::Type::BOOL, &falsehood);
+                result = _variant_to_jvalue(env, Variant::Type::BOOL, &falsehood, true);
             }
             break;
         default:
@@ -266,7 +268,7 @@ void BluetoothAndroid::setup(jobject p_bluetooth) {
     _start_scanning = env->GetMethodID(cls, "startScanning", "(I)Z");
     _stop_scanning = env->GetMethodID(cls, "stopScanning", "(I)Z");
 
-    _connect_peer = env->GetMethodID(cls, "connectPeer", "(ILjava/lang/String;)Z");
+    _connect_enumerator_peer = env->GetMethodID(cls, "connectEnumeratorPeer", "(ILjava/lang/String;)Z");
 
     _register_advertiser = env->GetMethodID(cls, "registerAdvertiser", "(I)Z");
     _register_enumerator = env->GetMethodID(cls, "registerEnumerator", "(I)Z");
@@ -329,15 +331,15 @@ bool BluetoothAndroid::stop_scanning(int p_enumerator_id) {
     }
 }
 
-bool BluetoothAndroid::connect_peer(int p_enumerator_id, String p_peer_uuid) {
-    if (_connect_peer) {
+bool BluetoothAndroid::connect_enumerator_peer(int p_enumerator_id, String p_peer_uuid) {
+    if (_connect_enumerator_peer) {
         JNIEnv *env = get_jni_env();
 
         ERR_FAIL_COND_V(env == nullptr, false);
         jvalret str = _variant_to_jvalue(env, Variant::Type::STRING, (Variant *)(&p_peer_uuid));
         jboolean res = JNI_FALSE;
         if (str.obj) {
-            res = env->CallBooleanMethod(bluetooth, _connect_peer, p_enumerator_id, str.obj);
+            res = env->CallBooleanMethod(bluetooth, _connect_enumerator_peer, p_enumerator_id, str.obj);
             env->DeleteLocalRef(str.obj);
         }
         return res;

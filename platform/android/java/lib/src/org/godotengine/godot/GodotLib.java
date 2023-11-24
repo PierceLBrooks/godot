@@ -40,6 +40,8 @@ import org.godotengine.godot.utils.GodotNetUtils;
 import android.app.Activity;
 import android.content.res.AssetManager;
 import android.hardware.SensorEvent;
+import android.os.Build;
+import android.util.Log;
 import android.view.Surface;
 
 import java.io.IOException;
@@ -52,6 +54,11 @@ import javax.microedition.khronos.opengles.GL10;
  * Wrapper for native library
  */
 public class GodotLib {
+	private static final String TAG = GodotLib.class.getSimpleName();
+	private static PrintStream printStream = null;
+	private static ThrowableStream throwableStream = null;
+	private static boolean linkage = false;
+
 	private static class ThrowableStream extends OutputStream {
 		private final int flushTrigger;
 		private String buffer;
@@ -62,9 +69,12 @@ public class GodotLib {
 
 		@Override
 		public void write(int character) throws IOException {
-			if (character == flushTrigger)
-			{
-				GodotLib.printLine(buffer);
+			if (character == flushTrigger) {
+				if (linkage) {
+					GodotLib.printLine(buffer);
+				} else {
+					Log.e(TAG, buffer);
+				}
 				buffer = "";
 				return;
 			}
@@ -81,11 +91,12 @@ public class GodotLib {
 	}
 
 	static {
-		System.loadLibrary("godot_android");
+		try {
+			System.loadLibrary("godot_android");
+			linkage = true;
+		} catch (UnsatisfiedLinkError linker) {
+		}
 	}
-
-	private static PrintStream printStream = null;
-	private static ThrowableStream throwableStream = null;
 
 	/**
 	 * Invoked on the main thread to initialize Godot native layer.
@@ -295,7 +306,7 @@ public class GodotLib {
 	 * Use the core line printing facilities on exceptions.
 	 */
 	public static void printStackTrace(Throwable throwable) {
-		if (!hasFeature("debug")) {
+		if (!"debug".equalsIgnoreCase(BuildConfig.BUILD_TYPE)) {
 			return;
 		}
 		if (throwable != null) {

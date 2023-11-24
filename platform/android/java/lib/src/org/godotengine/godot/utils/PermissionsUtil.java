@@ -45,6 +45,8 @@ import android.util.Log;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
+import org.godotengine.godot.BuildConfig;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -99,7 +101,7 @@ public final class PermissionsUtil {
 	 * @return true/false. "true" if permission was granted otherwise returns "false".
 	 */
 	public static boolean requestPermission(String name, Activity activity) {
-		if ("debug".equalsIgnoreCase(Build.TYPE)) {
+		if ("debug".equalsIgnoreCase(BuildConfig.BUILD_TYPE)) {
 			Log.i(TAG, "Request permission @ " + name);
 		}
 

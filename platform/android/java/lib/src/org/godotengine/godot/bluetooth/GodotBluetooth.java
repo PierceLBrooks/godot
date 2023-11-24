@@ -174,52 +174,50 @@ public class GodotBluetooth {
 	}
 
 	public boolean startAdvertising(int p_advertiser_id) {
+		GodotBluetoothAdvertiser advertiser = null;
 		boolean success = false;
 		lock.lock();
 		try {
 			if (advertisers.containsKey(p_advertiser_id)) {
-				GodotBluetoothAdvertiser advertiser = advertisers.get(p_advertiser_id);
-				if (advertiser != null) {
-					success = advertiser.startAdvertising();
-				}
+				advertiser = advertisers.get(p_advertiser_id);
 			}
 		} catch (Exception exception) {
 			GodotLib.printStackTrace(exception);
 		} finally {
 			lock.unlock();
+		}
+		if (advertiser != null) {
+			success = advertiser.startAdvertising();
 		}
 		return success;
 	}
 
 	public boolean stopAdvertising(int p_advertiser_id) {
+		GodotBluetoothAdvertiser advertiser = null;
 		boolean success = false;
 		lock.lock();
 		try {
 			if (advertisers.containsKey(p_advertiser_id)) {
-				GodotBluetoothAdvertiser advertiser = advertisers.get(p_advertiser_id);
-				if (advertiser != null) {
-					success = advertiser.stopAdvertising();
-				}
+				advertiser = advertisers.get(p_advertiser_id);
 			}
 		} catch (Exception exception) {
 			GodotLib.printStackTrace(exception);
 		} finally {
 			lock.unlock();
 		}
+		if (advertiser != null) {
+			success = advertiser.stopAdvertising();
+		}
 		return success;
 	}
 
 	public boolean startScanning(int p_enumerator_id) {
+		GodotBluetoothEnumerator enumerator = null;
 		boolean success = false;
 		lock.lock();
 		try {
 			if (enumerators.containsKey(p_enumerator_id)) {
-				GodotBluetoothEnumerator enumerator = enumerators.get(p_enumerator_id);
-				if (enumerator != null) {
-					success = enumerator.startScanning();
-				} else {
-					Log.w(TAG, "Null enumerator @ "+p_enumerator_id);
-				}
+				enumerator = enumerators.get(p_enumerator_id);
 			} else {
 				Log.w(TAG, "No enumerator @ "+p_enumerator_id);
 			}
@@ -228,28 +226,33 @@ public class GodotBluetooth {
 		} finally {
 			lock.unlock();
 		}
+		if (enumerator != null) {
+			success = enumerator.startScanning();
+		}
 		return success;
 	}
 
 	public boolean stopScanning(int p_enumerator_id) {
+		GodotBluetoothEnumerator enumerator = null;
 		boolean success = false;
 		lock.lock();
 		try {
 			if (enumerators.containsKey(p_enumerator_id)) {
-				GodotBluetoothEnumerator enumerator = enumerators.get(p_enumerator_id);
-				if (enumerator != null) {
-					success = enumerator.stopScanning();
-				}
+				enumerator = enumerators.get(p_enumerator_id);
 			}
 		} catch (Exception exception) {
 			GodotLib.printStackTrace(exception);
 		} finally {
 			lock.unlock();
 		}
+		if (enumerator != null) {
+			success = enumerator.stopScanning();
+		}
 		return success;
 	}
 
-	public boolean connectPeer(int p_enumerator_id, String p_peer_uuid) {
+	public boolean connectEnumeratorPeer(int p_enumerator_id, String p_peer_uuid) {
+		GodotBluetoothEnumerator enumerator = null;
 		boolean success = false;
 		if (p_peer_uuid == null) {
 			return success;
@@ -257,15 +260,17 @@ public class GodotBluetooth {
 		lock.lock();
 		try {
 			if (enumerators.containsKey(p_enumerator_id)) {
-				GodotBluetoothEnumerator enumerator = enumerators.get(p_enumerator_id);
-				if (enumerator != null) {
-					success = enumerator.connectPeer(p_peer_uuid);
-				}
+				enumerator = enumerators.get(p_enumerator_id);
 			}
 		} catch (Exception exception) {
 			GodotLib.printStackTrace(exception);
 		} finally {
 			lock.unlock();
+		}
+		if (enumerator != null) {
+			success = enumerator.connectPeer(p_peer_uuid);
+		} else {
+			Log.w(TAG, "Null enumerator @ "+p_peer_uuid);
 		}
 		return success;
 	}

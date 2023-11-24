@@ -40,6 +40,7 @@ import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.BluetoothGattService;
 import android.bluetooth.BluetoothProfile;
 import android.os.Build;
+import android.util.Log;
 
 import org.godotengine.godot.GodotLib;
 
@@ -47,6 +48,8 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class GodotBluetoothPeer extends BluetoothGattCallback {
+	private static final String TAG = GodotBluetoothPeer.class.getSimpleName();
+
 	private int id;
     private BluetoothDevice device;
 	private BluetoothAdapter adapter;
@@ -57,6 +60,8 @@ public class GodotBluetoothPeer extends BluetoothGattCallback {
 		id = p_id;
         device = p_device;
 		connection = new AtomicBoolean(false);
+		gatt = null;
+		adapter = null;
     }
 
 	@SuppressLint("MissingPermission")
@@ -64,16 +69,20 @@ public class GodotBluetoothPeer extends BluetoothGattCallback {
 		boolean success = false;
 		Activity activity = null;
 		if (gatt != null) {
+			Log.w(TAG, "Already gatting!");
 			return true;
 		}
 		if (p_bluetooth == null) {
+			Log.w(TAG, "Null device!");
 			return success;
 		}
 		activity = p_bluetooth.getActivity();
 		if (activity == null) {
+			Log.w(TAG, "Null activity!");
 			return success;
 		}
 		if (device == null) {
+			Log.w(TAG, "Null device!");
 			return success;
 		}
 		if (adapter == null) {
@@ -91,7 +100,11 @@ public class GodotBluetoothPeer extends BluetoothGattCallback {
 			}
 			if (gatt != null) {
 				success = true;
+			} else {
+				Log.w(TAG, "Null gatt!");
 			}
+		} else {
+			Log.w(TAG, "Null adapter!");
 		}
 		return success;
 	}
@@ -109,10 +122,12 @@ public class GodotBluetoothPeer extends BluetoothGattCallback {
 		try {
 			switch (newState) {
 				case BluetoothProfile.STATE_CONNECTED:
+					Log.w(TAG, "CONNECTED");
 					connection.set(true);
 					result = GodotLib.bluetoothCallback(GodotBluetooth.EVENT_ON_CONNECT, id, device.getAddress());
 					break;
 				case BluetoothProfile.STATE_DISCONNECTED:
+					Log.w(TAG, "DISCONNECTED");
 					connection.set(false);
 					result = GodotLib.bluetoothCallback(GodotBluetooth.EVENT_ON_DISCONNECT, id, device.getAddress());
 					break;
@@ -126,17 +141,25 @@ public class GodotBluetoothPeer extends BluetoothGattCallback {
 			try {
 				success = ((Boolean)result).booleanValue();
 				if (success) {
+					Log.w(TAG, "discoverServices");
 					success = gatt.discoverServices();
+				} else {
+					Log.e(TAG, "!discoverServices");
 				}
 			} catch (Exception exception) {
 				GodotLib.printStackTrace(exception);
 			}
+		} else {
+			Log.w(TAG, "Null result!");
+		}
+		if (!success) {
+			Log.w(TAG, "No success!");
 		}
 	}
 
 	@Override
 	public void onServicesDiscovered(BluetoothGatt gatt, int status) {
-		super.onServicesDiscovered(gatt, status);
+		Log.w(TAG, "onServicesDiscovered");
 		if (gatt != null) {
 			List<BluetoothGattService> services = gatt.getServices();
 			if (services != null) {
@@ -164,5 +187,6 @@ public class GodotBluetoothPeer extends BluetoothGattCallback {
 				}
 			}
 		}
+		super.onServicesDiscovered(gatt, status);
 	}
 }

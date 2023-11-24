@@ -29,6 +29,7 @@
 /**************************************************************************/
 
 #include "jni_utils.h"
+#include "core/variant/variant_internal.h"
 
 jvalret _variant_to_jvalue(JNIEnv *env, Variant::Type p_type, const Variant *p_arg, bool force_jobject) {
 	jvalret v;
@@ -40,7 +41,7 @@ jvalret _variant_to_jvalue(JNIEnv *env, Variant::Type p_type, const Variant *p_a
 				jmethodID ctor = env->GetMethodID(bclass, "<init>", "(Z)V");
 				jvalue val;
                 if (p_arg) {
-                    val.z = (bool)(*p_arg);
+                    val.z = (jboolean)(*((bool*)VariantInternal::get_opaque_pointer(p_arg)));
                 } else {
                     val.z = false;
                 }
@@ -50,7 +51,7 @@ jvalret _variant_to_jvalue(JNIEnv *env, Variant::Type p_type, const Variant *p_a
 				env->DeleteLocalRef(bclass);
 			} else {
                 if (p_arg) {
-                    v.val.z = (bool)(*p_arg);
+                    v.val.z = (jboolean)(*((bool*)VariantInternal::get_opaque_pointer(p_arg)));
                 } else {
                     v.val.z = false;
                 }
@@ -62,7 +63,7 @@ jvalret _variant_to_jvalue(JNIEnv *env, Variant::Type p_type, const Variant *p_a
 				jmethodID ctor = env->GetMethodID(bclass, "<init>", "(I)V");
 				jvalue val;
                 if (p_arg) {
-                    val.i = (int)(*p_arg);
+                    val.i = (jint)(*((int64_t*)VariantInternal::get_opaque_pointer(p_arg)));
                 } else {
                     val.i = 0;
                 }
@@ -70,10 +71,9 @@ jvalret _variant_to_jvalue(JNIEnv *env, Variant::Type p_type, const Variant *p_a
 				v.val.l = obj;
 				v.obj = obj;
 				env->DeleteLocalRef(bclass);
-
 			} else {
                 if (p_arg) {
-                    v.val.i = (int)(*p_arg);
+                    v.val.i = (jint)(*((int64_t*)VariantInternal::get_opaque_pointer(p_arg)));
                 } else {
                     v.val.i = 0;
                 }
@@ -85,7 +85,7 @@ jvalret _variant_to_jvalue(JNIEnv *env, Variant::Type p_type, const Variant *p_a
 				jmethodID ctor = env->GetMethodID(bclass, "<init>", "(D)V");
 				jvalue val;
                 if (p_arg) {
-                    val.d = (double)(*p_arg);
+                    val.d = (jdouble)(*((double*)VariantInternal::get_opaque_pointer(p_arg)));
                 } else {
                     val.d = 0.0;
                 }
@@ -96,7 +96,7 @@ jvalret _variant_to_jvalue(JNIEnv *env, Variant::Type p_type, const Variant *p_a
 
 			} else {
                 if (p_arg) {
-                    v.val.f = (float)(*p_arg);
+                    v.val.f = (jfloat)(*((double*)VariantInternal::get_opaque_pointer(p_arg)));
                 } else {
                     v.val.f = 0.0f;
                 }
@@ -105,7 +105,7 @@ jvalret _variant_to_jvalue(JNIEnv *env, Variant::Type p_type, const Variant *p_a
 		case Variant::STRING: {
             jstring jStr;
             if (p_arg) {
-                String s = *p_arg;
+                String s = *((String *)p_arg);
                 jStr = env->NewStringUTF(s.utf8().get_data());
             } else {
                 jStr = env->NewStringUTF("");
@@ -209,6 +209,9 @@ jvalret _variant_to_jvalue(JNIEnv *env, Variant::Type p_type, const Variant *p_a
 		} break;
 		case Variant::PACKED_BYTE_ARRAY: {
 			Vector<uint8_t> array;
+            if (p_arg) {
+                array.append_array(*((Vector<uint8_t> *) (p_arg)));
+            }
 			jbyteArray arr = env->NewByteArray(array.size());
 			const uint8_t *r = array.ptr();
 			env->SetByteArrayRegion(arr, 0, array.size(), reinterpret_cast<const signed char *>(r));

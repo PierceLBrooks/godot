@@ -167,7 +167,7 @@ android {
             def taskName = getSconsTaskName(flavorName, buildType, selectedAbi)
             tasks.create(name: taskName, type: Exec) {
                 executable sconsExecutableFile.absolutePath
-                args "--directory=${pathToRootDir}", "platform=android", "dev_mode=${devBuild}", "dev_build=${devBuild}", "target=${sconsTarget}", "arch=${selectedAbi}", "-j" + Runtime.runtime.availableProcessors()
+                args "--directory=${pathToRootDir}", "ANDROID_SDK_ROOT=${sdkDirectory}", "ndk_platform=android-" + versions.minSdk, "platform=android", "dev_mode=${devBuild}", "dev_build=${devBuild}", "target=${sconsTarget}", "arch=${selectedAbi}", "-j" + Runtime.runtime.availableProcessors()
             }
 
             // Schedule the tasks so the generated libs are present before the aar file is packaged.

@@ -72,7 +72,7 @@ class BluetoothAndroid {
     static jmethodID _start_scanning;
     static jmethodID _stop_scanning;
 
-    static jmethodID _connect_peer;
+    static jmethodID _connect_enumerator_peer;
 
     static jmethodID _register_advertiser;
     static jmethodID _register_enumerator;
@@ -98,7 +98,7 @@ public:
     static bool start_scanning(int p_enumerator_id);
     static bool stop_scanning(int p_enumerator_id);
 
-    static bool connect_peer(int p_enumerator_id, String p_peer_uuid);
+    static bool connect_enumerator_peer(int p_enumerator_id, String p_peer_uuid);
 
     int register_advertiser(BluetoothAdvertiserAndroid* p_advertiser);
     int register_enumerator(BluetoothEnumeratorAndroid* p_enumerator);

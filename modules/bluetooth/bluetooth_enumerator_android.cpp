@@ -73,7 +73,7 @@ bool BluetoothEnumeratorAndroid::stop_scanning() const {
 }
 
 void BluetoothEnumeratorAndroid::connect_peer(String p_peer_uuid) {
-    BluetoothAndroid::connect_peer(id, p_peer_uuid);
+    BluetoothAndroid::connect_enumerator_peer(id, p_peer_uuid);
 }
 
 void BluetoothEnumeratorAndroid::read_peer_service_characteristic(String p_peer_uuid, String p_service_uuid, String p_characteristic_uuid) {
