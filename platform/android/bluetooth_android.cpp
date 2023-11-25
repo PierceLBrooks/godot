@@ -261,7 +261,7 @@ void BluetoothAndroid::setup(jobject p_bluetooth) {
 	jclass c = env->GetObjectClass(bluetooth);
 	cls = (jclass)env->NewGlobalRef(c);
 
-	_is_supported = env->GetMethodID(cls, "isSupported", "()Z");
+	_is_supported = env->GetMethodID(cls, "isSupported", "(Z)Z");
 
 	_start_advertising = env->GetMethodID(cls, "startAdvertising", "(I)Z");
 	_stop_advertising = env->GetMethodID(cls, "stopAdvertising", "(I)Z");
@@ -276,12 +276,12 @@ void BluetoothAndroid::setup(jobject p_bluetooth) {
 	_unregister_enumerator = env->GetMethodID(cls, "unregisterEnumerator", "(I)Z");
 }
 
-bool BluetoothAndroid::is_supported() {
+bool BluetoothAndroid::is_supported(bool p_role) {
 	if (_is_supported) {
 		JNIEnv *env = get_jni_env();
 
 		ERR_FAIL_COND_V(env == nullptr, false);
-		return env->CallBooleanMethod(bluetooth, _is_supported);
+		return env->CallBooleanMethod(bluetooth, _is_supported, p_role);
 	} else {
 		return false;
 	}

@@ -91,7 +91,7 @@ public:
 
 	static void setup(jobject p_bluetooth);
 
-	static bool is_supported();
+	static bool is_supported(bool p_role);
 
 	static bool start_advertising(int p_advertiser_id);
 	static bool stop_advertising(int p_advertiser_id);

@@ -321,7 +321,8 @@ class Godot(private val context: Context) : SensorEventListener {
 		}
 		val activity = requireActivity()
 		if (!nativeLayerInitializeCompleted) {
-			nativeLayerInitializeCompleted = GodotLib.initialize(
+			try {
+				nativeLayerInitializeCompleted = GodotLib.initialize(
 					activity,
 					this,
 					activity.assets,
@@ -330,7 +331,11 @@ class Godot(private val context: Context) : SensorEventListener {
 					directoryAccessHandler,
 					fileAccessHandler,
 					useApkExpansion,
-			)
+				)
+			} catch (e: UnsatisfiedLinkError) {
+				e.printStackTrace()
+				nativeLayerInitializeCompleted = false
+			}
 		}
 
 		if (nativeLayerInitializeCompleted && !nativeLayerSetupCompleted) {

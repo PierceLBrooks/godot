@@ -34,11 +34,14 @@ import org.godotengine.godot.*;
 import org.godotengine.godot.utils.PermissionsUtil;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
 import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothManager;
+import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.util.Log;
@@ -46,13 +49,14 @@ import android.util.Log;
 import androidx.core.content.ContextCompat;
 
 import java.util.HashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class GodotBluetooth {
 	public enum BluetoothReason {
-		SCANNING,
 		ADVERTISING,
 		CONNECTING,
+		SCANNING,
 	}
 
 	private static final String TAG = GodotBluetooth.class.getSimpleName();
@@ -68,52 +72,57 @@ public class GodotBluetooth {
 	private Activity activity;
 	private Context context;
 
-	private boolean supported;
+	private AtomicBoolean supported;
+	private AtomicBoolean power;
 	private ReentrantLock lock;
 	private BluetoothAdapter adapter;
 	@TargetApi(Build.VERSION_CODES.JELLY_BEAN_MR2)
 	private BluetoothManager manager;
 	private HashMap<Integer, GodotBluetoothAdvertiser> advertisers;
 	private HashMap<Integer, GodotBluetoothEnumerator> enumerators;
+	private BroadcastReceiver receiver;
 
 	public GodotBluetooth(Context p_context) {
 		activity = null;
+		adapter = null;
 		context = p_context;
 		advertisers = new HashMap<Integer, GodotBluetoothAdvertiser>();
 		enumerators = new HashMap<Integer, GodotBluetoothEnumerator>();
 		lock = new ReentrantLock();
-		supported = false;
+		receiver = null;
+		power = new AtomicBoolean(false);
+		supported = new AtomicBoolean(false);
 	}
 
-	public void initialize(Activity p_activity) {
+	public boolean initialize(Activity p_activity) {
 		activity = p_activity;
 		if (context == null) {
 			context = activity;
 		}
-		supported = true;
+		supported.set(true);
 		try {
 			if (Build.VERSION.SDK_INT > Build.VERSION_CODES.JELLY_BEAN_MR1) {
-				if (context == null || !context.getPackageManager().hasSystemFeature(PackageManager.FEATURE_BLUETOOTH_LE)) {
+				if (activity == null || !activity.getPackageManager().hasSystemFeature(PackageManager.FEATURE_BLUETOOTH_LE)) {
 					Log.w(TAG, "No activity or feature!");
-					supported = false;
+					supported.set(false);
 				}
 			}
-			if (supported) {
-				supported = false;
-				if (context != null && GodotLib.hasFeature("bluetooth_module")) {
+			if (supported.get()) {
+				supported.set(false);
+				if (activity != null && GodotLib.hasFeature("bluetooth_module")) {
 					if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.JELLY_BEAN_MR1) {
 						adapter = BluetoothAdapter.getDefaultAdapter();
 						if (adapter != null) {
-							supported = true;
+							supported.set(true);
 						} else {
 							Log.w(TAG, "No adapter!");
 						}
 					} else {
-						manager = (BluetoothManager)context.getSystemService(Context.BLUETOOTH_SERVICE);
+						manager = (BluetoothManager)activity.getSystemService(Context.BLUETOOTH_SERVICE);
 						if (manager != null) {
 							adapter = manager.getAdapter();
-							if (adapter != null && adapter.isMultipleAdvertisementSupported()) {
-								supported = true;
+							if (adapter != null) {
+								supported.set(true);
 							} else {
 								Log.w(TAG, "No multiple advertisement support!");
 							}
@@ -121,17 +130,23 @@ public class GodotBluetooth {
 							Log.w(TAG, "No manager!");
 						}
 					}
+					if (adapter != null && receiver == null) {
+						receiver = new GodotBluetoothReceiver(this);
+					}
 				} else {
 					Log.w(TAG, "No activity or module!");
 				}
 			}
 		} catch (Exception exception) {
 			GodotLib.printStackTrace(exception);
-			supported = false;
+			supported.set(false);
 		}
-		if (!supported) {
+		if (!supported.get()) {
 			Log.w(TAG, "Got no support!");
+		} else if (adapter != null && adapter.isEnabled()) {
+			power.set(true);
 		}
+		return supported.get();
 	}
 
 	public Activity getActivity() {
@@ -143,29 +158,29 @@ public class GodotBluetooth {
 	}
 
 	public BluetoothAdapter getAdapter(BluetoothReason reason) {
-		if (!supported) {
+		if (!supported.get()) {
 			Log.w(TAG, "No support!");
 			return null;
 		}
 		if (reason != null && Build.VERSION.SDK_INT > Build.VERSION_CODES.R) { // Bluetooth permissions are only considered dangerous at runtime above API level 30
 			switch (reason) {
-				case SCANNING:
-					if (ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) {
-						if (!PermissionsUtil.requestPermission("BLUETOOTH_SCAN", activity)) {
-							return null;
-						}
-					}
-					break;
 				case ADVERTISING:
-					if (ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_ADVERTISE) != PackageManager.PERMISSION_GRANTED) {
+					if (ContextCompat.checkSelfPermission(activity, Manifest.permission.BLUETOOTH_ADVERTISE) != PackageManager.PERMISSION_GRANTED) {
 						if (!PermissionsUtil.requestPermission("BLUETOOTH_ADVERTISE", activity)) {
 							return null;
 						}
 					}
 					break;
 				case CONNECTING:
-					if (ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+					if (ContextCompat.checkSelfPermission(activity, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
 						if (!PermissionsUtil.requestPermission("BLUETOOTH_CONNECT", activity)) {
+							return null;
+						}
+					}
+					break;
+				case SCANNING:
+					if (ContextCompat.checkSelfPermission(activity, Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) {
+						if (!PermissionsUtil.requestPermission("BLUETOOTH_SCAN", activity)) {
 							return null;
 						}
 					}
@@ -174,14 +189,60 @@ public class GodotBluetooth {
 					return null;
 			}
 		}
+		if (adapter == null) {
+			if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.JELLY_BEAN_MR1) {
+				adapter = BluetoothAdapter.getDefaultAdapter();
+			} else {
+				if (manager == null) {
+					manager = (BluetoothManager)activity.getSystemService(Context.BLUETOOTH_SERVICE);
+				}
+				if (manager != null) {
+					adapter = manager.getAdapter();
+				}
+			}
+			if (adapter != null && receiver == null) {
+				receiver = new GodotBluetoothReceiver(this);
+			}
+		}
 		return adapter;
 	}
 
-	public boolean isSupported() {
-		if (!supported) {
-			Log.w(TAG, "Get no support!");
+	public void setPower(boolean p_power) {
+		Log.w(TAG, "Power = "+p_power);
+		power.set(p_power);
+	}
+
+	public boolean isSupported(boolean p_role) {
+		if (!supported.get()) {
+			if (adapter == null) {
+				supported.set(true);
+				if (p_role) {
+					adapter = getAdapter(BluetoothReason.ADVERTISING);
+				} else {
+					adapter = getAdapter(BluetoothReason.SCANNING);
+				}
+				supported.set(initialize(activity));
+			}
+			if (!supported.get()) {
+				Log.w(TAG, "Get no support!");
+			}
 		}
-		return supported;
+		if (supported.get()) {
+			if (!power.get() && adapter != null) {
+				if (adapter.isEnabled()) {
+					power.set(true);
+				} else if (activity != null) {
+					if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.R || ContextCompat.checkSelfPermission(activity, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED || PermissionsUtil.requestPermission("BLUETOOTH_CONNECT", activity)) {
+						Intent intent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+						activity.startActivityForResult(intent, PermissionsUtil.REQUEST_BLUETOOTH_ENABLE_PERMISSION);
+					}
+				}
+			}
+			if (!power.get() || !adapter.isMultipleAdvertisementSupported()) {
+				return false;
+			}
+		}
+		return supported.get();
 	}
 
 	public boolean startAdvertising(int p_advertiser_id) {

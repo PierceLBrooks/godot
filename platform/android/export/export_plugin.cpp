@@ -849,15 +849,6 @@ void EditorExportPlatformAndroid::_get_permissions(const Ref<EditorExportPreset>
 		r_permissions.push_back("android.permission.BLUETOOTH_CONNECT");
 		r_permissions.push_back("android.permission.ACCESS_COARSE_LOCATION");
 	}
-	int xr_mode_index = p_preset->get("xr_features/xr_mode");
-	if (xr_mode_index == XR_MODE_OPENXR) {
-		int hand_tracking_index = p_preset->get("xr_features/hand_tracking"); // 0: none, 1: optional, 2: required
-		if (hand_tracking_index > XR_HAND_TRACKING_NONE) {
-			if (r_permissions.find("com.oculus.permission.HAND_TRACKING") == -1) {
-				r_permissions.push_back("com.oculus.permission.HAND_TRACKING");
-			}
-		}
-	}
 }
 
 void EditorExportPlatformAndroid::_write_tmp_manifest(const Ref<EditorExportPreset> &p_preset, bool p_give_internet, bool p_debug) {

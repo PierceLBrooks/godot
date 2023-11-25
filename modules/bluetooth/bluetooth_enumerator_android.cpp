@@ -55,7 +55,7 @@ bool BluetoothEnumeratorAndroid::start_scanning() const {
 		print_line("Registration failure");
 		return false;
 	}
-	if (!BluetoothAndroid::is_supported()) {
+	if (!BluetoothAndroid::is_supported(false)) {
 		return false;
 	}
 	return BluetoothAndroid::start_scanning(id);
@@ -66,7 +66,7 @@ bool BluetoothEnumeratorAndroid::stop_scanning() const {
 		print_line("Unregistration failure");
 		return false;
 	}
-	if (!BluetoothAndroid::is_supported()) {
+	if (!BluetoothAndroid::is_supported(false)) {
 		return false;
 	}
 	return BluetoothAndroid::stop_scanning(id);

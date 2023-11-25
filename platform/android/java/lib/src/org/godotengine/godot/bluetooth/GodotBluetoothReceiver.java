@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  bluetooth_advertiser_android.cpp                                      */
+/*  GodotBluetoothReceiver.java                                           */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,60 +28,45 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#include "bluetooth_advertiser_android.h"
-#include "core/config/engine.h"
-#include "core/core_bind.h"
-#include "core/variant/typed_array.h"
-#include "platform/android/bluetooth_android.h"
+package org.godotengine.godot.bluetooth;
 
-BluetoothAdvertiserAndroid::BluetoothAdvertiserAndroid() {
-	id = BluetoothAndroid::get_singleton()->register_advertiser(this);
-}
+import android.app.Activity;
+import android.bluetooth.BluetoothAdapter;
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 
-BluetoothAdvertiserAndroid::~BluetoothAdvertiserAndroid() {
-	BluetoothAndroid::get_singleton()->unregister_advertiser(id);
-}
+public class GodotBluetoothReceiver extends BroadcastReceiver {
+	private static final String TAG = GodotBluetoothReceiver.class.getSimpleName();
 
-void BluetoothAdvertiserAndroid::initialize() {
-	BluetoothAdvertiser::_create = BluetoothAdvertiserAndroid::_create;
-}
+	private GodotBluetooth bluetooth;
 
-void BluetoothAdvertiserAndroid::deinitialize() {
-	// nothing to do here
-}
-
-void BluetoothAdvertiserAndroid::respond_characteristic_read_request(String p_characteristic_uuid, String p_response, int p_request) const {
-}
-
-void BluetoothAdvertiserAndroid::respond_characteristic_write_request(String p_characteristic_uuid, String p_response, int p_request) const {
-}
-
-bool BluetoothAdvertiserAndroid::start_advertising() const {
-	if (id == -1) {
-		print_line("Registration failure");
-		return false;
+	GodotBluetoothReceiver(GodotBluetooth p_bluetooth) {
+		bluetooth = p_bluetooth;
+		if (bluetooth != null) {
+			Activity activity = bluetooth.getActivity();
+			if (activity != null) {
+				IntentFilter filter = new IntentFilter();
+				filter.addAction(BluetoothAdapter.ACTION_CONNECTION_STATE_CHANGED);
+				activity.registerReceiver(this, filter);
+			}
+		}
 	}
-	if (!BluetoothAndroid::is_supported(true)) {
-		return false;
-	}
-	return BluetoothAndroid::start_advertising(id);
-}
 
-bool BluetoothAdvertiserAndroid::stop_advertising() const {
-	if (id == -1) {
-		print_line("Unregistration failure");
-		return false;
+	@Override
+	public void onReceive(Context context, Intent intent) {
+		String action = "";
+		if (intent != null) {
+			action += intent.getAction();
+		}
+		if (bluetooth != null && BluetoothAdapter.ACTION_CONNECTION_STATE_CHANGED.equals(action)) {
+			int state = intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, -1);
+			if (state == BluetoothAdapter.STATE_ON) {
+				bluetooth.setPower(true);
+			} else {
+				bluetooth.setPower(false);
+			}
+		}
 	}
-	if (!BluetoothAndroid::is_supported(true)) {
-		return false;
-	}
-	return BluetoothAndroid::stop_advertising(id);
-}
-
-void BluetoothAdvertiserAndroid::on_register() const {
-	// nothing to do here
-}
-
-void BluetoothAdvertiserAndroid::on_unregister() const {
-	// nothing to do here
 }

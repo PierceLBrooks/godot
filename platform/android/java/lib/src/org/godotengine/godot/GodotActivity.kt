@@ -34,6 +34,7 @@ import android.Manifest
 import android.app.Activity
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import androidx.annotation.CallSuper
@@ -67,7 +68,11 @@ abstract class GodotActivity : FragmentActivity(), GodotHost {
 	override fun onCreate(savedInstanceState: Bundle?) {
 		// We exclude certain permissions from the set we request at startup, as they'll be
 		// requested on demand based on use-cases.
-		PermissionsUtil.requestManifestPermissions(this, setOf(Manifest.permission.RECORD_AUDIO))
+		var excludes = setOf(Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.RECORD_AUDIO)
+		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+			excludes = excludes.plus(setOf(Manifest.permission.BLUETOOTH, Manifest.permission.BLUETOOTH_ADMIN, Manifest.permission.BLUETOOTH_ADVERTISE, Manifest.permission.BLUETOOTH_CONNECT, Manifest.permission.BLUETOOTH_SCAN))
+		}
+		PermissionsUtil.requestManifestPermissions(this, excludes)
 
 		super.onCreate(savedInstanceState)
 		setContentView(R.layout.godot_app_layout)
