@@ -50,6 +50,7 @@ import android.widget.FrameLayout
 import androidx.annotation.Keep
 import androidx.annotation.StringRes
 import com.google.android.vending.expansion.downloader.*
+import org.godotengine.godot.bluetooth.GodotBluetooth
 import org.godotengine.godot.input.GodotEditText
 import org.godotengine.godot.io.directory.DirectoryAccessHandler
 import org.godotengine.godot.io.file.FileAccessHandler
@@ -116,6 +117,7 @@ class Godot(private val context: Context) : SensorEventListener {
 		}}
 
 	val tts = GodotTTS(context)
+	val bluetooth = GodotBluetooth(context)
 	val directoryAccessHandler = DirectoryAccessHandler(context)
 	val fileAccessHandler = FileAccessHandler(context)
 	val netUtils = GodotNetUtils(context)
@@ -332,10 +334,12 @@ class Godot(private val context: Context) : SensorEventListener {
 		}
 
 		if (nativeLayerInitializeCompleted && !nativeLayerSetupCompleted) {
-			nativeLayerSetupCompleted = GodotLib.setup(commandLine.toTypedArray(), tts)
+			nativeLayerSetupCompleted = GodotLib.setup(commandLine.toTypedArray(), tts, bluetooth)
 			if (!nativeLayerSetupCompleted) {
 				Log.e(TAG, "Unable to setup the Godot engine! Aborting...")
 				alert(R.string.error_engine_setup_message, R.string.text_error_title, this::forceQuit)
+			} else {
+				bluetooth.initialize(activity)
 			}
 		}
 		return isNativeInitialized()

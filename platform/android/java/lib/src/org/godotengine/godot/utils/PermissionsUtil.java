@@ -152,7 +152,7 @@ public final class PermissionsUtil {
 					if (ContextCompat.checkSelfPermission(activity, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
 						connect = true;
 					}
-					if (name.equals("BLUETOOTH_ADVERTISE")) {
+					if (permissionName.equals("BLUETOOTH_ADVERTISE") || permissionName.equals(Manifest.permission.BLUETOOTH_ADVERTISE)) {
 						if (ContextCompat.checkSelfPermission(activity, Manifest.permission.BLUETOOTH_ADVERTISE) != PackageManager.PERMISSION_GRANTED) {
 							request = REQUEST_BLUETOOTH_ADVERTISE_PERMISSION;
 							if (connect) {
@@ -161,7 +161,7 @@ public final class PermissionsUtil {
 								permissions = new String[] { Manifest.permission.BLUETOOTH_ADVERTISE };
 							}
 						}
-					} else if (name.equals("BLUETOOTH_SCAN")) {
+					} else if (permissionName.equals("BLUETOOTH_SCAN") || permissionName.equals(Manifest.permission.BLUETOOTH_SCAN)) {
 						if (ContextCompat.checkSelfPermission(activity, Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) {
 							request = REQUEST_BLUETOOTH_SCAN_PERMISSION;
 							if (connect) {
@@ -183,17 +183,17 @@ public final class PermissionsUtil {
 
 			default:
 				// Check if the given permission is a dangerous permission
-				if (isDangerousPermission(activity, permissionName)) {
-					return requestPermissions(activity, new String[] { permissionName }, REQUEST_SINGLE_PERMISSION_REQ_CODE);
-				} else {
+				try {
+					if (isPermissionDangerous(activity, permissionName)) {
+						return requestPermissions(activity, new String[] { permissionName }, REQUEST_SINGLE_PERMISSION_REQ_CODE);
+					}
+				} catch (PackageManager.NameNotFoundException e) {
 					// Unknown permission - return false as it can't be granted.
 					Log.w(TAG, "Unable to identify permission " + permissionName, e);
 					return false;
 				}
-				break;
+				return true;
 		}
-
-		return true;
 	}
 
 	/**
@@ -290,7 +290,7 @@ public final class PermissionsUtil {
 						grantedPermissions.add(manifestPermission);
 					}
 				} else {
-					if (isPermissionDangerous(activity, manifestPermission) && ContextCompat.checkSelfPermission(activity, manifestPermission) == PackageManager.PERMISSION_GRANTED) {
+					if (isPermissionDangerous(context, manifestPermission) && ContextCompat.checkSelfPermission(context, manifestPermission) == PackageManager.PERMISSION_GRANTED) {
 						grantedPermissions.add(manifestPermission);
 					}
 				}
@@ -347,8 +347,8 @@ public final class PermissionsUtil {
 		return packageManager.getPermissionInfo(permission, 0);
 	}
 
-	private static boolean isPermissionDangerous(Activity activity, String permission) throws PackageManager.NameNotFoundException {
-		PermissionInfo permissionInfo = getPermissionInfo(activity, permission);
+	private static boolean isPermissionDangerous(Context context, String permission) throws PackageManager.NameNotFoundException {
+		PermissionInfo permissionInfo = getPermissionInfo(context, permission);
 		int protectionLevel = Build.VERSION.SDK_INT >= Build.VERSION_CODES.P ? permissionInfo.getProtection() : permissionInfo.protectionLevel;
 		return protectionLevel == PermissionInfo.PROTECTION_DANGEROUS;
 	}

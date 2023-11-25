@@ -38,6 +38,7 @@ import android.annotation.TargetApi;
 import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothManager;
+import android.content.Context;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.util.Log;
@@ -64,7 +65,8 @@ public class GodotBluetooth {
 	public static final int EVENT_ON_DISCONNECT = 5;
 	public static final int EVENT_ON_DISCOVER_SERVICE_CHARACTERISTIC = 6;
 
-	private final Activity activity;
+	private Activity activity;
+	private Context context;
 
 	private boolean supported;
 	private ReentrantLock lock;
@@ -74,26 +76,31 @@ public class GodotBluetooth {
 	private HashMap<Integer, GodotBluetoothAdvertiser> advertisers;
 	private HashMap<Integer, GodotBluetoothEnumerator> enumerators;
 
-	public GodotBluetooth(Activity p_activity) {
-		activity = p_activity;
+	public GodotBluetooth(Context p_context) {
+		activity = null;
+		context = p_context;
 		advertisers = new HashMap<Integer, GodotBluetoothAdvertiser>();
 		enumerators = new HashMap<Integer, GodotBluetoothEnumerator>();
 		lock = new ReentrantLock();
 		supported = false;
 	}
 
-	public void initialize() {
+	public void initialize(Activity p_activity) {
+		activity = p_activity;
+		if (context == null) {
+			context = activity;
+		}
 		supported = true;
 		try {
 			if (Build.VERSION.SDK_INT > Build.VERSION_CODES.JELLY_BEAN_MR1) {
-				if (activity == null || !activity.getPackageManager().hasSystemFeature(PackageManager.FEATURE_BLUETOOTH_LE)) {
+				if (context == null || !context.getPackageManager().hasSystemFeature(PackageManager.FEATURE_BLUETOOTH_LE)) {
 					Log.w(TAG, "No activity or feature!");
 					supported = false;
 				}
 			}
 			if (supported) {
 				supported = false;
-				if (activity != null && GodotLib.hasFeature("bluetooth_module")) {
+				if (context != null && GodotLib.hasFeature("bluetooth_module")) {
 					if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.JELLY_BEAN_MR1) {
 						adapter = BluetoothAdapter.getDefaultAdapter();
 						if (adapter != null) {
@@ -102,7 +109,7 @@ public class GodotBluetooth {
 							Log.w(TAG, "No adapter!");
 						}
 					} else {
-						manager = (BluetoothManager)activity.getSystemService(activity.BLUETOOTH_SERVICE);
+						manager = (BluetoothManager)context.getSystemService(Context.BLUETOOTH_SERVICE);
 						if (manager != null) {
 							adapter = manager.getAdapter();
 							if (adapter != null && adapter.isMultipleAdvertisementSupported()) {
@@ -131,6 +138,10 @@ public class GodotBluetooth {
 		return activity;
 	}
 
+	public Context getContext() {
+		return context;
+	}
+
 	public BluetoothAdapter getAdapter(BluetoothReason reason) {
 		if (!supported) {
 			Log.w(TAG, "No support!");
@@ -139,21 +150,21 @@ public class GodotBluetooth {
 		if (reason != null && Build.VERSION.SDK_INT > Build.VERSION_CODES.R) { // Bluetooth permissions are only considered dangerous at runtime above API level 30
 			switch (reason) {
 				case SCANNING:
-					if (ContextCompat.checkSelfPermission(activity, Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) {
+					if (ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) {
 						if (!PermissionsUtil.requestPermission("BLUETOOTH_SCAN", activity)) {
 							return null;
 						}
 					}
 					break;
 				case ADVERTISING:
-					if (ContextCompat.checkSelfPermission(activity, Manifest.permission.BLUETOOTH_ADVERTISE) != PackageManager.PERMISSION_GRANTED) {
+					if (ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_ADVERTISE) != PackageManager.PERMISSION_GRANTED) {
 						if (!PermissionsUtil.requestPermission("BLUETOOTH_ADVERTISE", activity)) {
 							return null;
 						}
 					}
 					break;
 				case CONNECTING:
-					if (ContextCompat.checkSelfPermission(activity, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+					if (ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
 						if (!PermissionsUtil.requestPermission("BLUETOOTH_CONNECT", activity)) {
 							return null;
 						}
