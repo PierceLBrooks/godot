@@ -394,7 +394,7 @@ def write_modules(modules):
         try:
             with open(os.path.join(path, "register_types.h")):
                 enabled_cpp += "#ifdef MODULE_" + name.upper() + "_ENABLED\n"
-                enabled_cpp += "\tif (p_module_name == \"" + name + "\") return true;\n"
+                enabled_cpp += '\tif (p_module_name == "' + name + '") return true;\n'
                 enabled_cpp += "#endif\n"
                 includes_cpp += '#include "' + path + '/register_types.h"\n'
                 initialize_cpp += "#ifdef MODULE_" + name.upper() + "_ENABLED\n"
@@ -434,7 +434,7 @@ bool is_module_enabled(String p_module_name) {
         includes_cpp,
         initialize_cpp,
         uninitialize_cpp,
-        enabled_cpp
+        enabled_cpp,
     )
 
     # NOTE: It is safe to generate this file here, since this is still executed serially

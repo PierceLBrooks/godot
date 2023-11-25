@@ -44,6 +44,7 @@ def get_doc_path():
 # Return the ANDROID_HOME environment variable.
 def get_env_android_sdk_root():
     from SCons.Script import ARGUMENTS
+
     return os.environ.get("ANDROID_HOME", os.environ.get("ANDROID_SDK_ROOT", ARGUMENTS.get("ANDROID_SDK_ROOT", "")))
 
 
@@ -63,6 +64,7 @@ def get_ndk_version():
 # This is kept in sync with the value in 'platform/android/java/app/config.gradle'.
 def get_min_target_api():
     from SCons.Script import ARGUMENTS
+
     ndk_platform = ARGUMENTS.get("ndk_platform", "")
     if ndk_platform.startswith("android-"):
         return get_min_sdk_version(ndk_platform)
