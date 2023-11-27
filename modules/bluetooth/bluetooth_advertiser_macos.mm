@@ -143,9 +143,9 @@
 
 - (void)peripheralManager:(CBPeripheralManager *)peripheral
 		didReceiveWriteRequests:(NSArray<CBATTRequest *> *)requests {
-	int count = requests.count;
+	NSUInteger count = requests.count;
 	NSMutableArray *writes = [[NSMutableArray alloc] initWithCapacity:count];
-	for (int i = 0; i < count; i++) {
+	for (NSUInteger i = 0; i < count; i++) {
 		CBATTRequest *request = requests[i];
 		int length = request.value.length;
 		NSString *uuid = request.characteristic.UUID.UUIDString;
@@ -160,7 +160,7 @@
 		[writes addObject:write];
 	}
 	count = writes.count;
-	for (int i = 0; i < writes.count; i++) {
+	for (NSUInteger i = 0; i < writes.count; i++) {
 		NSNumber *key = writes[i];
 		if ([self.writeRequests objectForKey:key]) {
 			count -= 1;
