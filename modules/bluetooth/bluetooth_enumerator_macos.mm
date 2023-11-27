@@ -119,14 +119,14 @@
 		return dictionary;
 	} else if ([object isKindOfClass:[NSArray class]]) {
 		NSMutableArray *array = [(NSArray *)object mutableCopy];
-		for (int i = 0; i < array.count; i++) {
+		for (NSUInteger i = 0; i < array.count; i++) {
 			id child = [array objectAtIndex:i];
 			[array replaceObjectAtIndex:i withObject:[self process:child depth:(depth + 1) parent:array]];
 		}
 		return array;
 	} else if ([object isKindOfClass:[NSMutableArray class]]) {
 		NSMutableArray *array = (NSMutableArray *)object;
-		for (int i = 0; i < array.count; i++) {
+		for (NSUInteger i = 0; i < array.count; i++) {
 			id child = [array objectAtIndex:i];
 			[array replaceObjectAtIndex:i withObject:[self process:child depth:(depth + 1) parent:object]];
 		}
@@ -190,7 +190,7 @@
 
 	[self stopScanning];
 
-	for (int i = 0; i < peripherals.count; i++) {
+	for (NSUInteger i = 0; i < peripherals.count; i++) {
 		CBPeripheral *peripheral = [peripherals objectAtIndex:i];
 		if (!self.context->on_discover(peripheral.identifier.UUIDString.UTF8String, "", "")) {
 			NSDictionary *connectOptions = @{
