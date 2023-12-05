@@ -50,6 +50,7 @@
 #include "core/config/engine.h"
 #include "core/config/project_settings.h"
 #include "core/input/input.h"
+#include "core/io/json.h"
 #include "core/variant/variant_utility.h"
 #include "main/main.h"
 
@@ -171,9 +172,8 @@ JNIEXPORT jboolean JNICALL Java_org_godotengine_godot_GodotLib_setup(JNIEnv *env
 		}
 	}
 
-    print_line(String((std::string("Debug enabled: ") + std::to_string(OS::get_singleton()->has_feature("debug"))).c_str()));
 #ifdef DEBUG_ENABLED
-    print_line(String("cmdline = ") + g_cmdline.stringify());
+    print_line(String("cmdline = ") + JSON::stringify(g_cmdline));
 #endif
 	Error err = Main::setup(OS_Android::ANDROID_EXEC_PATH, cmdlen, (char **)cmdline, false);
 	if (cmdline) {
