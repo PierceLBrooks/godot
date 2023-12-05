@@ -42,7 +42,7 @@ public class GodotBluetoothReceiver extends BroadcastReceiver {
 
 	private GodotBluetooth bluetooth;
 
-	GodotBluetoothReceiver(GodotBluetooth p_bluetooth) {
+	public GodotBluetoothReceiver(GodotBluetooth p_bluetooth) {
 		bluetooth = p_bluetooth;
 		if (bluetooth != null) {
 			Activity activity = bluetooth.getActivity();

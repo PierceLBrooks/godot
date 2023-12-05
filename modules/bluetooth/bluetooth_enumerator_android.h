@@ -48,6 +48,9 @@ public:
 	static void initialize();
 	static void deinitialize();
 
+    String get_device_name() const override;
+    String get_device_address() const override;
+
 	bool start_scanning() const override;
 	bool stop_scanning() const override;
 

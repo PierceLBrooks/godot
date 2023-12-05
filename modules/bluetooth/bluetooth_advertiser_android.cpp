@@ -51,9 +51,25 @@ void BluetoothAdvertiserAndroid::deinitialize() {
 }
 
 void BluetoothAdvertiserAndroid::respond_characteristic_read_request(String p_characteristic_uuid, String p_response, int p_request) const {
+    bool read = BluetoothAndroid::respond_advertiser_characteristic_read_request(id, p_characteristic_uuid, p_response, p_request);
+#ifdef DEBUG_ENABLED
+    print_line(String((std::string("read = ") + std::to_string(read)).c_str()));
+#endif
 }
 
 void BluetoothAdvertiserAndroid::respond_characteristic_write_request(String p_characteristic_uuid, String p_response, int p_request) const {
+    bool write = BluetoothAndroid::respond_advertiser_characteristic_write_request(id, p_characteristic_uuid, p_response, p_request);
+#ifdef DEBUG_ENABLED
+    print_line(String((std::string("write = ") + std::to_string(write)).c_str()));
+#endif
+}
+
+String BluetoothAdvertiserAndroid::get_device_name() const {
+    return BluetoothAndroid::get_name();
+}
+
+String BluetoothAdvertiserAndroid::get_device_address() const {
+    return BluetoothAndroid::get_address();
 }
 
 bool BluetoothAdvertiserAndroid::start_advertising() const {

@@ -78,8 +78,16 @@ public class GodotBluetoothEnumerator extends ScanCallback {
 		peers = new HashMap<String, GodotBluetoothPeer>();
 	}
 
+	public GodotBluetooth getBluetooth() {
+		return bluetooth;
+	}
+
 	public int getIdentifier() {
 		return id;
+	}
+
+	public BluetoothLeScanner getScanner() {
+		return scanner;
 	}
 
 	private boolean processResult(Object result) {
@@ -121,15 +129,56 @@ public class GodotBluetoothEnumerator extends ScanCallback {
 		}
 		if (peer != null) {
 			success = peer.connect(bluetooth);
+		}
+		if (success) {
+			Log.w(TAG, "Connect!");
 		} else {
-			Log.w(TAG, "Null peer @ " + p_peer_uuid);
+			Log.w(TAG, "No connect!");
+		}
+		return success;
+	}
+
+	public boolean readCharacteristic(String p_peer_uuid, String p_service_uuid, String p_characteristic_uuid) {
+		GodotBluetoothPeer peer = null;
+		boolean success = false;
+		lock.lock();
+		try {
+			if (peers.containsKey(p_peer_uuid)) {
+				peer = peers.get(p_peer_uuid);
+			}
+		} catch (Exception exception) {
+			GodotLib.printStackTrace(exception);
+		} finally {
+			lock.unlock();
+		}
+		if (peer != null) {
+			success = peer.readCharacteristic(p_service_uuid, p_characteristic_uuid);
+		}
+		return success;
+	}
+
+	public boolean writeCharacteristic(String p_peer_uuid, String p_service_uuid, String p_characteristic_uuid, String p_value) {
+		GodotBluetoothPeer peer = null;
+		boolean success = false;
+		lock.lock();
+		try {
+			if (peers.containsKey(p_peer_uuid)) {
+				peer = peers.get(p_peer_uuid);
+			}
+		} catch (Exception exception) {
+			GodotLib.printStackTrace(exception);
+		} finally {
+			lock.unlock();
+		}
+		if (peer != null) {
+			success = peer.writeCharacteristic(p_service_uuid, p_characteristic_uuid, p_value);
 		}
 		return success;
 	}
 
 	@SuppressLint("MissingPermission")
 	public boolean startScanning() {
-		if (scanning.get()) {
+		if (bluetooth == null || scanning.get()) {
 			Log.w(TAG, "Already scanning!");
 			return false;
 		}
@@ -151,9 +200,9 @@ public class GodotBluetoothEnumerator extends ScanCallback {
 			}
 			if (sought_services.length > 0) {
 				ArrayList<ScanFilter> filters = new ArrayList<ScanFilter>();
-				for (int idx = 0; idx < sought_services.length; ++idx) {
+				for (int i = 0; i < sought_services.length; ++i) {
 					ScanFilter.Builder builder = new ScanFilter.Builder();
-					ParcelUuid uuid = new ParcelUuid(UUID.nameUUIDFromBytes(sought_services[idx].getBytes()));
+					ParcelUuid uuid = new ParcelUuid(UUID.nameUUIDFromBytes(sought_services[i].getBytes()));
 					builder.setServiceUuid(uuid);
 					ScanFilter filter = builder.build();
 					if (filter == null) {
@@ -222,7 +271,7 @@ public class GodotBluetoothEnumerator extends ScanCallback {
 	}
 
 	private void onScanResult(ScanResult result) {
-		Boolean success = null;
+		boolean connectable = false;
 		Dictionary argument = null;
 		BluetoothDevice device = null;
 		String address = "";
@@ -231,6 +280,9 @@ public class GodotBluetoothEnumerator extends ScanCallback {
 			if (result != null) {
 				ScanRecord record = result.getScanRecord();
 				device = result.getDevice();
+				if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+					connectable = result.isConnectable();
+				}
 				if (record != null && device != null) {
 					String name = record.getDeviceName();
 					address = device.getAddress();
@@ -242,11 +294,11 @@ public class GodotBluetoothEnumerator extends ScanCallback {
 						argument.put("name", name);
 						if (manufacturer != null) {
 							HashMap<String, String> encoding = new HashMap<String, String>();
-							for (int idx = 0; idx < manufacturer.size(); ++idx) {
-								int key = manufacturer.keyAt(idx);
+							for (int i = 0; i < manufacturer.size(); ++i) {
+								int key = manufacturer.keyAt(i);
 								byte[] value = manufacturer.get(key, new byte[0]);
 								if (value.length > 0) {
-									encoding.put(String.valueOf(key), Base64.encodeToString(value, 0).strip());
+									encoding.put(Integer.toString(key), Base64.encodeToString(value, 0).strip());
 								}
 							}
 							if (!encoding.isEmpty()) {
@@ -270,22 +322,34 @@ public class GodotBluetoothEnumerator extends ScanCallback {
 		if (address == null) {
 			return;
 		}
-		if (argument != null) {
+		lock.lock();
+		try {
+			if (argument != null) {
+				if (peers.containsKey(address)) {
+					Log.w(TAG, "Double discovery?");
+				} else {
+					GodotBluetoothPeer peer = new GodotBluetoothPeer(getIdentifier(), device, connectable);
+					peers.put(address, peer);
+				}
+			}
+		} catch (Exception exception) {
+			GodotLib.printStackTrace(exception);
+		} finally {
+			lock.unlock();
+		}
+		if (argument == null || processResult(GodotLib.bluetoothCallback(GodotBluetooth.EVENT_ON_DISCOVER, id, argument))) {
+			return;
+		}
+		lock.lock();
+		try {
 			if (peers.containsKey(address)) {
-				Log.w(TAG, "Double discovery?");
-			} else {
-				GodotBluetoothPeer peer = new GodotBluetoothPeer(getIdentifier(), device);
-				peers.put(address, peer);
+				peers.remove(address);
 			}
-			success = processResult(GodotLib.bluetoothCallback(GodotBluetooth.EVENT_ON_DISCOVER, id, argument));
+		} catch (Exception exception) {
+			GodotLib.printStackTrace(exception);
 		}
-		if (success != null) {
-			if (success.booleanValue()) {
-				return;
-			}
-		}
-		if (peers.containsKey(address)) {
-			peers.remove(address);
+		finally {
+			lock.unlock();
 		}
 	}
 
@@ -301,8 +365,8 @@ public class GodotBluetoothEnumerator extends ScanCallback {
 	public void onBatchScanResults(List<ScanResult> results) {
 		super.onBatchScanResults(results);
 		if (results != null) {
-			for (int idx = 0; idx < results.size(); ++idx) {
-				onScanResult(results.get(idx));
+			for (int i = 0; i < results.size(); ++i) {
+				onScanResult(results.get(i));
 			}
 		}
 	}

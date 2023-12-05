@@ -53,7 +53,13 @@ jmethodID BluetoothAndroid::_stop_advertising = nullptr;
 jmethodID BluetoothAndroid::_start_scanning = nullptr;
 jmethodID BluetoothAndroid::_stop_scanning = nullptr;
 
+jmethodID BluetoothAndroid::_get_name = nullptr;
+jmethodID BluetoothAndroid::_get_address = nullptr;
 jmethodID BluetoothAndroid::_connect_enumerator_peer = nullptr;
+jmethodID BluetoothAndroid::_read_enumerator_characteristic = nullptr;
+jmethodID BluetoothAndroid::_write_enumerator_characteristic = nullptr;
+jmethodID BluetoothAndroid::_respond_advertiser_characteristic_read_request = nullptr;
+jmethodID BluetoothAndroid::_respond_advertiser_characteristic_write_request = nullptr;
 
 HashMap<int, BluetoothAdvertiserAndroid *> BluetoothAndroid::advertisers;
 HashMap<int, BluetoothEnumeratorAndroid *> BluetoothAndroid::enumerators;
@@ -66,7 +72,7 @@ BluetoothAndroid *BluetoothAndroid::get_singleton() {
 	return singleton;
 }
 
-jobject BluetoothAndroid::_java_bluetooth_callback(int p_event, int p_id, Variant p_arg) {
+jobject BluetoothAndroid::_java_bluetooth_callback(int p_event, int p_id, Variant *p_arg) {
 	jvalret result;
 
 	Variant truth = Variant(true);
@@ -76,7 +82,7 @@ jobject BluetoothAndroid::_java_bluetooth_callback(int p_event, int p_id, Varian
 	JNIEnv *env = get_jni_env();
 
 #ifdef DEBUG_ENABLED
-	print_line(String((std::string("Bluetooth event ") + std::to_string(p_event) + " @ " + std::to_string(p_id)).c_str()) + " = " + p_arg.stringify());
+	print_line(String((std::string("Bluetooth event ") + std::to_string(p_event) + " @ " + std::to_string(p_id)).c_str()) + " = " + p_arg->stringify());
 #endif
 
 	ERR_FAIL_COND_V(env == nullptr, result.obj);
@@ -90,11 +96,11 @@ jobject BluetoothAndroid::_java_bluetooth_callback(int p_event, int p_id, Varian
 					Vector<String> sought_services_vector;
 					for (int idx = 0; idx < sought_services_array.size(); ++idx) {
 						String sought_service = sought_services_array[idx];
-						if (sought_service.size() > 0) {
+						if (!sought_service.is_empty()) {
 							sought_services_vector.push_back(sought_service);
 						}
 					}
-					if (sought_services_vector.size() > 0) {
+					if (!sought_services_vector.is_empty()) {
 						result = _variant_to_jvalue(env, Variant::Type::PACKED_STRING_ARRAY, (Variant *)(&sought_services_vector));
 					} else {
 						result = _variant_to_jvalue(env, Variant::Type::PACKED_STRING_ARRAY, nullptr);
@@ -142,14 +148,14 @@ jobject BluetoothAndroid::_java_bluetooth_callback(int p_event, int p_id, Varian
 					String name = "";
 					String data = "";
 					bool valid = false;
-					if (p_arg.has_key("address", valid) && valid) {
-						address += p_arg.get("address").stringify().strip_edges();
+					if (p_arg->has_key("address", valid) && valid) {
+						address += p_arg->get("address").stringify().strip_edges();
 					}
-					if (p_arg.has_key("name", valid) && valid) {
-						name += p_arg.get("name").stringify().strip_edges();
+					if (p_arg->has_key("name", valid) && valid) {
+						name += p_arg->get("name").stringify().strip_edges();
 					}
-					if (p_arg.has_key("data", valid) && valid) {
-						data += p_arg.get("data").stringify().strip_edges();
+					if (p_arg->has_key("data", valid) && valid) {
+						data += p_arg->get("data").stringify().strip_edges();
 					}
 					if (!data.is_empty()) {
 						data = core_bind::Marshalls::get_singleton()->utf8_to_base64(data);
@@ -175,7 +181,7 @@ jobject BluetoothAndroid::_java_bluetooth_callback(int p_event, int p_id, Varian
 			if (enumerators.has(p_id)) {
 				BluetoothEnumeratorAndroid *enumerator = enumerators.get(p_id);
 				if (enumerator != nullptr) {
-					if (enumerator->on_connect(p_arg.stringify())) {
+					if (enumerator->on_connect(p_arg->stringify().strip_edges())) {
 #ifdef DEBUG_ENABLED
 						print_line("Connect");
 #endif
@@ -191,7 +197,7 @@ jobject BluetoothAndroid::_java_bluetooth_callback(int p_event, int p_id, Varian
 			if (enumerators.has(p_id)) {
 				BluetoothEnumeratorAndroid *enumerator = enumerators.get(p_id);
 				if (enumerator != nullptr) {
-					if (enumerator->on_connect(p_arg.stringify())) {
+					if (enumerator->on_disconnect(p_arg->stringify().strip_edges())) {
 #ifdef DEBUG_ENABLED
 						print_line("Disconnect");
 #endif
@@ -214,14 +220,14 @@ jobject BluetoothAndroid::_java_bluetooth_callback(int p_event, int p_id, Varian
 					String service = "";
 					String characteristic = "";
 					String permission = "";
-					if (p_arg.iter_init(iter, valid) && valid) {
+					if (p_arg->iter_init(iter, valid) && valid) {
 						do {
-							args.push_back(p_arg.iter_get(iter, valid).stringify().strip_edges());
+							args.push_back(p_arg->iter_get(iter, valid).stringify().strip_edges());
 							if (!valid) {
 								args.remove_at(args.size() - 1);
 								break;
 							}
-						} while (!p_arg.iter_next(iter, valid) && valid);
+						} while (!p_arg->iter_next(iter, valid) && valid);
 					}
 					if (args.size() >= 4) {
 						peer += args.get(0).strip_edges();
@@ -241,6 +247,296 @@ jobject BluetoothAndroid::_java_bluetooth_callback(int p_event, int p_id, Varian
 				result = _variant_to_jvalue(env, Variant::Type::BOOL, &falsehood, true);
 			}
 			break;
+        case BLUETOOTH_ENUMERATOR_ON_READ:
+            if (enumerators.has(p_id)) {
+                BluetoothEnumeratorAndroid *enumerator = enumerators.get(p_id);
+                if (enumerator != nullptr) {
+                    String peer = "";
+                    String service = "";
+                    String characteristic = "";
+                    String value = "";
+                    bool valid = false;
+                    if (p_arg->has_key("peer", valid) && valid) {
+                        peer += p_arg->get("peer").stringify().strip_edges();
+                    }
+                    if (p_arg->has_key("service", valid) && valid) {
+                        service += p_arg->get("service").stringify().strip_edges();
+                    }
+                    if (p_arg->has_key("characteristic", valid) && valid) {
+                        characteristic += p_arg->get("characteristic").stringify().strip_edges();
+                    }
+                    if (p_arg->has_key("value", valid) && valid) {
+                        value += p_arg->get("value").stringify().strip_edges();
+                    }
+                    if (enumerator->on_read(peer, service, characteristic, value)) {
+#ifdef DEBUG_ENABLED
+                        print_line("Read");
+#endif
+                        result = _variant_to_jvalue(env, Variant::Type::BOOL, &truth, true);
+                    }
+                }
+            }
+            if (!result.obj) {
+                result = _variant_to_jvalue(env, Variant::Type::BOOL, &falsehood, true);
+            }
+            break;
+        case BLUETOOTH_ENUMERATOR_ON_WRITE:
+            if (enumerators.has(p_id)) {
+                BluetoothEnumeratorAndroid *enumerator = enumerators.get(p_id);
+                if (enumerator != nullptr) {
+                    String peer = "";
+                    String service = "";
+                    String characteristic = "";
+                    bool valid = false;
+                    if (p_arg->has_key("peer", valid) && valid) {
+                        peer += p_arg->get("peer").stringify().strip_edges();
+                    }
+                    if (p_arg->has_key("service", valid) && valid) {
+                        service += p_arg->get("service").stringify().strip_edges();
+                    }
+                    if (p_arg->has_key("characteristic", valid) && valid) {
+                        characteristic += p_arg->get("characteristic").stringify().strip_edges();
+                    }
+                    if (enumerator->on_write(peer, service, characteristic)) {
+#ifdef DEBUG_ENABLED
+                        print_line("Write");
+#endif
+                        result = _variant_to_jvalue(env, Variant::Type::BOOL, &truth, true);
+                    }
+                }
+            }
+            if (!result.obj) {
+                result = _variant_to_jvalue(env, Variant::Type::BOOL, &falsehood, true);
+            }
+            break;
+        case BLUETOOTH_ENUMERATOR_ON_ERROR:
+            if (enumerators.has(p_id)) {
+                BluetoothEnumeratorAndroid *enumerator = enumerators.get(p_id);
+                if (enumerator != nullptr) {
+                    String peer = "";
+                    String service = "";
+                    String characteristic = "";
+                    bool valid = false;
+                    if (p_arg->has_key("peer", valid) && valid) {
+                        peer += p_arg->get("peer").stringify().strip_edges();
+                    }
+                    if (p_arg->has_key("service", valid) && valid) {
+                        service += p_arg->get("service").stringify().strip_edges();
+                    }
+                    if (p_arg->has_key("characteristic", valid) && valid) {
+                        characteristic += p_arg->get("characteristic").stringify().strip_edges();
+                    }
+                    if (enumerator->on_error(peer, service, characteristic)) {
+#ifdef DEBUG_ENABLED
+                        print_line("Error");
+#endif
+                        result = _variant_to_jvalue(env, Variant::Type::BOOL, &truth, true);
+                    }
+                }
+            }
+            if (!result.obj) {
+                result = _variant_to_jvalue(env, Variant::Type::BOOL, &falsehood, true);
+            }
+            break;
+        case BLUETOOTH_ADVERTISER_GET_NAME:
+            if (advertisers.has(p_id)) {
+                BluetoothAdvertiserAndroid *advertiser = advertisers.get(p_id);
+                if (advertiser != nullptr) {
+                    String name = advertiser->get_service_name();
+                    result = _variant_to_jvalue(env, Variant::Type::STRING, (Variant *)(&name));
+                }
+            }
+            break;
+        case BLUETOOTH_ADVERTISER_GET_MANUFACTURER_DATA:
+            if (advertisers.has(p_id)) {
+                BluetoothAdvertiserAndroid *advertiser = advertisers.get(p_id);
+                if (advertiser != nullptr) {
+                    Vector<uint8_t> data = advertiser->get_service_manufacturer_information();
+                    if (!data.is_empty()) {
+                        String manufacturer = core_bind::Marshalls::get_singleton()->raw_to_base64(data);
+                        if (!manufacturer.is_empty()) {
+                            result = _variant_to_jvalue(env, Variant::Type::STRING, (Variant *)(&manufacturer), true);
+                        }
+                    }
+                }
+            }
+            break;
+        case BLUETOOTH_ADVERTISER_GET_SERVICES:
+            if (advertisers.has(p_id)) {
+                BluetoothAdvertiserAndroid *advertiser = advertisers.get(p_id);
+                if (advertiser != nullptr) {
+                    Vector<String> services_vector;
+                    services_vector.push_back(advertiser->get_service_uuid());
+                    result = _variant_to_jvalue(env, Variant::Type::PACKED_STRING_ARRAY, (Variant *)(&services_vector));
+                }
+            }
+            break;
+        case BLUETOOTH_ADVERTISER_GET_CHARACTERISTICS:
+            if (advertisers.has(p_id)) {
+                BluetoothAdvertiserAndroid *advertiser = advertisers.get(p_id);
+                if (advertiser != nullptr) {
+                    TypedArray<String> characteristics_array = advertiser->get_characteristics();
+                    Vector<String> characteristics_vector;
+                    for (int idx = 0; idx < characteristics_array.size(); ++idx) {
+                        String characteristic = characteristics_array[idx];
+                        if (!characteristic.is_empty()) {
+                            characteristics_vector.push_back(characteristic);
+                        }
+                    }
+                    if (!characteristics_vector.is_empty()) {
+                        result = _variant_to_jvalue(env, Variant::Type::PACKED_STRING_ARRAY, (Variant *)(&characteristics_vector));
+                    } else {
+                        result = _variant_to_jvalue(env, Variant::Type::PACKED_STRING_ARRAY, nullptr);
+                    }
+                }
+            }
+            break;
+        case BLUETOOTH_ADVERTISER_GET_CHARACTERISTC_PERMISSIONS:
+            if (advertisers.has(p_id)) {
+                BluetoothAdvertiserAndroid *advertiser = advertisers.get(p_id);
+                if (advertiser != nullptr) {
+                    TypedArray<String> permissions_array = advertiser->get_characteristics();
+                    Vector<int> permissions_vector;
+                    for (int idx = 0; idx < permissions_array.size(); ++idx) {
+                        String permission = permissions_array[idx];
+                        if (permission.is_empty()) {
+                            continue;
+                        }
+                        if (advertiser->get_characteristic_permission(permission)) {
+                            permissions_vector.push_back(1);
+                        } else {
+                            permissions_vector.push_back(0);
+                        }
+                    }
+                    if (!permissions_vector.is_empty()) {
+                        result = _variant_to_jvalue(env, Variant::Type::PACKED_INT32_ARRAY, (Variant *)(&permissions_vector));
+                    } else {
+                        result = _variant_to_jvalue(env, Variant::Type::PACKED_INT32_ARRAY, nullptr);
+                    }
+                }
+            }
+            break;
+        case BLUETOOTH_ADVERTISER_GET_CHARACTERISTC_VALUE:
+            if (advertisers.has(p_id)) {
+                BluetoothAdvertiserAndroid *advertiser = advertisers.get(p_id);
+                if (advertiser != nullptr) {
+                    Ref<BluetoothAdvertiser::BluetoothAdvertiserCharacteristic> characteristic = advertiser->get_characteristic_by_uuid(p_arg->stringify().strip_edges());
+                    if (characteristic.is_valid()) {
+                        String value = characteristic->value;
+                        if (!value.is_empty()) {
+                            result = _variant_to_jvalue(env, Variant::Type::STRING, (Variant *)(&value));
+                        }
+                    }
+                }
+            }
+            break;
+        case BLUETOOTH_ADVERTISER_ON_ERROR:
+#ifdef DEBUG_ENABLED
+            print_line("Error");
+#endif
+#if 0
+            if (advertisers.has(p_id)) {
+                BluetoothAdvertiserAndroid *advertiser = advertisers.get(p_id);
+                if (advertiser != nullptr) {
+                    //advertiser->on_error();
+                }
+            }
+#endif
+            break;
+        case BLUETOOTH_ADVERTISER_ON_CONNECT:
+#ifdef DEBUG_ENABLED
+            print_line("Connect");
+#endif
+#if 0
+            if (advertisers.has(p_id)) {
+                BluetoothAdvertiserAndroid *advertiser = advertisers.get(p_id);
+                if (advertiser != nullptr) {
+                    //advertiser->on_connect(p_arg->stringify().strip_edges());
+                }
+            }
+#endif
+            break;
+        case BLUETOOTH_ADVERTISER_ON_DISCONNECT:
+#ifdef DEBUG_ENABLED
+            print_line("Disconnect");
+#endif
+#if 0
+            if (advertisers.has(p_id)) {
+                BluetoothAdvertiserAndroid *advertiser = advertisers.get(p_id);
+                if (advertiser != nullptr) {
+                    //advertiser->on_disconnect(p_arg->stringify().strip_edges());
+                }
+            }
+#endif
+            break;
+        case BLUETOOTH_ADVERTISER_ON_READ:
+            if (advertisers.has(p_id)) {
+                BluetoothAdvertiserAndroid *advertiser = advertisers.get(p_id);
+                if (advertiser != nullptr) {
+                    String peer = "";
+                    String request = "";
+                    String characteristic = "";
+                    bool valid = false;
+                    if (p_arg->has_key("peer", valid) && valid) {
+                        peer += p_arg->get("peer").stringify().strip_edges();
+                    }
+                    if (p_arg->has_key("request", valid) && valid) {
+                        request += p_arg->get("request").stringify().strip_edges();
+                    }
+                    if (p_arg->has_key("characteristic", valid) && valid) {
+                        characteristic += p_arg->get("characteristic").stringify().strip_edges();
+                    }
+                    if (request.is_empty()) {
+                        request += "0";
+                    }
+                    if (advertiser->on_read(characteristic, atoi(request.utf8().get_data()), peer)) {
+#ifdef DEBUG_ENABLED
+                        print_line("Write");
+#endif
+                        result = _variant_to_jvalue(env, Variant::Type::BOOL, &truth, true);
+                    }
+                }
+            }
+            if (!result.obj) {
+                result = _variant_to_jvalue(env, Variant::Type::BOOL, &falsehood, true);
+            }
+            break;
+        case BLUETOOTH_ADVERTISER_ON_WRITE:
+            if (advertisers.has(p_id)) {
+                BluetoothAdvertiserAndroid *advertiser = advertisers.get(p_id);
+                if (advertiser != nullptr) {
+                    String peer = "";
+                    String request = "";
+                    String characteristic = "";
+                    String value = "";
+                    bool valid = false;
+                    if (p_arg->has_key("peer", valid) && valid) {
+                        peer += p_arg->get("peer").stringify().strip_edges();
+                    }
+                    if (p_arg->has_key("request", valid) && valid) {
+                        request += p_arg->get("request").stringify().strip_edges();
+                    }
+                    if (p_arg->has_key("characteristic", valid) && valid) {
+                        characteristic += p_arg->get("characteristic").stringify().strip_edges();
+                    }
+                    if (p_arg->has_key("value", valid) && valid) {
+                        value += p_arg->get("value").stringify().strip_edges();
+                    }
+                    if (request.is_empty()) {
+                        request += "0";
+                    }
+                    if (advertiser->on_write(characteristic, atoi(request.utf8().get_data()), peer, value)) {
+#ifdef DEBUG_ENABLED
+                        print_line("Read");
+#endif
+                        result = _variant_to_jvalue(env, Variant::Type::BOOL, &truth, true);
+                    }
+                }
+            }
+            if (!result.obj) {
+                result = _variant_to_jvalue(env, Variant::Type::BOOL, &falsehood, true);
+            }
+            break;
 		default:
 			break;
 	}
@@ -269,6 +565,10 @@ void BluetoothAndroid::setup(jobject p_bluetooth) {
 	_stop_scanning = env->GetMethodID(cls, "stopScanning", "(I)Z");
 
 	_connect_enumerator_peer = env->GetMethodID(cls, "connectEnumeratorPeer", "(ILjava/lang/String;)Z");
+	_read_enumerator_characteristic = env->GetMethodID(cls, "readEnumeratorCharacteristic", "(ILjava/lang/String;Ljava/lang/String;Ljava/lang/String;)Z");
+	_write_enumerator_characteristic = env->GetMethodID(cls, "writeEnumeratorCharacteristic", "(ILjava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)Z");
+    _respond_advertiser_characteristic_read_request = env->GetMethodID(cls, "respondAdvertiserCharacteristicReadRequest", "(ILjava/lang/String;Ljava/lang/String;I)Z");
+    _respond_advertiser_characteristic_write_request = env->GetMethodID(cls, "respondAdvertiserCharacteristicWriteRequest", "(ILjava/lang/String;Ljava/lang/String;I)Z");
 
 	_register_advertiser = env->GetMethodID(cls, "registerAdvertiser", "(I)Z");
 	_register_enumerator = env->GetMethodID(cls, "registerEnumerator", "(I)Z");
@@ -331,21 +631,170 @@ bool BluetoothAndroid::stop_scanning(int p_enumerator_id) {
 	}
 }
 
+String BluetoothAndroid::get_name() {
+    String str = "";
+    if (_get_name) {
+        JNIEnv *env = get_jni_env();
+
+        ERR_FAIL_COND_V(env == nullptr, str);
+        jstring res = (jstring)env->CallObjectMethod(bluetooth, _get_name);
+        if (res) {
+            str += _jobject_to_variant(env, res).stringify();
+            env->DeleteLocalRef(res);
+        }
+    }
+    return str;
+}
+
+String BluetoothAndroid::get_address() {
+    String str = "";
+    if (_get_address) {
+        JNIEnv *env = get_jni_env();
+
+        ERR_FAIL_COND_V(env == nullptr, str);
+        jstring res = (jstring)env->CallObjectMethod(bluetooth, _get_address);
+        if (res) {
+            str += _jobject_to_variant(env, res).stringify();
+            env->DeleteLocalRef(res);
+        }
+    }
+    return str;
+}
+
 bool BluetoothAndroid::connect_enumerator_peer(int p_enumerator_id, String p_peer_uuid) {
 	if (_connect_enumerator_peer) {
 		JNIEnv *env = get_jni_env();
 
 		ERR_FAIL_COND_V(env == nullptr, false);
-		jvalret str = _variant_to_jvalue(env, Variant::Type::STRING, (Variant *)(&p_peer_uuid));
+		jvalret peer = _variant_to_jvalue(env, Variant::Type::STRING, (Variant *)(&p_peer_uuid));
 		jboolean res = JNI_FALSE;
-		if (str.obj) {
-			res = env->CallBooleanMethod(bluetooth, _connect_enumerator_peer, p_enumerator_id, str.obj);
-			env->DeleteLocalRef(str.obj);
+		if (peer.obj) {
+			res = env->CallBooleanMethod(bluetooth, _connect_enumerator_peer, p_enumerator_id, peer.obj);
+			env->DeleteLocalRef(peer.obj);
 		}
 		return res;
 	} else {
 		return false;
 	}
+}
+
+bool BluetoothAndroid::read_enumerator_characteristic(int p_enumerator_id, String p_peer_uuid, String p_service_uuid, String p_characteristic_uuid) {
+    if (_read_enumerator_characteristic) {
+        JNIEnv *env = get_jni_env();
+
+        ERR_FAIL_COND_V(env == nullptr, false);
+        jvalret peer = _variant_to_jvalue(env, Variant::Type::STRING, (Variant *)(&p_peer_uuid));
+        jvalret service = _variant_to_jvalue(env, Variant::Type::STRING, (Variant *)(&p_service_uuid));
+        jvalret characteristic = _variant_to_jvalue(env, Variant::Type::STRING, (Variant *)(&p_characteristic_uuid));
+        jboolean res = JNI_FALSE;
+        if (!peer.obj || !service.obj || !characteristic.obj) {
+            if (peer.obj) {
+                env->DeleteLocalRef(peer.obj);
+            }
+            if (service.obj) {
+                env->DeleteLocalRef(service.obj);
+            }
+            if (characteristic.obj) {
+                env->DeleteLocalRef(characteristic.obj);
+            }
+            return res;
+        }
+        res = env->CallBooleanMethod(bluetooth, _read_enumerator_characteristic, p_enumerator_id, peer.obj, service.obj, characteristic.obj);
+        env->DeleteLocalRef(peer.obj);
+        env->DeleteLocalRef(service.obj);
+        env->DeleteLocalRef(characteristic.obj);
+        return res;
+    } else {
+        return false;
+    }
+}
+
+bool BluetoothAndroid::write_enumerator_characteristic(int p_enumerator_id, String p_peer_uuid, String p_service_uuid, String p_characteristic_uuid, String p_value) {
+    if (_write_enumerator_characteristic) {
+        JNIEnv *env = get_jni_env();
+
+        ERR_FAIL_COND_V(env == nullptr, false);
+        jvalret peer = _variant_to_jvalue(env, Variant::Type::STRING, (Variant *)(&p_peer_uuid));
+        jvalret service = _variant_to_jvalue(env, Variant::Type::STRING, (Variant *)(&p_service_uuid));
+        jvalret characteristic = _variant_to_jvalue(env, Variant::Type::STRING, (Variant *)(&p_characteristic_uuid));
+        jvalret value = _variant_to_jvalue(env, Variant::Type::STRING, (Variant *)(&p_value));
+        jboolean res = JNI_FALSE;
+        if (!peer.obj || !service.obj || !characteristic.obj || !value.obj) {
+            if (peer.obj) {
+                env->DeleteLocalRef(peer.obj);
+            }
+            if (service.obj) {
+                env->DeleteLocalRef(service.obj);
+            }
+            if (characteristic.obj) {
+                env->DeleteLocalRef(characteristic.obj);
+            }
+            if (value.obj) {
+                env->DeleteLocalRef(value.obj);
+            }
+            return res;
+        }
+        res = env->CallBooleanMethod(bluetooth, _write_enumerator_characteristic, p_enumerator_id, peer.obj, service.obj, characteristic.obj, value.obj);
+        env->DeleteLocalRef(peer.obj);
+        env->DeleteLocalRef(service.obj);
+        env->DeleteLocalRef(characteristic.obj);
+        env->DeleteLocalRef(value.obj);
+        return res;
+    } else {
+        return false;
+    }
+}
+
+bool BluetoothAndroid::respond_advertiser_characteristic_read_request(int p_advertiser_id, String p_characteristic_uuid, String p_response, int p_request) {
+    if (_respond_advertiser_characteristic_read_request) {
+        JNIEnv *env = get_jni_env();
+
+        ERR_FAIL_COND_V(env == nullptr, false);
+        jvalret characteristic = _variant_to_jvalue(env, Variant::Type::STRING, (Variant *)(&p_characteristic_uuid));
+        jvalret response = _variant_to_jvalue(env, Variant::Type::STRING, (Variant *)(&p_response));
+        jboolean res = JNI_FALSE;
+        if (!characteristic.obj || !response.obj) {
+            if (characteristic.obj) {
+                env->DeleteLocalRef(characteristic.obj);
+            }
+            if (response.obj) {
+                env->DeleteLocalRef(response.obj);
+            }
+            return res;
+        }
+        res = env->CallBooleanMethod(bluetooth, _respond_advertiser_characteristic_read_request, p_advertiser_id, characteristic.obj, response.obj, p_request);
+        env->DeleteLocalRef(characteristic.obj);
+        env->DeleteLocalRef(response.obj);
+        return res;
+    } else {
+        return false;
+    }
+}
+
+bool BluetoothAndroid::respond_advertiser_characteristic_write_request(int p_advertiser_id, String p_characteristic_uuid, String p_response, int p_request) {
+    if (_respond_advertiser_characteristic_write_request) {
+        JNIEnv *env = get_jni_env();
+
+        ERR_FAIL_COND_V(env == nullptr, false);
+        jvalret characteristic = _variant_to_jvalue(env, Variant::Type::STRING, (Variant *)(&p_characteristic_uuid));
+        jvalret response = _variant_to_jvalue(env, Variant::Type::STRING, (Variant *)(&p_response));
+        jboolean res = JNI_FALSE;
+        if (!characteristic.obj || !response.obj) {
+            if (characteristic.obj) {
+                env->DeleteLocalRef(characteristic.obj);
+            }
+            if (response.obj) {
+                env->DeleteLocalRef(response.obj);
+            }
+            return res;
+        }
+        res = env->CallBooleanMethod(bluetooth, _respond_advertiser_characteristic_write_request, p_advertiser_id, characteristic.obj, response.obj, p_request);
+        env->DeleteLocalRef(characteristic.obj);
+        env->DeleteLocalRef(response.obj);
+        return res;
+    } else {
+        return false;
+    }
 }
 
 int BluetoothAndroid::register_advertiser(BluetoothAdvertiserAndroid *p_advertiser) {

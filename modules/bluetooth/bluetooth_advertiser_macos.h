@@ -48,6 +48,9 @@ public:
 	static void initialize();
 	static void deinitialize();
 
+	String get_device_name() const override;
+	String get_device_address() const override;
+
 	void respond_characteristic_read_request(String p_characteristic_uuid, String p_response, int p_request) const override;
 	void respond_characteristic_write_request(String p_characteristic_uuid, String p_response, int p_request) const override;
 

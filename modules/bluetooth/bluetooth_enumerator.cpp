@@ -59,6 +59,9 @@ void BluetoothEnumerator::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("read_peer_service_characteristic", "peer_uuid", "service_uuid", "characteristic_uuid"), &BluetoothEnumerator::read_peer_service_characteristic);
 	ClassDB::bind_method(D_METHOD("write_peer_service_characteristic", "peer_uuid", "service_uuid", "characteristic_uuid", "value"), &BluetoothEnumerator::write_peer_service_characteristic);
 
+    ClassDB::bind_method(D_METHOD("get_device_name"), &BluetoothEnumerator::get_device_name);
+    ClassDB::bind_method(D_METHOD("get_device_address"), &BluetoothEnumerator::get_device_address);
+
 	ADD_GROUP("Enumerator", "enumerator_");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "enumerator_is_active"), "set_active", "is_active");
 
@@ -185,6 +188,14 @@ BluetoothEnumerator::~BluetoothEnumerator() {
 	// nothing to do here
 }
 
+String BluetoothEnumerator::get_device_name() const {
+    return "";
+}
+
+String BluetoothEnumerator::get_device_address() const {
+    return "";
+}
+
 bool BluetoothEnumerator::start_scanning() const {
 	// nothing to do here
 	return false;
@@ -285,6 +296,9 @@ bool BluetoothEnumerator::on_discover(String p_peer_uuid, String p_peer_name, St
 }
 
 bool BluetoothEnumerator::on_connect(String p_peer_uuid) const {
+    if (peers.find(p_peer_uuid) == peers.end()) {
+        return false;
+    }
 	if (can_emit_signal(SNAME("bluetooth_peer_connected"))) {
 		Ref<BluetoothEnumerator::BluetoothEnumeratorPeer> *reference = new Ref<BluetoothEnumerator::BluetoothEnumeratorPeer>(peers[p_peer_uuid]);
 		if (reference->is_valid()) {
@@ -307,6 +321,9 @@ bool BluetoothEnumerator::on_connect(String p_peer_uuid) const {
 }
 
 bool BluetoothEnumerator::on_disconnect(String p_peer_uuid) const {
+    if (peers.find(p_peer_uuid) == peers.end()) {
+        return false;
+    }
 	if (can_emit_signal(SNAME("bluetooth_peer_disconnected"))) {
 		Ref<BluetoothEnumerator::BluetoothEnumeratorPeer> *reference = new Ref<BluetoothEnumerator::BluetoothEnumeratorPeer>(peers[p_peer_uuid]);
 		if (reference->is_valid()) {
@@ -392,7 +409,7 @@ bool BluetoothEnumerator::on_read(String p_peer_uuid, String p_service_uuid, Str
 				Ref<BluetoothEnumerator::BluetoothEnumeratorCharacteristic> *reference = new Ref<BluetoothEnumerator::BluetoothEnumeratorCharacteristic>(service->characteristics[p_characteristic_uuid]);
 				if (reference->is_valid()) {
 					Thread thread;
-					(*reference)->value = core_bind::Marshalls::get_singleton()->base64_to_utf8(p_value_base64);
+					(*reference)->value = p_value_base64;
 					(*reference)->uuid = p_characteristic_uuid;
 					(*reference)->service = p_service_uuid;
 					(*reference)->peer = *peer;
@@ -400,7 +417,7 @@ bool BluetoothEnumerator::on_read(String p_peer_uuid, String p_service_uuid, Str
 					thread.start([](void *p_udata) {
 						Ref<BluetoothEnumerator::BluetoothEnumeratorCharacteristic> *characteristic = static_cast<Ref<BluetoothEnumerator::BluetoothEnumeratorCharacteristic> *>(p_udata);
 						if (characteristic->is_valid() && (*characteristic)->peer.is_valid() && (*characteristic)->peer->enumerator.is_valid()) {
-							(*characteristic)->peer->enumerator->emit_signal(SNAME("bluetooth_peer_characteristic_read"), (*characteristic)->peer->enumerator->get_sought_services(), (*characteristic)->peer->uuid, (*characteristic)->service, (*characteristic)->uuid, (*characteristic)->value);
+							(*characteristic)->peer->enumerator->emit_signal(SNAME("bluetooth_peer_characteristic_read"), (*characteristic)->peer->enumerator->get_sought_services(), (*characteristic)->peer->uuid, (*characteristic)->service, (*characteristic)->uuid, core_bind::Marshalls::get_singleton()->base64_to_utf8((*characteristic)->value));
 						}
 					},
 							reference);

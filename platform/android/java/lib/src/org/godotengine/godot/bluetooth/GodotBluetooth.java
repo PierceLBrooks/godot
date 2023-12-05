@@ -65,9 +65,23 @@ public class GodotBluetooth {
 	public static final int EVENT_ON_STOP_SCANNING = 1;
 	public static final int EVENT_ON_START_SCANNING = 2;
 	public static final int EVENT_ON_DISCOVER = 3;
-	public static final int EVENT_ON_CONNECT = 4;
-	public static final int EVENT_ON_DISCONNECT = 5;
+	public static final int EVENT_ON_ENUMERATOR_CONNECT = 4;
+	public static final int EVENT_ON_ENUMERATOR_DISCONNECT = 5;
 	public static final int EVENT_ON_DISCOVER_SERVICE_CHARACTERISTIC = 6;
+	public static final int EVENT_ON_ENUMERATOR_READ = 7;
+	public static final int EVENT_ON_ENUMERATOR_WRITE = 8;
+	public static final int EVENT_ON_ENUMERATOR_ERROR = 9;
+	public static final int EVENT_GET_NAME = 10;
+	public static final int EVENT_GET_MANUFACTURER_DATA = 11;
+	public static final int EVENT_GET_SERVICES = 12;
+	public static final int EVENT_GET_CHARACTERISTICS = 13;
+	public static final int EVENT_GET_CHARACTERISTIC_PERMISSIONS = 14;
+	public static final int EVENT_GET_CHARACTERISTIC_VALUE = 15;
+	public static final int EVENT_ON_ADVERTISER_ERROR = 16;
+	public static final int EVENT_ON_ADVERTISER_CONNECT = 17;
+	public static final int EVENT_ON_ADVERTISER_DISCONNECT = 18;
+	public static final int EVENT_ON_ADVERTISER_READ = 19;
+	public static final int EVENT_ON_ADVERTISER_WRITE = 20;
 
 	private Activity activity;
 	private Context context;
@@ -155,6 +169,43 @@ public class GodotBluetooth {
 
 	public Context getContext() {
 		return context;
+	}
+
+	public BluetoothManager getManager() {
+		return manager;
+	}
+
+	public String getAddress() {
+		String address = null;
+		try {
+			BluetoothAdapter adapter = getAdapter(BluetoothReason.CONNECTING);
+			if (adapter != null) {
+				address = adapter.getAddress();
+			}
+		} catch (Exception exception) {
+			GodotLib.printStackTrace(exception);
+		}
+		if (address == null) {
+			address = "";
+		}
+		return address;
+	}
+
+	@SuppressLint("MissingPermission")
+	public String getName() {
+		String name = null;
+		try {
+			BluetoothAdapter adapter = getAdapter(BluetoothReason.CONNECTING);
+			if (adapter != null) {
+				name = adapter.getName();
+			}
+		} catch (Exception exception) {
+			GodotLib.printStackTrace(exception);
+		}
+		if (name == null) {
+			name = "";
+		}
+		return name;
 	}
 
 	public BluetoothAdapter getAdapter(BluetoothReason reason) {
@@ -341,8 +392,99 @@ public class GodotBluetooth {
 		}
 		if (enumerator != null) {
 			success = enumerator.connectPeer(p_peer_uuid);
+		}
+		if (success) {
+			Log.w(TAG, "Connect!");
 		} else {
-			Log.w(TAG, "Null enumerator @ " + p_peer_uuid);
+			Log.w(TAG, "No connect!");
+		}
+		return success;
+	}
+
+	public boolean readEnumeratorCharacteristic(int p_enumerator_id, String p_peer_uuid, String p_service_uuid, String p_characteristic_uuid) {
+		GodotBluetoothEnumerator enumerator = null;
+		boolean success = false;
+		if (p_peer_uuid == null) {
+			return success;
+		}
+		lock.lock();
+		try {
+			if (enumerators.containsKey(p_enumerator_id)) {
+				enumerator = enumerators.get(p_enumerator_id);
+			}
+		} catch (Exception exception) {
+			GodotLib.printStackTrace(exception);
+		} finally {
+			lock.unlock();
+		}
+		if (enumerator != null) {
+			success = enumerator.readCharacteristic(p_peer_uuid, p_service_uuid, p_characteristic_uuid);
+		}
+		return success;
+	}
+
+	public boolean writeEnumeratorCharacteristic(int p_enumerator_id, String p_peer_uuid, String p_service_uuid, String p_characteristic_uuid, String p_value) {
+		GodotBluetoothEnumerator enumerator = null;
+		boolean success = false;
+		if (p_peer_uuid == null) {
+			return success;
+		}
+		lock.lock();
+		try {
+			if (enumerators.containsKey(p_enumerator_id)) {
+				enumerator = enumerators.get(p_enumerator_id);
+			}
+		} catch (Exception exception) {
+			GodotLib.printStackTrace(exception);
+		} finally {
+			lock.unlock();
+		}
+		if (enumerator != null) {
+			success = enumerator.writeCharacteristic(p_peer_uuid, p_service_uuid, p_characteristic_uuid, p_value);
+		}
+		return success;
+	}
+
+	public boolean respondAdvertiserCharacteristicReadRequest(int p_advertiser_id, String p_characteristic_uuid, String p_response, int p_request) {
+		GodotBluetoothAdvertiser advertiser = null;
+		boolean success = false;
+		if (p_characteristic_uuid == null) {
+			return success;
+		}
+		lock.lock();
+		try {
+			if (advertisers.containsKey(p_advertiser_id)) {
+				advertiser = advertisers.get(p_advertiser_id);
+			}
+		} catch (Exception exception) {
+			GodotLib.printStackTrace(exception);
+		} finally {
+			lock.unlock();
+		}
+		if (advertiser != null) {
+			success = advertiser.respondReadRequest(p_characteristic_uuid, p_response, p_request);
+		}
+		return success;
+	}
+
+	public boolean respondAdvertiserCharacteristicWriteRequest(int p_advertiser_id, String p_characteristic_uuid, String p_response, int p_request) {
+		GodotBluetoothAdvertiser advertiser = null;
+		boolean success = false;
+		if (p_characteristic_uuid == null) {
+			return success;
+		}
+		lock.lock();
+		try {
+			if (advertisers.containsKey(p_advertiser_id)) {
+				advertiser = advertisers.get(p_advertiser_id);
+			}
+		} catch (Exception exception) {
+			GodotLib.printStackTrace(exception);
+		} finally {
+			lock.unlock();
+		}
+		if (advertiser != null) {
+			success = advertiser.respondWriteRequest(p_characteristic_uuid, p_response, p_request);
 		}
 		return success;
 	}

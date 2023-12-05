@@ -19,6 +19,8 @@ func _on_bluetooth_service_characteristic_write(service_uuid, characteristic_uui
 # Called when the node enters the scene tree for the first time.
 func _ready():
 	advertiser = BluetoothAdvertiser.new()
+	print(advertiser.get_device_name())
+	print(advertiser.get_device_address())
 	advertiser.set_service_manufacturer_information(Marshalls.base64_to_raw("SGVsbG8sIHdvcmxkIQ=="))
 	advertiser.set_service_name("btle_service")
 	advertiser.set_service_uuid("29D7544B-6870-45A4-BB7E-D981535F4525")

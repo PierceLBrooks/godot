@@ -46,7 +46,9 @@ class BluetoothAdvertiser : public RefCounted {
 	GDCLASS(BluetoothAdvertiser, RefCounted);
 
 private:
-	friend class Bluetooth;
+#ifdef ANDROID_ENABLED
+	friend class BluetoothAndroid;
+#endif
 
 	HashMap<String, bool> permissions;
 
@@ -117,6 +119,9 @@ public:
 	BluetoothAdvertiser();
 	BluetoothAdvertiser(String p_service_uuid);
 	virtual ~BluetoothAdvertiser();
+
+    virtual String get_device_name() const;
+    virtual String get_device_address() const;
 
 	virtual bool start_advertising() const;
 	virtual bool stop_advertising() const;

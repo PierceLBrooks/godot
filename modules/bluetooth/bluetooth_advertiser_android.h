@@ -51,6 +51,9 @@ public:
 	void respond_characteristic_read_request(String p_characteristic_uuid, String p_response, int p_request) const override;
 	void respond_characteristic_write_request(String p_characteristic_uuid, String p_response, int p_request) const override;
 
+    String get_device_name() const override;
+    String get_device_address() const override;
+
 	bool start_advertising() const override;
 	bool stop_advertising() const override;
 

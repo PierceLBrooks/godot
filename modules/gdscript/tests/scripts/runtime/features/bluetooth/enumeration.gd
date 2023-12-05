@@ -9,8 +9,8 @@ func _on_bluetooth_service_enumeration_stopped(sought_services):
 	print("stop: "+str(sought_services))
 
 func _on_bluetooth_peer_discovered(sought_services, peer, name, data):
-	print("discover: "+str(peer)+" & "+str(name)+" & "+str(JSON.stringify(str(data))))
-	if ("Mac" in name):
+	print("discover: "+str(peer)+" & "+str(name)+" & "+str(JSON.stringify(data)))
+	if ("Samsung" in name):
 		enumerator.connect_peer(peer)
 
 func _on_bluetooth_peer_connected(sought_services, peer):
@@ -38,6 +38,8 @@ func _on_bluetooth_peer_characteristic_error(sought_services, peer, service, cha
 func _ready():
 	#noob.add_sought_service("ADE3D529-C784-4F63-A987-EB69F70EE816")
 	enumerator = BluetoothEnumerator.new()
+	print(enumerator.get_device_name())
+	print(enumerator.get_device_address())
 	enumerator.connect("bluetooth_service_enumeration_started", _on_bluetooth_service_enumeration_started)
 	enumerator.connect("bluetooth_service_enumeration_stopped", _on_bluetooth_service_enumeration_stopped)
 	enumerator.connect("bluetooth_peer_discovered", _on_bluetooth_peer_discovered)

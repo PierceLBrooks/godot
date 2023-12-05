@@ -58,7 +58,21 @@ class BluetoothAndroid {
 		BLUETOOTH_ENUMERATOR_ON_CONNECT = 4,
 		BLUETOOTH_ENUMERATOR_ON_DISCONNECT = 5,
 		BLUETOOTH_ENUMERATOR_ON_DISCOVER_SERVICE_CHARACTERISTIC = 6,
-	};
+		BLUETOOTH_ENUMERATOR_ON_READ = 7,
+		BLUETOOTH_ENUMERATOR_ON_WRITE = 8,
+		BLUETOOTH_ENUMERATOR_ON_ERROR = 9,
+        BLUETOOTH_ADVERTISER_GET_NAME = 10,
+        BLUETOOTH_ADVERTISER_GET_MANUFACTURER_DATA = 11,
+        BLUETOOTH_ADVERTISER_GET_SERVICES = 12,
+        BLUETOOTH_ADVERTISER_GET_CHARACTERISTICS = 13,
+        BLUETOOTH_ADVERTISER_GET_CHARACTERISTC_PERMISSIONS = 14,
+        BLUETOOTH_ADVERTISER_GET_CHARACTERISTC_VALUE = 15,
+        BLUETOOTH_ADVERTISER_ON_ERROR = 16,
+        BLUETOOTH_ADVERTISER_ON_CONNECT = 17,
+        BLUETOOTH_ADVERTISER_ON_DISCONNECT = 18,
+        BLUETOOTH_ADVERTISER_ON_READ = 19,
+        BLUETOOTH_ADVERTISER_ON_WRITE = 20,
+    };
 
 	static BluetoothAndroid *singleton;
 
@@ -72,7 +86,13 @@ class BluetoothAndroid {
 	static jmethodID _start_scanning;
 	static jmethodID _stop_scanning;
 
+	static jmethodID _get_name;
+	static jmethodID _get_address;
 	static jmethodID _connect_enumerator_peer;
+	static jmethodID _read_enumerator_characteristic;
+	static jmethodID _write_enumerator_characteristic;
+	static jmethodID _respond_advertiser_characteristic_read_request;
+	static jmethodID _respond_advertiser_characteristic_write_request;
 
 	static jmethodID _register_advertiser;
 	static jmethodID _register_enumerator;
@@ -87,7 +107,7 @@ class BluetoothAndroid {
 public:
 	static BluetoothAndroid *get_singleton();
 
-	static jobject _java_bluetooth_callback(int p_event, int p_id, Variant p_arg);
+	static jobject _java_bluetooth_callback(int p_event, int p_id, Variant *p_arg);
 
 	static void setup(jobject p_bluetooth);
 
@@ -98,7 +118,13 @@ public:
 	static bool start_scanning(int p_enumerator_id);
 	static bool stop_scanning(int p_enumerator_id);
 
+    static String get_name();
+    static String get_address();
 	static bool connect_enumerator_peer(int p_enumerator_id, String p_peer_uuid);
+	static bool read_enumerator_characteristic(int p_enumerator_id, String p_peer_uuid, String p_service_uuid, String p_characteristic_uuid);
+	static bool write_enumerator_characteristic(int p_enumerator_id, String p_peer_uuid, String p_service_uuid, String p_characteristic_uuid, String p_value);
+	static bool respond_advertiser_characteristic_read_request(int p_advertiser_id, String p_characteristic_uuid, String p_response, int p_request);
+	static bool respond_advertiser_characteristic_write_request(int p_advertiser_id, String p_characteristic_uuid, String p_response, int p_request);
 
 	int register_advertiser(BluetoothAdvertiserAndroid *p_advertiser);
 	int register_enumerator(BluetoothEnumeratorAndroid *p_enumerator);

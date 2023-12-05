@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  bluetooth_enumerator_macos.h                                          */
+/*  GodotBluetoothCharacteristic.java                                     */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,38 +28,54 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef BLUETOOTH_ENUMERATOR_MACOS_H
-#define BLUETOOTH_ENUMERATOR_MACOS_H
+package org.godotengine.godot.bluetooth;
 
-#include "bluetooth_enumerator.h"
+import android.bluetooth.BluetoothDevice;
+import android.bluetooth.BluetoothGattCharacteristic;
+import android.bluetooth.BluetoothGattService;
 
-//////////////////////////////////////////////////////////////////////////
-// BluetoothEnumeratorMacOS - Subclass for bluetooth enumerators in macOS
+import org.godotengine.godot.Dictionary;
 
-class BluetoothEnumeratorMacOS : public BluetoothEnumerator {
-private:
-	void *central_manager_delegate;
-	static BluetoothEnumerator *_create() { return memnew(BluetoothEnumeratorMacOS); }
+public class GodotBluetoothCharacteristic extends Dictionary {
+	private static final String TAG = GodotBluetoothCharacteristic.class.getSimpleName();
 
-public:
-	BluetoothEnumeratorMacOS();
-	virtual ~BluetoothEnumeratorMacOS();
+	private BluetoothGattService service;
+	private BluetoothGattCharacteristic characteristic;
+	private boolean permission;
 
-	static void initialize();
-	static void deinitialize();
+	public GodotBluetoothCharacteristic(BluetoothGattService p_service, BluetoothGattCharacteristic p_characteristic, boolean p_permission) {
+		service = p_service;
+		characteristic = p_characteristic;
+		permission = p_permission;
+	}
 
-	String get_device_name() const override;
-	String get_device_address() const override;
+	public BluetoothGattService getService() {
+		return service;
+	}
 
-	bool start_scanning() const override;
-	bool stop_scanning() const override;
+	public BluetoothGattCharacteristic getCharacteristic() {
+		return characteristic;
+	}
 
-	void connect_peer(String p_peer_uuid) override;
-	void read_peer_service_characteristic(String p_peer_uuid, String p_service_uuid, String p_characteristic_uuid) override;
-	void write_peer_service_characteristic(String p_peer_uuid, String p_service_uuid, String p_characteristic_uuid, String p_value) override;
+	public boolean getPermission() {
+		return permission;
+	}
 
-	void on_register() const override;
-	void on_unregister() const override;
-};
+	public boolean putRequestDevice(int id, BluetoothDevice device) {
+		if (containsKey(Integer.toString(id)) || device == null) {
+			return false;
+		}
+		put(Integer.toString(id), device);
+		return true;
+	}
 
-#endif // BLUETOOTH_ENUMERATOR_MACOS_H
+	public BluetoothDevice getRequestDevice(int id) {
+		BluetoothDevice device = null;
+		if (!containsKey(Integer.toString(id))) {
+			return device;
+		}
+		device = (BluetoothDevice)get(Integer.toString(id));
+		remove(Integer.toString(id));
+		return device;
+	}
+}

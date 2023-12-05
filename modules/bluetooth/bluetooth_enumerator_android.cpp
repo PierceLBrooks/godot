@@ -50,6 +50,14 @@ void BluetoothEnumeratorAndroid::deinitialize() {
 	// nothing to do here
 }
 
+String BluetoothEnumeratorAndroid::get_device_name() const {
+    return BluetoothAndroid::get_name();
+}
+
+String BluetoothEnumeratorAndroid::get_device_address() const {
+    return BluetoothAndroid::get_address();
+}
+
 bool BluetoothEnumeratorAndroid::start_scanning() const {
 	if (id == -1) {
 		print_line("Registration failure");
@@ -73,13 +81,24 @@ bool BluetoothEnumeratorAndroid::stop_scanning() const {
 }
 
 void BluetoothEnumeratorAndroid::connect_peer(String p_peer_uuid) {
-	BluetoothAndroid::connect_enumerator_peer(id, p_peer_uuid);
+	bool connect = BluetoothAndroid::connect_enumerator_peer(id, p_peer_uuid);
+#ifdef DEBUG_ENABLED
+    print_line(String((std::string("connect = ") + std::to_string(connect)).c_str()));
+#endif
 }
 
 void BluetoothEnumeratorAndroid::read_peer_service_characteristic(String p_peer_uuid, String p_service_uuid, String p_characteristic_uuid) {
+    bool read = BluetoothAndroid::read_enumerator_characteristic(id, p_peer_uuid, p_service_uuid, p_characteristic_uuid);
+#ifdef DEBUG_ENABLED
+    print_line(String((std::string("read = ") + std::to_string(read)).c_str()));
+#endif
 }
 
 void BluetoothEnumeratorAndroid::write_peer_service_characteristic(String p_peer_uuid, String p_service_uuid, String p_characteristic_uuid, String p_value) {
+    bool write = BluetoothAndroid::write_enumerator_characteristic(id, p_peer_uuid, p_service_uuid, p_characteristic_uuid, p_value);
+#ifdef DEBUG_ENABLED
+    print_line(String((std::string("write = ") + std::to_string(write)).c_str()));
+#endif
 }
 
 void BluetoothEnumeratorAndroid::on_register() const {
