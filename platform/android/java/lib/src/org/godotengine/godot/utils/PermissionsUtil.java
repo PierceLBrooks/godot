@@ -195,7 +195,7 @@ public final class PermissionsUtil {
 								}
 							} else {
 								request = REQUEST_BLUETOOTH_LOCATION_PERMISSION;
-								permissions = new String[] {Manifest.permission.ACCESS_COARSE_LOCATION };
+								permissions = new String[] { Manifest.permission.ACCESS_COARSE_LOCATION };
 							}
 						}
 					}

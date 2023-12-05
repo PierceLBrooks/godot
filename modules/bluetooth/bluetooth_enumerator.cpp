@@ -59,8 +59,8 @@ void BluetoothEnumerator::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("read_peer_service_characteristic", "peer_uuid", "service_uuid", "characteristic_uuid"), &BluetoothEnumerator::read_peer_service_characteristic);
 	ClassDB::bind_method(D_METHOD("write_peer_service_characteristic", "peer_uuid", "service_uuid", "characteristic_uuid", "value"), &BluetoothEnumerator::write_peer_service_characteristic);
 
-    ClassDB::bind_method(D_METHOD("get_device_name"), &BluetoothEnumerator::get_device_name);
-    ClassDB::bind_method(D_METHOD("get_device_address"), &BluetoothEnumerator::get_device_address);
+	ClassDB::bind_method(D_METHOD("get_device_name"), &BluetoothEnumerator::get_device_name);
+	ClassDB::bind_method(D_METHOD("get_device_address"), &BluetoothEnumerator::get_device_address);
 
 	ADD_GROUP("Enumerator", "enumerator_");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "enumerator_is_active"), "set_active", "is_active");
@@ -189,11 +189,11 @@ BluetoothEnumerator::~BluetoothEnumerator() {
 }
 
 String BluetoothEnumerator::get_device_name() const {
-    return "";
+	return "";
 }
 
 String BluetoothEnumerator::get_device_address() const {
-    return "";
+	return "";
 }
 
 bool BluetoothEnumerator::start_scanning() const {
@@ -296,9 +296,9 @@ bool BluetoothEnumerator::on_discover(String p_peer_uuid, String p_peer_name, St
 }
 
 bool BluetoothEnumerator::on_connect(String p_peer_uuid) const {
-    if (peers.find(p_peer_uuid) == peers.end()) {
-        return false;
-    }
+	if (peers.find(p_peer_uuid) == peers.end()) {
+		return false;
+	}
 	if (can_emit_signal(SNAME("bluetooth_peer_connected"))) {
 		Ref<BluetoothEnumerator::BluetoothEnumeratorPeer> *reference = new Ref<BluetoothEnumerator::BluetoothEnumeratorPeer>(peers[p_peer_uuid]);
 		if (reference->is_valid()) {
@@ -321,9 +321,9 @@ bool BluetoothEnumerator::on_connect(String p_peer_uuid) const {
 }
 
 bool BluetoothEnumerator::on_disconnect(String p_peer_uuid) const {
-    if (peers.find(p_peer_uuid) == peers.end()) {
-        return false;
-    }
+	if (peers.find(p_peer_uuid) == peers.end()) {
+		return false;
+	}
 	if (can_emit_signal(SNAME("bluetooth_peer_disconnected"))) {
 		Ref<BluetoothEnumerator::BluetoothEnumeratorPeer> *reference = new Ref<BluetoothEnumerator::BluetoothEnumeratorPeer>(peers[p_peer_uuid]);
 		if (reference->is_valid()) {

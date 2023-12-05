@@ -30,6 +30,8 @@
 
 package org.godotengine.godot.bluetooth;
 
+import org.godotengine.godot.GodotLib;
+
 import android.annotation.SuppressLint;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothGattCharacteristic;
@@ -40,8 +42,6 @@ import android.bluetooth.le.AdvertiseSettings;
 import android.bluetooth.le.BluetoothLeAdvertiser;
 import android.os.ParcelUuid;
 import android.util.Base64;
-
-import org.godotengine.godot.GodotLib;
 
 import java.util.ArrayList;
 import java.util.Arrays;

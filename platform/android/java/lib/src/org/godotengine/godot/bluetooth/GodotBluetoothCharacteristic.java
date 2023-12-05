@@ -30,11 +30,11 @@
 
 package org.godotengine.godot.bluetooth;
 
+import org.godotengine.godot.Dictionary;
+
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.BluetoothGattService;
-
-import org.godotengine.godot.Dictionary;
 
 public class GodotBluetoothCharacteristic extends Dictionary {
 	private static final String TAG = GodotBluetoothCharacteristic.class.getSimpleName();

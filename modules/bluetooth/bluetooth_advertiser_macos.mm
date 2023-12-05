@@ -278,7 +278,7 @@ BluetoothAdvertiserMacOS::BluetoothAdvertiserMacOS() {
 
 BluetoothAdvertiserMacOS::~BluetoothAdvertiserMacOS() {
 #ifdef COREBLUETOOTH_ENABLED
-    //MyPeripheralManagerDelegate *peripheral_manager_delegate = (__bridge MyPeripheralManagerDelegate *)this->peripheral_manager_delegate;
+	//MyPeripheralManagerDelegate *peripheral_manager_delegate = (__bridge MyPeripheralManagerDelegate *)this->peripheral_manager_delegate;
 	CFRelease(this->peripheral_manager_delegate);
 #endif
 }
@@ -309,20 +309,22 @@ String BluetoothAdvertiserMacOS::get_device_address() const {
 
 void BluetoothAdvertiserMacOS::respond_characteristic_read_request(String p_characteristic_uuid, String p_response, int p_request) const {
 #ifdef COREBLUETOOTH_ENABLED
-    [(__bridge MyPeripheralManagerDelegate *)peripheral_manager_delegate respondReadRequest:[[NSString alloc] initWithUTF8String:p_response.utf8().get_data()] forRequest:p_request];
+	[(__bridge MyPeripheralManagerDelegate *)peripheral_manager_delegate respondReadRequest:[[NSString alloc] initWithUTF8String:p_response.utf8().get_data()]
+																				 forRequest:p_request];
 #endif
 }
 
 void BluetoothAdvertiserMacOS::respond_characteristic_write_request(String p_characteristic_uuid, String p_response, int p_request) const {
 #ifdef COREBLUETOOTH_ENABLED
-    [(__bridge MyPeripheralManagerDelegate *)peripheral_manager_delegate respondWriteRequest:[[NSString alloc] initWithUTF8String:p_response.utf8().get_data()] forRequest:p_request];
+	[(__bridge MyPeripheralManagerDelegate *)peripheral_manager_delegate respondWriteRequest:[[NSString alloc] initWithUTF8String:p_response.utf8().get_data()]
+																				  forRequest:p_request];
 #endif
 }
 
 bool BluetoothAdvertiserMacOS::start_advertising() const {
 	bool success = false;
 #ifdef COREBLUETOOTH_ENABLED
-    MyPeripheralManagerDelegate *peripheral_manager_delegate = (__bridge MyPeripheralManagerDelegate *)this->peripheral_manager_delegate;
+	MyPeripheralManagerDelegate *peripheral_manager_delegate = (__bridge MyPeripheralManagerDelegate *)this->peripheral_manager_delegate;
 	peripheral_manager_delegate.active = true;
 	if (get_characteristic_count() <= 0) {
 		print_line("Advertise failure");
@@ -346,7 +348,7 @@ bool BluetoothAdvertiserMacOS::start_advertising() const {
 
 bool BluetoothAdvertiserMacOS::stop_advertising() const {
 #ifdef COREBLUETOOTH_ENABLED
-    MyPeripheralManagerDelegate *peripheral_manager_delegate = (__bridge MyPeripheralManagerDelegate *)this->peripheral_manager_delegate;
+	MyPeripheralManagerDelegate *peripheral_manager_delegate = (__bridge MyPeripheralManagerDelegate *)this->peripheral_manager_delegate;
 	peripheral_manager_delegate.active = false;
 	if (peripheral_manager_delegate.peripheralManager.isAdvertising) {
 		[peripheral_manager_delegate.peripheralManager removeAllServices];

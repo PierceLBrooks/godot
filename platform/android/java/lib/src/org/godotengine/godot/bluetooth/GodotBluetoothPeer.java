@@ -32,7 +32,6 @@ package org.godotengine.godot.bluetooth;
 
 import org.godotengine.godot.Dictionary;
 import org.godotengine.godot.GodotLib;
-import org.json.JSONObject;
 
 import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
@@ -56,6 +55,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReentrantLock;
+
+import org.json.JSONObject;
 
 public class GodotBluetoothPeer extends BluetoothGattCallback {
 	private static final String TAG = GodotBluetoothPeer.class.getSimpleName();
@@ -287,7 +288,7 @@ public class GodotBluetoothPeer extends BluetoothGattCallback {
 	public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
 		boolean success = false;
 		Object result = null;
-		Log.w(TAG, "Status @ "+newState+" = "+status);
+		Log.w(TAG, "Status @ " + newState + " = " + status);
 		super.onConnectionStateChange(gatt, status, newState);
 		if (gatt == null || status != BluetoothStatusCodes.SUCCESS) {
 			return;

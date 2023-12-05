@@ -148,10 +148,10 @@ JNIEXPORT void JNICALL Java_org_godotengine_godot_GodotLib_ondestroy(JNIEnv *env
 JNIEXPORT jboolean JNICALL Java_org_godotengine_godot_GodotLib_setup(JNIEnv *env, jclass clazz, jobjectArray p_cmdline, jobject p_godot_tts, jobject p_godot_bluetooth) {
 	setup_android_thread();
 
-    Vector<String> g_cmdline;
+	Vector<String> g_cmdline;
 	jstring *j_cmdline = nullptr;
-    const char **cmdline = nullptr;
-    int cmdlen = 0;
+	const char **cmdline = nullptr;
+	int cmdlen = 0;
 	if (p_cmdline) {
 		cmdlen = env->GetArrayLength(p_cmdline);
 		if (cmdlen) {
@@ -167,13 +167,13 @@ JNIEXPORT jboolean JNICALL Java_org_godotengine_godot_GodotLib_setup(JNIEnv *env
 
 				cmdline[i] = rawString;
 				j_cmdline[i] = string;
-                g_cmdline.push_back(String(rawString));
+				g_cmdline.push_back(String(rawString));
 			}
 		}
 	}
 
 #ifdef DEBUG_ENABLED
-    print_line(String("cmdline = ") + JSON::stringify(g_cmdline));
+	print_line(String("cmdline = ") + JSON::stringify(g_cmdline));
 #endif
 	Error err = Main::setup(OS_Android::ANDROID_EXEC_PATH, cmdlen, (char **)cmdline, false);
 	if (cmdline) {
@@ -188,7 +188,7 @@ JNIEXPORT jboolean JNICALL Java_org_godotengine_godot_GodotLib_setup(JNIEnv *env
 
 	// Note: --help and --version return ERR_HELP, but this should be translated to 0 if exit codes are propagated.
 	if (err != OK) {
-        print_error(VariantUtilityFunctions::error_string(err));
+		print_error(VariantUtilityFunctions::error_string(err));
 		return false;
 	}
 
@@ -246,7 +246,7 @@ JNIEXPORT void JNICALL Java_org_godotengine_godot_GodotLib_ttsCallback(JNIEnv *e
 }
 
 JNIEXPORT jobject JNICALL Java_org_godotengine_godot_GodotLib_bluetoothCallback(JNIEnv *env, jclass clazz, jint event, jint id, jobject arg) {
-    Variant res = _jobject_to_variant(env, arg);
+	Variant res = _jobject_to_variant(env, arg);
 	return BluetoothAndroid::_java_bluetooth_callback(event, id, &res);
 }
 

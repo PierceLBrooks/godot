@@ -68,9 +68,9 @@ void BluetoothAdvertiser::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("respond_characteristic_write_request", "characteristic_uuid", "response", "request"), &BluetoothAdvertiser::respond_characteristic_write_request);
 
 	ClassDB::bind_method(D_METHOD("get_device_name"), &BluetoothAdvertiser::get_device_name);
-    ClassDB::bind_method(D_METHOD("get_device_address"), &BluetoothAdvertiser::get_device_address);
+	ClassDB::bind_method(D_METHOD("get_device_address"), &BluetoothAdvertiser::get_device_address);
 
-    ADD_GROUP("Advertiser", "advertiser_");
+	ADD_GROUP("Advertiser", "advertiser_");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "advertiser_is_active"), "set_active", "is_active");
 
 	ADD_SIGNAL(MethodInfo("bluetooth_service_advertisement_started", PropertyInfo(Variant::STRING, "service_uuid")));
@@ -238,11 +238,11 @@ BluetoothAdvertiser::~BluetoothAdvertiser() {
 }
 
 String BluetoothAdvertiser::get_device_name() const {
-    return "";
+	return "";
 }
 
 String BluetoothAdvertiser::get_device_address() const {
-    return "";
+	return "";
 }
 
 bool BluetoothAdvertiser::start_advertising() const {

@@ -495,7 +495,7 @@
 
 BluetoothEnumeratorMacOS::BluetoothEnumeratorMacOS() {
 #ifdef COREBLUETOOTH_ENABLED
-    dispatch_async(dispatch_get_main_queue(), ^{
+	dispatch_async(dispatch_get_main_queue(), ^{
 		@autoreleasepool {
 			dispatch_queue_t btle_service = dispatch_queue_create("btle_service", DISPATCH_QUEUE_SERIAL);
 			MyCentralManagerDelegate *central_manager_delegate = [[MyCentralManagerDelegate alloc] initWithQueue:btle_service];
@@ -508,7 +508,7 @@ BluetoothEnumeratorMacOS::BluetoothEnumeratorMacOS() {
 
 BluetoothEnumeratorMacOS::~BluetoothEnumeratorMacOS() {
 #ifdef COREBLUETOOTH_ENABLED
-    //MyCentralManagerDelegate *central_manager_delegate = (__bridge MyCentralManagerDelegate *)this->central_manager_delegate;
+	//MyCentralManagerDelegate *central_manager_delegate = (__bridge MyCentralManagerDelegate *)this->central_manager_delegate;
 	CFRelease(this->central_manager_delegate);
 #endif
 }
@@ -539,25 +539,25 @@ String BluetoothEnumeratorMacOS::get_device_address() const {
 
 bool BluetoothEnumeratorMacOS::start_scanning() const {
 #ifdef COREBLUETOOTH_ENABLED
-    MyCentralManagerDelegate *central_manager_delegate = (__bridge MyCentralManagerDelegate *)this->central_manager_delegate;
+	MyCentralManagerDelegate *central_manager_delegate = (__bridge MyCentralManagerDelegate *)this->central_manager_delegate;
 	return [central_manager_delegate startScanning];
 #else
-    return false;
+	return false;
 #endif
 }
 
 bool BluetoothEnumeratorMacOS::stop_scanning() const {
 #ifdef COREBLUETOOTH_ENABLED
-    MyCentralManagerDelegate *central_manager_delegate = (__bridge MyCentralManagerDelegate *)this->central_manager_delegate;
+	MyCentralManagerDelegate *central_manager_delegate = (__bridge MyCentralManagerDelegate *)this->central_manager_delegate;
 	return [central_manager_delegate stopScanning];
 #else
-    return false;
+	return false;
 #endif
 }
 
 void BluetoothEnumeratorMacOS::connect_peer(String p_peer_uuid) {
 #ifdef COREBLUETOOTH_ENABLED
-    MyCentralManagerDelegate *central_manager_delegate = (__bridge MyCentralManagerDelegate *)this->central_manager_delegate;
+	MyCentralManagerDelegate *central_manager_delegate = (__bridge MyCentralManagerDelegate *)this->central_manager_delegate;
 	CBUUID *peer = [CBUUID UUIDWithString:[[NSString alloc] initWithUTF8String:p_peer_uuid.utf8().get_data()]];
 	if (![central_manager_delegate connectToPeer:peer]) {
 		NSLog(@"Connection failure: %@", peer);
@@ -568,7 +568,7 @@ void BluetoothEnumeratorMacOS::connect_peer(String p_peer_uuid) {
 
 void BluetoothEnumeratorMacOS::read_peer_service_characteristic(String p_peer_uuid, String p_service_uuid, String p_characteristic_uuid) {
 #ifdef COREBLUETOOTH_ENABLED
-    MyCentralManagerDelegate *central_manager_delegate = (__bridge MyCentralManagerDelegate *)this->central_manager_delegate;
+	MyCentralManagerDelegate *central_manager_delegate = (__bridge MyCentralManagerDelegate *)this->central_manager_delegate;
 	NSMutableArray *parameters = [[NSMutableArray alloc] initWithCapacity:4];
 	[parameters addObject:[[NSString alloc] initWithUTF8String:p_peer_uuid.utf8().get_data()]];
 	[parameters addObject:[[NSString alloc] initWithUTF8String:p_service_uuid.utf8().get_data()]];
@@ -582,7 +582,7 @@ void BluetoothEnumeratorMacOS::read_peer_service_characteristic(String p_peer_uu
 
 void BluetoothEnumeratorMacOS::write_peer_service_characteristic(String p_peer_uuid, String p_service_uuid, String p_characteristic_uuid, String p_value) {
 #ifdef COREBLUETOOTH_ENABLED
-    MyCentralManagerDelegate *central_manager_delegate = (__bridge MyCentralManagerDelegate *)this->central_manager_delegate;
+	MyCentralManagerDelegate *central_manager_delegate = (__bridge MyCentralManagerDelegate *)this->central_manager_delegate;
 	NSMutableArray *parameters = [[NSMutableArray alloc] initWithCapacity:4];
 	[parameters addObject:[[NSString alloc] initWithUTF8String:p_peer_uuid.utf8().get_data()]];
 	[parameters addObject:[[NSString alloc] initWithUTF8String:p_service_uuid.utf8().get_data()]];

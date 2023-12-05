@@ -52,7 +52,7 @@ protected:
 
 private:
 #ifdef ANDROID_ENABLED
-    friend class BluetoothAndroid;
+	friend class BluetoothAndroid;
 #endif
 
 	bool can_emit_signal(const StringName &p_name) const;
@@ -132,8 +132,8 @@ public:
 	BluetoothEnumerator();
 	virtual ~BluetoothEnumerator();
 
-    virtual String get_device_name() const;
-    virtual String get_device_address() const;
+	virtual String get_device_name() const;
+	virtual String get_device_address() const;
 
 	virtual bool start_scanning() const;
 	virtual bool stop_scanning() const;

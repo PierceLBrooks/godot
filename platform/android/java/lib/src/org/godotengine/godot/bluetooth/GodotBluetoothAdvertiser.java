@@ -30,6 +30,8 @@
 
 package org.godotengine.godot.bluetooth;
 
+import org.godotengine.godot.*;
+
 import android.annotation.SuppressLint;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
@@ -44,8 +46,6 @@ import android.bluetooth.le.BluetoothLeAdvertiser;
 import android.os.Build;
 import android.util.Base64;
 import android.util.Log;
-
-import org.godotengine.godot.*;
 
 import java.util.ArrayList;
 import java.util.concurrent.locks.ReentrantLock;
@@ -326,12 +326,10 @@ public class GodotBluetoothAdvertiser extends BluetoothGattServerCallback implem
 
 	@Override
 	public void onServiceConnected(int profile, BluetoothProfile proxy) {
-
 	}
 
 	@Override
 	public void onServiceDisconnected(int profile) {
-
 	}
 
 	@SuppressLint("MissingPermission")

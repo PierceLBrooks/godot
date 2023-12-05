@@ -148,8 +148,6 @@ class Godot(private val context: Context) : SensorEventListener {
 	private var commandLine : MutableList<String> = ArrayList<String>()
 	private var xrMode = XRMode.REGULAR
 	private var expansionPackPath: String = ""
-	private var path: String = ""
-	private var editor = false
 	private var useApkExpansion = false
 	private var useImmersive = false
 	private var useDebugOpengl = false
@@ -222,11 +220,6 @@ class Godot(private val context: Context) : SensorEventListener {
 							View.SYSTEM_UI_FLAG_FULLSCREEN or  // hide status bar
 							View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
 					registerUiChangeListener()
-				} else if (hasExtra && commandLine[i] == "--path") {
-					path = commandLine[i + 1]
-					i++
-				} else if (commandLine[i] == "--editor") {
-					editor = true
 				} else if (commandLine[i] == "--use_apk_expansion") {
 					useApkExpansion = true
 				} else if (hasExtra && commandLine[i] == "--apk_expansion_md5") {

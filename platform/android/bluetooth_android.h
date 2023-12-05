@@ -61,18 +61,18 @@ class BluetoothAndroid {
 		BLUETOOTH_ENUMERATOR_ON_READ = 7,
 		BLUETOOTH_ENUMERATOR_ON_WRITE = 8,
 		BLUETOOTH_ENUMERATOR_ON_ERROR = 9,
-        BLUETOOTH_ADVERTISER_GET_NAME = 10,
-        BLUETOOTH_ADVERTISER_GET_MANUFACTURER_DATA = 11,
-        BLUETOOTH_ADVERTISER_GET_SERVICES = 12,
-        BLUETOOTH_ADVERTISER_GET_CHARACTERISTICS = 13,
-        BLUETOOTH_ADVERTISER_GET_CHARACTERISTC_PERMISSIONS = 14,
-        BLUETOOTH_ADVERTISER_GET_CHARACTERISTC_VALUE = 15,
-        BLUETOOTH_ADVERTISER_ON_ERROR = 16,
-        BLUETOOTH_ADVERTISER_ON_CONNECT = 17,
-        BLUETOOTH_ADVERTISER_ON_DISCONNECT = 18,
-        BLUETOOTH_ADVERTISER_ON_READ = 19,
-        BLUETOOTH_ADVERTISER_ON_WRITE = 20,
-    };
+		BLUETOOTH_ADVERTISER_GET_NAME = 10,
+		BLUETOOTH_ADVERTISER_GET_MANUFACTURER_DATA = 11,
+		BLUETOOTH_ADVERTISER_GET_SERVICES = 12,
+		BLUETOOTH_ADVERTISER_GET_CHARACTERISTICS = 13,
+		BLUETOOTH_ADVERTISER_GET_CHARACTERISTC_PERMISSIONS = 14,
+		BLUETOOTH_ADVERTISER_GET_CHARACTERISTC_VALUE = 15,
+		BLUETOOTH_ADVERTISER_ON_ERROR = 16,
+		BLUETOOTH_ADVERTISER_ON_CONNECT = 17,
+		BLUETOOTH_ADVERTISER_ON_DISCONNECT = 18,
+		BLUETOOTH_ADVERTISER_ON_READ = 19,
+		BLUETOOTH_ADVERTISER_ON_WRITE = 20,
+	};
 
 	static BluetoothAndroid *singleton;
 
@@ -118,8 +118,8 @@ public:
 	static bool start_scanning(int p_enumerator_id);
 	static bool stop_scanning(int p_enumerator_id);
 
-    static String get_name();
-    static String get_address();
+	static String get_name();
+	static String get_address();
 	static bool connect_enumerator_peer(int p_enumerator_id, String p_peer_uuid);
 	static bool read_enumerator_characteristic(int p_enumerator_id, String p_peer_uuid, String p_service_uuid, String p_characteristic_uuid);
 	static bool write_enumerator_characteristic(int p_enumerator_id, String p_peer_uuid, String p_service_uuid, String p_characteristic_uuid, String p_value);

@@ -259,7 +259,7 @@ public class GodotBluetooth {
 	}
 
 	public void setPower(boolean p_power) {
-		Log.w(TAG, "Power = "+p_power);
+		Log.w(TAG, "Power = " + p_power);
 		power.set(p_power);
 	}
 
