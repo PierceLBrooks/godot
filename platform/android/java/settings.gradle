@@ -16,7 +16,7 @@ pluginManagement {
 
 rootProject.name = "Godot"
 
-//include ':app'
+include ':app'
 include ':lib'
 include ':nativeSrcsConfigs'
 include ':editor'
