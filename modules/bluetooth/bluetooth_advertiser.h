@@ -64,7 +64,7 @@ protected:
 		Ref<BluetoothAdvertiser> advertiser;
 		String uuid;
 		String peer;
-		String value;
+		String value_base64;
 		bool permission;
 		int readRequest;
 		int writeRequest;

@@ -258,14 +258,14 @@ bool BluetoothAdvertiser::stop_advertising() const {
 void BluetoothAdvertiser::respond_characteristic_read_request(String p_characteristic_uuid, String p_response, int p_request) const {
 	Ref<BluetoothAdvertiser::BluetoothAdvertiserCharacteristic> characteristic = get_characteristic_by_uuid(p_characteristic_uuid);
 	if (characteristic.is_valid()) {
-		characteristic->value = core_bind::Marshalls::get_singleton()->utf8_to_base64(p_response);
+		characteristic->value_base64 = core_bind::Marshalls::get_singleton()->utf8_to_base64(p_response);
 	}
 }
 
 void BluetoothAdvertiser::respond_characteristic_write_request(String p_characteristic_uuid, String p_response, int p_request) const {
 	Ref<BluetoothAdvertiser::BluetoothAdvertiserCharacteristic> characteristic = get_characteristic_by_uuid(p_characteristic_uuid);
 	if (characteristic.is_valid()) {
-		characteristic->value = core_bind::Marshalls::get_singleton()->utf8_to_base64(p_response);
+		characteristic->value_base64 = core_bind::Marshalls::get_singleton()->utf8_to_base64(p_response);
 	}
 }
 
@@ -355,14 +355,14 @@ bool BluetoothAdvertiser::on_write(String p_characteristic_uuid, int p_request, 
 		Ref<BluetoothAdvertiser::BluetoothAdvertiserCharacteristic> *reference = new Ref<BluetoothAdvertiser::BluetoothAdvertiserCharacteristic>(get_characteristic_by_uuid(p_characteristic_uuid));
 		if (reference->is_valid()) {
 			Thread thread;
-			(*reference)->value = p_value_base64;
+			(*reference)->value_base64 = p_value_base64;
 			(*reference)->peer = p_peer_uuid;
 			(*reference)->writeRequest = p_request;
 			(*reference)->advertiser = Ref<BluetoothAdvertiser>(const_cast<BluetoothAdvertiser *>(this));
 			thread.start([](void *p_udata) {
 				Ref<BluetoothAdvertiser::BluetoothAdvertiserCharacteristic> *characteristic = static_cast<Ref<BluetoothAdvertiser::BluetoothAdvertiserCharacteristic> *>(p_udata);
 				if (characteristic->is_valid() && (*characteristic)->advertiser.is_valid()) {
-					(*characteristic)->advertiser->emit_signal(SNAME("bluetooth_service_characteristic_write"), (*characteristic)->advertiser->get_service_uuid(), (*characteristic)->uuid, (*characteristic)->writeRequest, (*characteristic)->peer, core_bind::Marshalls::get_singleton()->base64_to_utf8((*characteristic)->value));
+					(*characteristic)->advertiser->emit_signal(SNAME("bluetooth_service_characteristic_write"), (*characteristic)->advertiser->get_service_uuid(), (*characteristic)->uuid, (*characteristic)->writeRequest, (*characteristic)->peer, core_bind::Marshalls::get_singleton()->base64_to_utf8((*characteristic)->value_base64));
 				}
 			},
 					reference);

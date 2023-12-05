@@ -68,7 +68,7 @@ protected:
 		Ref<BluetoothEnumerator::BluetoothEnumeratorPeer> peer;
 		String service;
 		String uuid;
-		String value;
+		String value_base64;
 		bool permission;
 	};
 
