@@ -422,7 +422,7 @@ jobject BluetoothAndroid::_java_bluetooth_callback(int p_event, int p_id, Varian
 				if (advertiser != nullptr) {
 					Ref<BluetoothAdvertiser::BluetoothAdvertiserCharacteristic> characteristic = advertiser->get_characteristic_by_uuid(p_arg->stringify().strip_edges());
 					if (characteristic.is_valid()) {
-						String value = characteristic->value;
+						String value = characteristic->value_base64;
 						if (!value.is_empty()) {
 							result = _variant_to_jvalue(env, Variant::Type::STRING, (Variant *)(&value));
 						}
