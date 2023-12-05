@@ -2106,6 +2106,12 @@ void GDScriptLanguage::thread_enter() {
 }
 
 void GDScriptLanguage::thread_exit() {
+	// This thread may have been created before GDScript was up
+	// (which also means it can't have run any GDScript code at all).
+	if (!GDScript::func_ptrs_to_update_thread_local) {
+		return;
+	}
+
 	GDScript::_fixup_thread_function_bookkeeping();
 
 	bool destroy = false;
@@ -2323,6 +2329,19 @@ void GDScriptLanguage::reload_all_scripts() {
 			}
 			elem = elem->next();
 		}
+
+#ifdef TOOLS_ENABLED
+		if (Engine::get_singleton()->is_editor_hint()) {
+			// Reload all pointers to existing singletons so that tool scripts can work with the reloaded extensions.
+			List<Engine::Singleton> singletons;
+			Engine::get_singleton()->get_singletons(&singletons);
+			for (const Engine::Singleton &E : singletons) {
+				if (globals.has(E.name)) {
+					_add_global(E.name, E.ptr);
+				}
+			}
+		}
+#endif
 	}
 
 	//as scripts are going to be reloaded, must proceed without locking here

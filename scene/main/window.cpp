@@ -284,7 +284,13 @@ void Window::set_title(const String &p_title) {
 		embedder->_sub_window_update(this);
 	} else if (window_id != DisplayServer::INVALID_WINDOW_ID) {
 		DisplayServer::get_singleton()->window_set_title(tr_title, window_id);
-		_update_window_size();
+		if (keep_title_visible) {
+			Size2i title_size = DisplayServer::get_singleton()->window_get_title_size(tr_title, window_id);
+			Size2i size_limit = get_clamped_minimum_size();
+			if (title_size.x > size_limit.x || title_size.y > size_limit.y) {
+				_update_window_size();
+			}
+		}
 	}
 }
 
@@ -681,6 +687,9 @@ void Window::_propagate_window_notification(Node *p_node, int p_notification) {
 void Window::_event_callback(DisplayServer::WindowEvent p_event) {
 	switch (p_event) {
 		case DisplayServer::WINDOW_EVENT_MOUSE_ENTER: {
+			if (!is_inside_tree()) {
+				return;
+			}
 			Window *root = get_tree()->get_root();
 			if (root->gui.windowmanager_window_over) {
 #ifdef DEV_ENABLED
@@ -696,6 +705,9 @@ void Window::_event_callback(DisplayServer::WindowEvent p_event) {
 			}
 		} break;
 		case DisplayServer::WINDOW_EVENT_MOUSE_EXIT: {
+			if (!is_inside_tree()) {
+				return;
+			}
 			Window *root = get_tree()->get_root();
 			if (!root->gui.windowmanager_window_over) {
 #ifdef DEV_ENABLED
