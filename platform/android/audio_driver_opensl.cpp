@@ -267,6 +267,33 @@ Error AudioDriverOpenSL::init_input_device() {
 	return OK;
 }
 
+void AudioDriverOpenSL::end() {
+	if (recordItf) {
+		(*recordItf)->SetRecordState(recordItf, SL_RECORDSTATE_STOPPED);
+		recordItf = nullptr;
+	}
+	if (recorder) {
+		(*recorder)->Destroy(recorder);
+		recorder = nullptr;
+	}
+	if (playItf) {
+		(*playItf)->SetPlayState(playItf, SL_PLAYSTATE_STOPPED);
+		playItf = nullptr;
+	}
+	if (player) {
+		(*player)->Destroy(player);
+		player = nullptr;
+	}
+	if (OutputMix) {
+		(*OutputMix)->Destroy(OutputMix);
+		OutputMix = nullptr;
+	}
+	if (sl) {
+		(*sl)->Destroy(sl);
+		sl = nullptr;
+	}
+}
+
 Error AudioDriverOpenSL::input_start() {
 	if (OS::get_singleton()->request_permission("RECORD_AUDIO")) {
 		return init_input_device();
@@ -313,13 +340,13 @@ void AudioDriverOpenSL::unlock() {
 }
 
 void AudioDriverOpenSL::finish() {
-	(*sl)->Destroy(sl);
+	end();
 }
 
 void AudioDriverOpenSL::set_pause(bool p_pause) {
 	pause = p_pause;
 
-	if (active) {
+	if (active && playItf) {
 		if (pause) {
 			(*playItf)->SetPlayState(playItf, SL_PLAYSTATE_PAUSED);
 		} else {
@@ -329,4 +356,14 @@ void AudioDriverOpenSL::set_pause(bool p_pause) {
 }
 
 AudioDriverOpenSL::AudioDriverOpenSL() {
+	recordItf = nullptr;
+	recorder = nullptr;
+	playItf = nullptr;
+	player = nullptr;
+	OutputMix = nullptr;
+	sl = nullptr;
+}
+
+AudioDriverOpenSL::~AudioDriverOpenSL() {
+	end();
 }
