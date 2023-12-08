@@ -172,9 +172,6 @@ JNIEXPORT jboolean JNICALL Java_org_godotengine_godot_GodotLib_setup(JNIEnv *env
 		}
 	}
 
-#ifdef DEBUG_ENABLED
-	print_line(String("cmdline = ") + JSON::stringify(g_cmdline));
-#endif
 	Error err = Main::setup(OS_Android::ANDROID_EXEC_PATH, cmdlen, (char **)cmdline, false);
 	if (cmdline) {
 		if (j_cmdline) {
@@ -247,7 +244,13 @@ JNIEXPORT void JNICALL Java_org_godotengine_godot_GodotLib_ttsCallback(JNIEnv *e
 
 JNIEXPORT jobject JNICALL Java_org_godotengine_godot_GodotLib_bluetoothCallback(JNIEnv *env, jclass clazz, jint event, jint id, jobject arg) {
 	Variant res = _jobject_to_variant(env, arg);
-	return BluetoothAndroid::_java_bluetooth_callback(event, id, &res);
+#if 0
+	BluetoothAndroid *bluetooth = BluetoothAndroid::get_singleton();
+	ERR_FAIL_NULL_V(bluetooth, nullptr);
+	return bluetooth->_java_bluetooth_callback(event, id, &res);
+#else
+	return BluetoothAndroid::_java_bluetooth_callback(event, id, &res)
+#endif
 }
 
 JNIEXPORT jboolean JNICALL Java_org_godotengine_godot_GodotLib_step(JNIEnv *env, jclass clazz) {
