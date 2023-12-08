@@ -86,6 +86,8 @@ class AudioDriverOpenSL : public AudioDriver {
 
 	Error init_input_device();
 
+	void end();
+
 public:
 	virtual const char *get_name() const override {
 		return "Android";
@@ -106,6 +108,7 @@ public:
 	void set_pause(bool p_pause);
 
 	AudioDriverOpenSL();
+    virtual ~AudioDriverOpenSL();
 };
 
 #endif // AUDIO_DRIVER_OPENSL_H
