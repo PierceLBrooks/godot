@@ -268,6 +268,12 @@ Error AudioDriverOpenSL::init_input_device() {
 }
 
 void AudioDriverOpenSL::end() {
+	if (recordBufferQueueItf) {
+		(*recordBufferQueueItf)->RegisterCallback(recordBufferQueueItf, nullptr, nullptr);
+	}
+	if (bufferQueueItf) {
+		(*bufferQueueItf)->RegisterCallback(bufferQueueItf, nullptr, nullptr);
+	}
 	if (recordItf) {
 		(*recordItf)->SetRecordState(recordItf, SL_RECORDSTATE_STOPPED);
 		recordItf = nullptr;
@@ -291,6 +297,11 @@ void AudioDriverOpenSL::end() {
 	if (sl) {
 		(*sl)->Destroy(sl);
 		sl = nullptr;
+	}
+	for (int i = 0; i < BUFFER_COUNT; i++) {
+		if (buffers[i]) {
+			memdelete_arr(buffers[i]);
+		}
 	}
 }
 
