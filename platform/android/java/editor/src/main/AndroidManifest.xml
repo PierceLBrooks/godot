@@ -34,6 +34,7 @@
     <uses-permission android:name="android.permission.VIBRATE" />
 
     <application
+        android:name="org.godotengine.godot.GodotEditorApplication"
         android:allowBackup="false"
         android:icon="@mipmap/icon"
         android:label="@string/godot_editor_name_string"

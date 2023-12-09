@@ -237,7 +237,13 @@ public class GodotBluetoothAdvertiser extends BluetoothGattServerCallback implem
 
 	@SuppressLint("MissingPermission")
 	public boolean startAdvertising() {
-		if (bluetooth == null || advertiser != null || server != null) {
+		if (bluetooth == null) {
+			return false;
+		}
+		if (advertiser != null && server != null) {
+			return true;
+		}
+		if ((advertiser == null) ^ (server == null)) {
 			return false;
 		}
 		lock.lock();
@@ -261,6 +267,30 @@ public class GodotBluetoothAdvertiser extends BluetoothGattServerCallback implem
 			if (name != null) {
 				adapter.setName(name);
 			}
+			characteristics = advertisement.getCharacteristics();
+			services = advertisement.getServices();
+			if (characteristics == null || characteristics.isEmpty() || services == null || services.isEmpty()) {
+				if (advertisement != null) {
+					advertisement.stopAdvertising();
+					advertisement = null;
+				}
+				advertiser = null;
+				characteristics = null;
+				services = null;
+				return false;
+			}
+			server = manager.openGattServer(bluetooth.getContext(), this);
+			if (!server.addService(services.get(0))) {
+				if (advertisement != null) {
+					advertisement.stopAdvertising();
+					advertisement = null;
+				}
+				advertiser = null;
+				characteristics = null;
+				services = null;
+				return false;
+			}
+			//services.remove(0);
 			if (advertisement == null) {
 				advertisement = new GodotBluetoothAdvertisement(this);
 			}
@@ -269,26 +299,6 @@ public class GodotBluetoothAdvertiser extends BluetoothGattServerCallback implem
 				advertiser = null;
 				return false;
 			}
-			characteristics = advertisement.getCharacteristics();
-			services = advertisement.getServices();
-			if (characteristics == null || characteristics.isEmpty() || services == null || services.isEmpty()) {
-				advertisement.stopAdvertising();
-				advertisement = null;
-				advertiser = null;
-				characteristics = null;
-				services = null;
-				return false;
-			}
-			server = manager.openGattServer(bluetooth.getContext(), this);
-			if (!server.addService(services.get(0))) {
-				advertisement.stopAdvertising();
-				advertisement = null;
-				advertiser = null;
-				characteristics = null;
-				services = null;
-				return false;
-			}
-			//services.remove(0);
 			return true;
 		} catch (Exception exception) {
 			GodotLib.printStackTrace(exception);

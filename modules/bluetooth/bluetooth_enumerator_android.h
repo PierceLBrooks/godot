@@ -32,11 +32,17 @@
 #define BLUETOOTH_ENUMERATOR_ANDROID_H
 
 #include "bluetooth_enumerator.h"
+#include "core/os/thread_safe.h"
+#include "platform/android/jni_utils.h"
+
+#include <functional>
 
 //////////////////////////////////////////////////////////////////////////
 // BluetoothEnumeratorAndroid - Subclass for bluetooth enumerators in Android
 
 class BluetoothEnumeratorAndroid : public BluetoothEnumerator {
+    _THREAD_SAFE_CLASS_
+
 private:
 	int id;
 	static BluetoothEnumerator *_create() { return memnew(BluetoothEnumeratorAndroid); }
@@ -60,6 +66,8 @@ public:
 
 	void on_register() const override;
 	void on_unregister() const override;
+
+    std::function<jvalret()> on_java_callback(int p_event, Variant *p_arg);
 };
 
 #endif // BLUETOOTH_ENUMERATOR_ANDROID_H

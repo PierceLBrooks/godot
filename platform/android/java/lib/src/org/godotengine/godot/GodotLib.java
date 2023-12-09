@@ -318,6 +318,7 @@ public class GodotLib {
 			if (throwableStream != null) {
 				throwableStream.triggerFlush();
 			}
+			throwable.printStackTrace();
 		}
 	}
 }

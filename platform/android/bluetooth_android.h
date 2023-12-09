@@ -50,6 +50,7 @@ typedef void *BluetoothEnumeratorAndroid;
 class BluetoothAndroid {
 	_THREAD_SAFE_CLASS_
 
+public:
 	enum BluetoothEvent {
 		BLUETOOTH_ENUMERATOR_GET_SOUGHT_SERVICES = 0,
 		BLUETOOTH_ENUMERATOR_ON_STOP_SCANNING = 1,
@@ -65,8 +66,8 @@ class BluetoothAndroid {
 		BLUETOOTH_ADVERTISER_GET_MANUFACTURER_DATA = 11,
 		BLUETOOTH_ADVERTISER_GET_SERVICES = 12,
 		BLUETOOTH_ADVERTISER_GET_CHARACTERISTICS = 13,
-		BLUETOOTH_ADVERTISER_GET_CHARACTERISTC_PERMISSIONS = 14,
-		BLUETOOTH_ADVERTISER_GET_CHARACTERISTC_VALUE = 15,
+		BLUETOOTH_ADVERTISER_GET_CHARACTERISTIC_PERMISSIONS = 14,
+		BLUETOOTH_ADVERTISER_GET_CHARACTERISTIC_VALUE = 15,
 		BLUETOOTH_ADVERTISER_ON_ERROR = 16,
 		BLUETOOTH_ADVERTISER_ON_CONNECT = 17,
 		BLUETOOTH_ADVERTISER_ON_DISCONNECT = 18,
@@ -74,6 +75,7 @@ class BluetoothAndroid {
 		BLUETOOTH_ADVERTISER_ON_WRITE = 20,
 	};
 
+private:
 	static BluetoothAndroid *singleton;
 
 	static jobject bluetooth;
@@ -107,7 +109,7 @@ class BluetoothAndroid {
 public:
 	static BluetoothAndroid *get_singleton();
 
-	static jobject _java_bluetooth_callback(int p_event, int p_id, Variant *p_arg);
+    jobject _java_bluetooth_callback(int p_event, int p_id, Variant *p_arg);
 
 	static void setup(jobject p_bluetooth);
 
@@ -130,6 +132,10 @@ public:
 	int register_enumerator(BluetoothEnumeratorAndroid *p_enumerator);
 	bool unregister_advertiser(int p_advertiser_id);
 	bool unregister_enumerator(int p_enumerator_id);
+
+private:
+    BluetoothAdvertiserAndroid *get_advertiser(int p_advertiser_id);
+    BluetoothEnumeratorAndroid *get_enumerator(int p_enumerator_id);
 };
 
 #endif // BLUETOOTH_ANDROID_H

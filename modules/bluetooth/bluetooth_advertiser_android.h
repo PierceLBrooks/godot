@@ -32,11 +32,17 @@
 #define BLUETOOTH_ADVERTISER_ANDROID_H
 
 #include "bluetooth_advertiser.h"
+#include "core/os/thread_safe.h"
+#include "platform/android/jni_utils.h"
+
+#include <functional>
 
 //////////////////////////////////////////////////////////////////////////
 // BluetoothAdvertiserAndroid - Subclass for bluetooth advertisers in Android
 
 class BluetoothAdvertiserAndroid : public BluetoothAdvertiser {
+    _THREAD_SAFE_CLASS_
+
 private:
 	int id;
 	static BluetoothAdvertiser *_create() { return memnew(BluetoothAdvertiserAndroid); }
@@ -59,6 +65,8 @@ public:
 
 	void on_register() const override;
 	void on_unregister() const override;
+
+    std::function<jvalret()> on_java_callback(int p_event, Variant *p_arg);
 };
 
 #endif // BLUETOOTH_ADVERTISER_ANDROID_H

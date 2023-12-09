@@ -33,7 +33,6 @@ package org.godotengine.godot.bluetooth;
 import org.godotengine.godot.GodotLib;
 
 import android.annotation.SuppressLint;
-import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.BluetoothGattService;
 import android.bluetooth.le.AdvertiseCallback;
@@ -42,6 +41,7 @@ import android.bluetooth.le.AdvertiseSettings;
 import android.bluetooth.le.BluetoothLeAdvertiser;
 import android.os.ParcelUuid;
 import android.util.Base64;
+import android.util.Log;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -129,7 +129,7 @@ public class GodotBluetoothAdvertisement extends AdvertiseCallback {
 				}
 			}
 			builder.setIncludeDeviceName(true);
-			builder.setIncludeTxPowerLevel(false);
+			builder.setIncludeTxPowerLevel(true);
 			data = builder.build();
 		}
 		return data;
@@ -150,8 +150,10 @@ public class GodotBluetoothAdvertisement extends AdvertiseCallback {
 	public ArrayList<GodotBluetoothCharacteristic> getCharacteristics() {
 		ArrayList<BluetoothGattService> services = getServices();
 		if (characteristics == null && services != null) {
-			Integer[] permissions = (Integer[])GodotLib.bluetoothCallback(GodotBluetooth.EVENT_GET_CHARACTERISTIC_PERMISSIONS, advertiser.getIdentifier(), null);
+			int[] permissions = (int[])GodotLib.bluetoothCallback(GodotBluetooth.EVENT_GET_CHARACTERISTIC_PERMISSIONS, advertiser.getIdentifier(), null);
 			String[] characteristic = (String[])GodotLib.bluetoothCallback(GodotBluetooth.EVENT_GET_CHARACTERISTICS, advertiser.getIdentifier(), null);
+			//Log.i(TAG, "PERMISSIONS = \""+((permissions != null)?Arrays.toString(Arrays.copyOf(permissions, permissions.length, Object[].class)):"")+"\"");
+			//Log.i(TAG, "CHARACTERISTIC = \""+((characteristic != null)?Arrays.toString(Arrays.copyOf(characteristic, characteristic.length, Object[].class)):"")+"\"");
 			if (permissions == null || characteristic == null || permissions.length != characteristic.length) {
 				return null;
 			}
