@@ -268,12 +268,14 @@ Error AudioDriverOpenSL::init_input_device() {
 }
 
 void AudioDriverOpenSL::end() {
+#if 0
 	if (recordBufferQueueItf) {
 		(*recordBufferQueueItf)->RegisterCallback(recordBufferQueueItf, nullptr, nullptr);
 	}
 	if (bufferQueueItf) {
 		(*bufferQueueItf)->RegisterCallback(bufferQueueItf, nullptr, nullptr);
 	}
+#endif
 	if (recordItf) {
 		(*recordItf)->SetRecordState(recordItf, SL_RECORDSTATE_STOPPED);
 		recordItf = nullptr;
@@ -298,11 +300,13 @@ void AudioDriverOpenSL::end() {
 		(*sl)->Destroy(sl);
 		sl = nullptr;
 	}
+#if 0
 	for (int i = 0; i < BUFFER_COUNT; i++) {
 		if (buffers[i]) {
 			memdelete_arr(buffers[i]);
 		}
 	}
+#endif
 }
 
 Error AudioDriverOpenSL::input_start() {
@@ -381,10 +385,6 @@ AudioDriverOpenSL::AudioDriverOpenSL() {
 	player = nullptr;
 	OutputMix = nullptr;
 	sl = nullptr;
-}
-
-AudioDriverOpenSL::~AudioDriverOpenSL() {
-	end();
 }
 
 AudioDriverOpenSL::~AudioDriverOpenSL() {
