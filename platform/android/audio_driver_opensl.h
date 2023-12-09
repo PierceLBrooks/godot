@@ -108,7 +108,7 @@ public:
 	void set_pause(bool p_pause);
 
 	AudioDriverOpenSL();
-    virtual ~AudioDriverOpenSL();
+	virtual ~AudioDriverOpenSL();
 };
 
 #endif // AUDIO_DRIVER_OPENSL_H
