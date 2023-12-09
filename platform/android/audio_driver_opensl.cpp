@@ -306,6 +306,10 @@ void AudioDriverOpenSL::end() {
 }
 
 Error AudioDriverOpenSL::input_start() {
+	if (recordItf || recordBufferQueueItf) {
+		return ERR_ALREADY_IN_USE;
+	}
+
 	if (OS::get_singleton()->request_permission("RECORD_AUDIO")) {
 		return init_input_device();
 	}
@@ -315,6 +319,10 @@ Error AudioDriverOpenSL::input_start() {
 }
 
 Error AudioDriverOpenSL::input_stop() {
+	if (!recordItf || !recordBufferQueueItf) {
+		return ERR_CANT_OPEN;
+	}
+
 	SLuint32 state;
 	SLresult res = (*recordItf)->GetRecordState(recordItf, &state);
 	ERR_FAIL_COND_V(res != SL_RESULT_SUCCESS, ERR_CANT_OPEN);
