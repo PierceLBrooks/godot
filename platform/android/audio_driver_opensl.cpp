@@ -356,12 +356,6 @@ void AudioDriverOpenSL::set_pause(bool p_pause) {
 }
 
 AudioDriverOpenSL::AudioDriverOpenSL() {
-	recordItf = nullptr;
-	recorder = nullptr;
-	playItf = nullptr;
-	player = nullptr;
-	OutputMix = nullptr;
-	sl = nullptr;
 }
 
 AudioDriverOpenSL::~AudioDriverOpenSL() {
