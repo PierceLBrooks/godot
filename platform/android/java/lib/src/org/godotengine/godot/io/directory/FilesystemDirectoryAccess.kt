@@ -69,25 +69,33 @@ internal class FilesystemDirectoryAccess(private val context: Context):
 	override fun hasDirId(dirId: Int) = dirs.indexOfKey(dirId) >= 0
 
 	override fun dirOpen(path: String): Int {
-		if (!inScope(path)) {
-			Log.w(TAG, "Path $path is not accessible.")
+		try {
+			if (!inScope(path)) {
+				Log.w(TAG, "Path $path is not accessible.")
+				return INVALID_DIR_ID
+			}
+
+			// Check this is a directory.
+			val dirFile = File(path)
+			if (!dirFile.isDirectory) {
+				return INVALID_DIR_ID
+			}
+
+			// Get the files in the directory
+			val files = dirFile.listFiles() ?: return INVALID_DIR_ID
+
+			// Create the data representing this directory
+			val dirData = DirData(dirFile, files)
+
+			dirs.put(++lastDirId, dirData)
+			return lastDirId
+		} catch (e: FileSystemException) {
+			return INVALID_DIR_ID
+		} catch (e: OutOfMemoryError) {
+			return INVALID_DIR_ID
+		} catch (e: SecurityException) {
 			return INVALID_DIR_ID
 		}
-
-		// Check this is a directory.
-		val dirFile = File(path)
-		if (!dirFile.isDirectory) {
-			return INVALID_DIR_ID
-		}
-
-		// Get the files in the directory
-		val files = dirFile.listFiles()?: return INVALID_DIR_ID
-
-		// Create the data representing this directory
-		val dirData = DirData(dirFile, files)
-
-		dirs.put(++lastDirId, dirData)
-		return lastDirId
 	}
 
 	override fun dirExists(path: String): Boolean {

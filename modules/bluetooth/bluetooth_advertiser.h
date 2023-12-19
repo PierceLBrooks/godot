@@ -129,6 +129,7 @@ public:
 	virtual void respond_characteristic_read_request(String p_characteristic_uuid, String p_response, int p_request) const;
 	virtual void respond_characteristic_write_request(String p_characteristic_uuid, String p_response, int p_request) const;
 
+	bool on_error() const;
 	bool on_start() const;
 	bool on_stop() const;
 	bool on_read(String p_characteristic_uuid, int p_request, String p_peer_uuid) const;

@@ -77,9 +77,9 @@ jobject BluetoothAndroid::_java_bluetooth_callback(int p_event, int p_id, Varian
     std::function<jvalret()> callback = [=](){return result;};
 
 #ifdef MODULE_BLUETOOTH_ENABLED
-#ifdef DEBUG_ENABLED
-	print_line(String((std::string("Bluetooth event ") + std::to_string(p_event) + " @ " + std::to_string(p_id)).c_str()) + " = " + p_arg->stringify());
-#endif
+    if (OS::get_singleton()->has_feature("debug")) {
+	    print_line(String((std::string("Bluetooth event ") + std::to_string(p_event) + " @ " + std::to_string(p_id)).c_str()) + " = " + Variant::get_type_name(p_arg->get_type()) + " " +p_arg->stringify());
+    }
     if (p_event <= static_cast<int>(BluetoothEvent::BLUETOOTH_ENUMERATOR_ON_ERROR)) {
         BluetoothEnumeratorAndroid *enumerator = get_enumerator(p_id);
         if (enumerator != nullptr) {

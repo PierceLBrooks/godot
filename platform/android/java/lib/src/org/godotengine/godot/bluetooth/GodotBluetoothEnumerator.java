@@ -92,7 +92,7 @@ public class GodotBluetoothEnumerator extends ScanCallback {
 
 	private boolean processResult(Object result) {
 		Boolean success = null;
-		if (result == null) {
+		if (result == null || !(result instanceof Boolean)) {
 			return false;
 		}
 		try {
@@ -188,6 +188,10 @@ public class GodotBluetoothEnumerator extends ScanCallback {
 				Log.w(TAG, "No adapter!");
 				return false;
 			}
+			if (!adapter.isEnabled()) {
+				Log.w(TAG, "No support!");
+				return false;
+			}
 			sought_services = (String[])GodotLib.bluetoothCallback(GodotBluetooth.EVENT_GET_SOUGHT_SERVICES, id, null);
 			if (sought_services == null) {
 				Log.w(TAG, "No sought services!");
@@ -202,7 +206,7 @@ public class GodotBluetoothEnumerator extends ScanCallback {
 				ArrayList<ScanFilter> filters = new ArrayList<ScanFilter>();
 				for (int i = 0; i < sought_services.length; ++i) {
 					ScanFilter.Builder builder = new ScanFilter.Builder();
-					ParcelUuid uuid = new ParcelUuid(UUID.nameUUIDFromBytes(sought_services[i].getBytes()));
+					ParcelUuid uuid = new ParcelUuid(UUID.fromString(sought_services[i]));
 					builder.setServiceUuid(uuid);
 					ScanFilter filter = builder.build();
 					if (filter == null) {
@@ -298,7 +302,7 @@ public class GodotBluetoothEnumerator extends ScanCallback {
 								int key = manufacturer.keyAt(i);
 								byte[] value = manufacturer.get(key, new byte[0]);
 								if (value.length > 0) {
-									encoding.put(Integer.toString(key), Base64.encodeToString(value, 0).strip());
+									encoding.put(Integer.toString(key), Base64.encodeToString(value, Base64.DEFAULT).trim());
 								}
 							}
 							if (!encoding.isEmpty()) {
@@ -384,6 +388,12 @@ public class GodotBluetoothEnumerator extends ScanCallback {
 			GodotLib.printStackTrace(exception);
 		} finally {
 			lock.unlock();
+		}
+	}
+
+	public void onPower() {
+		if (!bluetooth.getPower() && scanning.get()) {
+			stopScanning(true);
 		}
 	}
 }

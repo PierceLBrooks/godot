@@ -48,6 +48,7 @@ import android.util.Base64;
 import android.util.Log;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class GodotBluetoothAdvertiser extends BluetoothGattServerCallback implements BluetoothProfile.ServiceListener {
@@ -56,6 +57,7 @@ public class GodotBluetoothAdvertiser extends BluetoothGattServerCallback implem
 	private final GodotBluetooth bluetooth;
 	private final int id;
 
+	private HashSet<BluetoothDevice> devices;
 	private ArrayList<BluetoothGattService> services;
 	private ArrayList<GodotBluetoothCharacteristic> characteristics;
 	private GodotBluetoothAdvertisement advertisement;
@@ -69,6 +71,7 @@ public class GodotBluetoothAdvertiser extends BluetoothGattServerCallback implem
 		bluetooth = p_bluetooth;
 		id = p_id;
 		lock = new ReentrantLock();
+		devices = new HashSet<BluetoothDevice>();
 		advertisement = null;
 		advertiser = null;
 		server = null;
@@ -96,13 +99,16 @@ public class GodotBluetoothAdvertiser extends BluetoothGattServerCallback implem
 
 	public GodotBluetoothCharacteristic getCharacteristic(String p_characteristic_uuid) {
 		GodotBluetoothCharacteristic characteristic = null;
+		if (p_characteristic_uuid == null) {
+			return characteristic;
+		}
 		lock.lock();
 		try {
 			if (characteristics != null) {
 				for (int i = 0; i < characteristics.size(); ++i) {
 					characteristic = characteristics.get(i);
 					if (characteristic != null) {
-						if (characteristic.getCharacteristic().getUuid().toString().equalsIgnoreCase(p_characteristic_uuid)) {
+						if (characteristic.getCharacteristic().getUuid().toString().trim().equalsIgnoreCase(p_characteristic_uuid.trim())) {
 							break;
 						}
 						characteristic = null;
@@ -119,7 +125,7 @@ public class GodotBluetoothAdvertiser extends BluetoothGattServerCallback implem
 
 	private boolean processResult(Object result) {
 		Boolean success = null;
-		if (result == null) {
+		if (result == null || !(result instanceof Boolean)) {
 			return false;
 		}
 		try {
@@ -250,6 +256,11 @@ public class GodotBluetoothAdvertiser extends BluetoothGattServerCallback implem
 		try {
 			BluetoothAdapter adapter = bluetooth.getAdapter(GodotBluetooth.BluetoothReason.ADVERTISING);
 			if (adapter == null) {
+				Log.w(TAG, "No adapter!");
+				return false;
+			}
+			if (!adapter.isEnabled()) {
+				Log.w(TAG, "No support!");
 				return false;
 			}
 			/*if (!adapter.getProfileProxy(bluetooth.getContext(), this, BluetoothProfile.GATT_SERVER)) {
@@ -257,15 +268,24 @@ public class GodotBluetoothAdvertiser extends BluetoothGattServerCallback implem
 			}*/
 			manager = bluetooth.getManager();
 			if (manager == null) {
+				Log.w(TAG, "No manager!");
 				return false;
 			}
 			advertiser = adapter.getBluetoothLeAdvertiser();
 			if (advertiser == null) {
+				Log.w(TAG, "No advertiser!");
 				return false;
 			}
 			name = (String)GodotLib.bluetoothCallback(GodotBluetooth.EVENT_GET_NAME, id, null);
 			if (name != null) {
 				adapter.setName(name);
+			}
+			advertisement = new GodotBluetoothAdvertisement(this);
+			if (!advertisement.startAdvertising()) {
+				advertisement = null;
+				advertiser = null;
+				Log.w(TAG, "No advertisement!");
+				return false;
 			}
 			characteristics = advertisement.getCharacteristics();
 			services = advertisement.getServices();
@@ -277,6 +297,7 @@ public class GodotBluetoothAdvertiser extends BluetoothGattServerCallback implem
 				advertiser = null;
 				characteristics = null;
 				services = null;
+				Log.w(TAG, "No characteristics!");
 				return false;
 			}
 			server = manager.openGattServer(bluetooth.getContext(), this);
@@ -288,17 +309,10 @@ public class GodotBluetoothAdvertiser extends BluetoothGattServerCallback implem
 				advertiser = null;
 				characteristics = null;
 				services = null;
+				Log.w(TAG, "No services!");
 				return false;
 			}
 			//services.remove(0);
-			if (advertisement == null) {
-				advertisement = new GodotBluetoothAdvertisement(this);
-			}
-			if (!advertisement.startAdvertising()) {
-				advertisement = null;
-				advertiser = null;
-				return false;
-			}
 			return true;
 		} catch (Exception exception) {
 			GodotLib.printStackTrace(exception);
@@ -331,6 +345,9 @@ public class GodotBluetoothAdvertiser extends BluetoothGattServerCallback implem
 		} finally {
 			lock.unlock();
 		}
+		if (success) {
+			GodotLib.bluetoothCallback(GodotBluetooth.EVENT_ON_STOP_BROADCASTING, id, "");
+		}
 		return success;
 	}
 
@@ -345,7 +362,16 @@ public class GodotBluetoothAdvertiser extends BluetoothGattServerCallback implem
 	@SuppressLint("MissingPermission")
 	@Override
 	public void onServiceAdded(int status, BluetoothGattService service) {
-		Boolean result = null;
+		Object result = new Object();
+		for (int i = 0; i < services.size(); ++i) {
+			if (services.get(i).getUuid().toString().trim().equalsIgnoreCase(service.getUuid().toString().trim())) {
+				result = null;
+				break;
+			}
+		}
+		if (result != null) {
+			Log.w(TAG, "Bad service! "+service.getUuid().toString().trim());
+		}
 		if (server == null) {
 			super.onServiceAdded(status, service);
 			return;
@@ -355,12 +381,14 @@ public class GodotBluetoothAdvertiser extends BluetoothGattServerCallback implem
 				if (services.remove(service)) {
 					if (!services.isEmpty()) {
 						if (!server.addService(services.get(0))) {
-							result = (Boolean)GodotLib.bluetoothCallback(GodotBluetooth.EVENT_ON_ADVERTISER_ERROR, id, null);
+							result = GodotLib.bluetoothCallback(GodotBluetooth.EVENT_ON_ADVERTISER_ERROR, id, null);
 						}
 					}
+				} else {
+					Log.w(TAG, "Bad service!");
 				}
 			} else {
-				result = (Boolean)GodotLib.bluetoothCallback(GodotBluetooth.EVENT_ON_ADVERTISER_ERROR, id, null);
+				result = GodotLib.bluetoothCallback(GodotBluetooth.EVENT_ON_ADVERTISER_ERROR, id, null);
 			}
 		} catch (Exception exception) {
 			GodotLib.printStackTrace(exception);
@@ -407,13 +435,13 @@ public class GodotBluetoothAdvertiser extends BluetoothGattServerCallback implem
 				event.put("peer", device.getAddress());
 			}
 			if (characteristic != null) {
-				event.put("characteristic", characteristic.getUuid().toString());
+				event.put("characteristic", characteristic.getUuid().toString().toLowerCase());
 				if (responseNeeded) {
-					getCharacteristic(characteristic.getUuid().toString()).putRequestDevice(requestId, device);
+					getCharacteristic(characteristic.getUuid().toString().toLowerCase()).putRequestDevice(requestId, device);
 				}
 			}
 			if (value != null) {
-				event.put("value", Base64.encodeToString(value, 0));
+				event.put("value", Base64.encodeToString(value, Base64.DEFAULT).trim());
 			}
 			result = (Boolean)GodotLib.bluetoothCallback(GodotBluetooth.EVENT_ON_ADVERTISER_WRITE, id, event);
 		} catch (Exception exception) {
@@ -422,8 +450,10 @@ public class GodotBluetoothAdvertiser extends BluetoothGattServerCallback implem
 		processResult(result);
 	}
 
+	@SuppressLint("MissingPermission")
 	@Override
 	public void onConnectionStateChange(BluetoothDevice device, int status, int newState) {
+		boolean connect = false;
 		Boolean result = null;
 		super.onConnectionStateChange(device, status, newState);
 		if (device == null || status != BluetoothStatusCodes.SUCCESS) {
@@ -434,6 +464,7 @@ public class GodotBluetoothAdvertiser extends BluetoothGattServerCallback implem
 				case BluetoothProfile.STATE_CONNECTED:
 					Log.w(TAG, "CONNECTED");
 					result = (Boolean)GodotLib.bluetoothCallback(GodotBluetooth.EVENT_ON_ADVERTISER_CONNECT, id, device.getAddress());
+					connect = true;
 					break;
 				case BluetoothProfile.STATE_DISCONNECTED:
 					Log.w(TAG, "DISCONNECTED");
@@ -447,6 +478,29 @@ public class GodotBluetoothAdvertiser extends BluetoothGattServerCallback implem
 		}
 		if (processResult(result)) {
 			Log.w(TAG, "CONNECTION");
+		}
+		lock.lock();
+		try {
+			if (connect) {
+				if (!devices.contains(device)) {
+					//result = device.createBond(); // this is for pairing, and we should just let that be up to users to arrange externally through native system menu interfaces for the platform's bluetooth driver
+					devices.add(device);
+				}
+			} else {
+				if (devices.contains(device)) {
+					devices.remove(device);
+				}
+			}
+		} catch (Exception exception) {
+			GodotLib.printStackTrace(exception);
+		} finally {
+			lock.unlock();
+		}
+	}
+
+	public void onPower() {
+		if (!bluetooth.getPower() && (advertiser != null || server != null)) {
+			stopAdvertising();
 		}
 	}
 }

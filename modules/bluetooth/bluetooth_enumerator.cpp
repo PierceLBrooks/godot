@@ -141,8 +141,9 @@ TypedArray<String> BluetoothEnumerator::get_sought_services() const {
 }
 
 bool BluetoothEnumerator::has_sought_service(String p_service_uuid) const {
+    String lower = p_service_uuid.to_lower();
 	for (int i = 0; i < sought_services.size(); i++) {
-		if (get_sought_service(i) == p_service_uuid) {
+		if (get_sought_service(i).to_lower() == lower) {
 			return true;
 		}
 	}
@@ -281,7 +282,7 @@ bool BluetoothEnumerator::on_discover(String p_peer_uuid, String p_peer_name, St
 			thread.start([](void *p_udata) {
 				Ref<BluetoothEnumerator::BluetoothEnumeratorPeer> *peer = static_cast<Ref<BluetoothEnumerator::BluetoothEnumeratorPeer> *>(p_udata);
 				if (peer->is_valid() && (*peer)->enumerator.is_valid()) {
-					(*peer)->enumerator->peers[(*peer)->uuid] = *peer;
+					(*peer)->enumerator->peers[(*peer)->uuid.to_lower()] = *peer;
 					(*peer)->enumerator->emit_signal(SNAME("bluetooth_peer_discovered"), (*peer)->enumerator->get_sought_services(), (*peer)->uuid, (*peer)->name, (*peer)->advertisement_data);
 				}
 			},
@@ -296,6 +297,7 @@ bool BluetoothEnumerator::on_discover(String p_peer_uuid, String p_peer_name, St
 }
 
 bool BluetoothEnumerator::on_connect(String p_peer_uuid) const {
+    p_peer_uuid = p_peer_uuid.to_lower();
 	if (peers.find(p_peer_uuid) == peers.end()) {
 		return false;
 	}
@@ -321,7 +323,8 @@ bool BluetoothEnumerator::on_connect(String p_peer_uuid) const {
 }
 
 bool BluetoothEnumerator::on_disconnect(String p_peer_uuid) const {
-	if (peers.find(p_peer_uuid) == peers.end()) {
+    p_peer_uuid = p_peer_uuid.to_lower();
+    if (peers.find(p_peer_uuid) == peers.end()) {
 		return false;
 	}
 	if (can_emit_signal(SNAME("bluetooth_peer_disconnected"))) {
@@ -347,7 +350,8 @@ bool BluetoothEnumerator::on_disconnect(String p_peer_uuid) const {
 }
 
 bool BluetoothEnumerator::on_discover_service_characteristic(String p_peer_uuid, String p_service_uuid, String p_characteristic_uuid, bool p_writable_permission) const {
-	if (peers.find(p_peer_uuid) == peers.end()) {
+    p_peer_uuid = p_peer_uuid.to_lower();
+    if (peers.find(p_peer_uuid) == peers.end()) {
 		return false;
 	}
 	if (can_emit_signal(SNAME("bluetooth_peer_characteristic_discovered"))) {
@@ -395,7 +399,11 @@ bool BluetoothEnumerator::on_discover_service_characteristic(String p_peer_uuid,
 }
 
 bool BluetoothEnumerator::on_read(String p_peer_uuid, String p_service_uuid, String p_characteristic_uuid, String p_value_base64) const {
-	if (peers.find(p_peer_uuid) == peers.end()) {
+    p_peer_uuid = p_peer_uuid.to_lower();
+    if (peers.find(p_peer_uuid) == peers.end()) {
+        if (OS::get_singleton()->has_feature("debug")) {
+            print_line("Bad read "+p_peer_uuid);
+        }
 		return false;
 	}
 	if (can_emit_signal(SNAME("bluetooth_peer_characteristic_read"))) {
@@ -435,7 +443,11 @@ bool BluetoothEnumerator::on_read(String p_peer_uuid, String p_service_uuid, Str
 }
 
 bool BluetoothEnumerator::on_write(String p_peer_uuid, String p_service_uuid, String p_characteristic_uuid) const {
-	if (peers.find(p_peer_uuid) == peers.end()) {
+    p_peer_uuid = p_peer_uuid.to_lower();
+    if (peers.find(p_peer_uuid) == peers.end()) {
+        if (OS::get_singleton()->has_feature("debug")) {
+            print_line("Bad write "+p_peer_uuid);
+        }
 		return false;
 	}
 	if (can_emit_signal(SNAME("bluetooth_peer_characteristic_wrote"))) {
@@ -474,7 +486,8 @@ bool BluetoothEnumerator::on_write(String p_peer_uuid, String p_service_uuid, St
 }
 
 bool BluetoothEnumerator::on_error(String p_peer_uuid, String p_service_uuid, String p_characteristic_uuid) const {
-	if (peers.find(p_peer_uuid) == peers.end()) {
+    p_peer_uuid = p_peer_uuid.to_lower();
+    if (peers.find(p_peer_uuid) == peers.end()) {
 		return false;
 	}
 	if (can_emit_signal(SNAME("bluetooth_peer_characteristic_error"))) {

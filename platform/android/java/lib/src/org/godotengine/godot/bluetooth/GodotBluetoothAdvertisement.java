@@ -35,6 +35,7 @@ import org.godotengine.godot.GodotLib;
 import android.annotation.SuppressLint;
 import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.BluetoothGattService;
+import android.bluetooth.BluetoothStatusCodes;
 import android.bluetooth.le.AdvertiseCallback;
 import android.bluetooth.le.AdvertiseData;
 import android.bluetooth.le.AdvertiseSettings;
@@ -116,20 +117,29 @@ public class GodotBluetoothAdvertisement extends AdvertiseCallback {
 			}
 			this.services = new HashMap<String, BluetoothGattService>();
 			for (int i = 0; i < services.length; ++i) {
+				if (services[i] == null) {
+					continue;
+				}
+				services[i] = services[i].toLowerCase();
 				if (this.services.containsKey(services[i])) {
 					continue;
 				}
-				this.services.put(services[i], new BluetoothGattService(UUID.nameUUIDFromBytes(services[i].getBytes()), BluetoothGattService.SERVICE_TYPE_PRIMARY));
+				this.services.put(services[i], new BluetoothGattService(UUID.fromString(services[i]), BluetoothGattService.SERVICE_TYPE_PRIMARY));
 				builder.addServiceUuid(new ParcelUuid(this.services.get(services[i]).getUuid()));
 			}
 			if (manufacturer != null) {
 				byte[] manufacturerData = Base64.decode(manufacturer, 0);
 				if (manufacturerData != null && manufacturerData.length > 2) {
-					builder.addManufacturerData((int)Short.parseShort(String.format("%02x", manufacturerData[0]) + String.format("%02x", manufacturerData[1]), 16), Arrays.copyOfRange(manufacturerData, 2, manufacturerData.length - 2));
+					String company = String.format("%02x", manufacturerData[0]) + String.format("%02x", manufacturerData[1]);
+					if (manufacturerData.length > 8) {
+						manufacturerData = Arrays.copyOfRange(manufacturerData, 0, 8);
+					}
+					Log.w(TAG, "Company @ \""+company+"\" = "+Base64.encodeToString(manufacturerData, Base64.DEFAULT).trim());
+					builder.addManufacturerData((int)Short.parseShort(company, 16), Arrays.copyOfRange(manufacturerData, 2, manufacturerData.length - 2));
 				}
 			}
-			builder.setIncludeDeviceName(true);
-			builder.setIncludeTxPowerLevel(true);
+			builder.setIncludeDeviceName(false); // don't include name, because if name size > 8 bytes, ADVERTISE_FAILED_DATA_TOO_LARGE
+			//builder.setIncludeTxPowerLevel(true);
 			data = builder.build();
 		}
 		return data;
@@ -166,7 +176,7 @@ public class GodotBluetoothAdvertisement extends AdvertiseCallback {
 						property |= BluetoothGattCharacteristic.PROPERTY_WRITE;
 						permission |= BluetoothGattCharacteristic.PERMISSION_WRITE;
 					}
-					characteristics.add(new GodotBluetoothCharacteristic(services.get(j), new BluetoothGattCharacteristic(UUID.nameUUIDFromBytes(characteristic[i].getBytes()), property, permission), permissions[i] != 0));
+					characteristics.add(new GodotBluetoothCharacteristic(services.get(j), new BluetoothGattCharacteristic(UUID.fromString(characteristic[i]), property, permission), permissions[i] != 0));
 					services.get(j).addCharacteristic(characteristics.get(characteristics.size() - 1).getCharacteristic());
 				}
 			}
@@ -192,11 +202,41 @@ public class GodotBluetoothAdvertisement extends AdvertiseCallback {
 
 	@Override
 	public void onStartFailure(int errorCode) {
+		String message = "";
+		switch (errorCode) {
+			case ADVERTISE_FAILED_ALREADY_STARTED:
+				message += "ADVERTISE_FAILED_ALREADY_STARTED";
+				break;
+			case ADVERTISE_FAILED_DATA_TOO_LARGE:
+				message += "ADVERTISE_FAILED_DATA_TOO_LARGE";
+				break;
+			case ADVERTISE_FAILED_FEATURE_UNSUPPORTED:
+				message += "ADVERTISE_FAILED_FEATURE_UNSUPPORTED";
+				break;
+			case ADVERTISE_FAILED_INTERNAL_ERROR:
+				message += "ADVERTISE_FAILED_INTERNAL_ERROR";
+				break;
+			case ADVERTISE_FAILED_TOO_MANY_ADVERTISERS:
+				message += "ADVERTISE_FAILED_TOO_MANY_ADVERTISERS";
+				break;
+			default:
+				break;
+		}
+		try {
+			GodotLib.bluetoothCallback(GodotBluetooth.EVENT_ON_ADVERTISER_ERROR, getAdvertiser().getIdentifier(), message);
+		} catch (Exception exception) {
+			GodotLib.printStackTrace(exception);
+		}
 		super.onStartFailure(errorCode);
 	}
 
 	@Override
 	public void onStartSuccess(AdvertiseSettings settingsInEffect) {
+		try {
+			GodotLib.bluetoothCallback(GodotBluetooth.EVENT_ON_START_BROADCASTING, getAdvertiser().getIdentifier(), "");
+		} catch (Exception exception) {
+			GodotLib.printStackTrace(exception);
+		}
 		super.onStartSuccess(settingsInEffect);
 	}
 }

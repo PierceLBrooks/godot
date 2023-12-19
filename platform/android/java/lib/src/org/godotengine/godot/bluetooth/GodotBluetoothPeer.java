@@ -213,12 +213,12 @@ public class GodotBluetoothPeer extends BluetoothGattCallback {
 				event.put("peer", device.getAddress());
 			}
 			if (characteristic != null) {
-				event.put("service", characteristic.getService().getUuid().toString());
-				event.put("characteristic", characteristic.getUuid().toString());
+				event.put("service", characteristic.getService().getUuid().toString().toLowerCase());
+				event.put("characteristic", characteristic.getUuid().toString().toLowerCase());
 			}
 			if (status == BluetoothStatusCodes.SUCCESS) {
 				if (value != null) {
-					event.put("value", Base64.encodeToString(value, 0));
+					event.put("value", Base64.encodeToString(value, Base64.DEFAULT).trim());
 				}
 				result = (Boolean)GodotLib.bluetoothCallback(GodotBluetooth.EVENT_ON_ENUMERATOR_READ, id, event);
 			} else {
@@ -241,13 +241,13 @@ public class GodotBluetoothPeer extends BluetoothGattCallback {
 					event.put("peer", device.getAddress());
 				}
 				if (characteristic != null) {
-					event.put("service", characteristic.getService().getUuid().toString());
-					event.put("characteristic", characteristic.getUuid().toString());
+					event.put("service", characteristic.getService().getUuid().toString().toLowerCase());
+					event.put("characteristic", characteristic.getUuid().toString().toLowerCase());
 				}
 				if (status == BluetoothStatusCodes.SUCCESS) {
 					byte[] value = characteristic.getValue();
 					if (value != null) {
-						event.put("value", Base64.encodeToString(value, 0));
+						event.put("value", Base64.encodeToString(value, Base64.DEFAULT).trim());
 					}
 					result = (Boolean)GodotLib.bluetoothCallback(GodotBluetooth.EVENT_ON_ENUMERATOR_READ, id, event);
 				} else {
@@ -270,8 +270,8 @@ public class GodotBluetoothPeer extends BluetoothGattCallback {
 				event.put("peer", device.getAddress());
 			}
 			if (characteristic != null) {
-				event.put("service", characteristic.getService().getUuid().toString());
-				event.put("characteristic", characteristic.getUuid().toString());
+				event.put("service", characteristic.getService().getUuid().toString().toLowerCase());
+				event.put("characteristic", characteristic.getUuid().toString().toLowerCase());
 			}
 			if (status == BluetoothStatusCodes.SUCCESS) {
 				result = (Boolean)GodotLib.bluetoothCallback(GodotBluetooth.EVENT_ON_ENUMERATOR_WRITE, id, event);
@@ -365,7 +365,7 @@ public class GodotBluetoothPeer extends BluetoothGattCallback {
 						if (characteristics != null) {
 							String serviceUuid = service.getUuid().toString();
 							if (!serviceCharacteristics.containsKey(serviceUuid)) {
-								serviceCharacteristics.put(serviceUuid, new HashMap<String, GodotBluetoothCharacteristic>());
+								serviceCharacteristics.put(serviceUuid.toLowerCase(), new HashMap<String, GodotBluetoothCharacteristic>());
 							}
 							for (int j = 0; j < characteristics.size(); ++j) {
 								BluetoothGattCharacteristic characteristic = characteristics.get(j);
@@ -380,8 +380,8 @@ public class GodotBluetoothPeer extends BluetoothGattCallback {
 											permission = true;
 										}
 										allCharacteristics.add(new GodotBluetoothCharacteristic(service, characteristic, permission));
-										if (!serviceCharacteristics.get(serviceUuid).containsKey(characteristicUuid)) {
-											serviceCharacteristics.get(serviceUuid).put(characteristicUuid, allCharacteristics.get(allCharacteristics.size() - 1));
+										if (!serviceCharacteristics.get(serviceUuid).containsKey(characteristicUuid.toLowerCase())) {
+											serviceCharacteristics.get(serviceUuid).put(characteristicUuid.toLowerCase(), allCharacteristics.get(allCharacteristics.size() - 1));
 										}
 									} catch (Exception exceptionInner) {
 										GodotLib.printStackTrace(exceptionInner);

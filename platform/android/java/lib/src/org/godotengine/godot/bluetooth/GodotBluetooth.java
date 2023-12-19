@@ -48,7 +48,11 @@ import android.util.Log;
 
 import androidx.core.content.ContextCompat;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -82,6 +86,8 @@ public class GodotBluetooth {
 	public static final int EVENT_ON_ADVERTISER_DISCONNECT = 18;
 	public static final int EVENT_ON_ADVERTISER_READ = 19;
 	public static final int EVENT_ON_ADVERTISER_WRITE = 20;
+	public static final int EVENT_ON_START_BROADCASTING = 21;
+	public static final int EVENT_ON_STOP_BROADCASTING = 22;
 
 	private Activity activity;
 	private Context context;
@@ -175,6 +181,7 @@ public class GodotBluetooth {
 		return manager;
 	}
 
+	@SuppressLint("HardwareIds")
 	public String getAddress() {
 		String address = null;
 		try {
@@ -259,8 +266,34 @@ public class GodotBluetooth {
 	}
 
 	public void setPower(boolean p_power) {
+		ArrayList<GodotBluetoothAdvertiser> advertisers = getAdvertisers();
+		ArrayList<GodotBluetoothEnumerator> enumerators = getEnumerators();
 		Log.w(TAG, "Power = " + p_power);
-		power.set(p_power);
+		if (power.get() != p_power) {
+			power.set(p_power);
+			if (advertisers != null) {
+				for (int i = 0; i < advertisers.size(); ++i) {
+					GodotBluetoothAdvertiser advertiser = advertisers.get(i);
+					if (advertiser == null) {
+						continue;
+					}
+					advertiser.onPower();
+				}
+			}
+			if (enumerators != null) {
+				for (int i = 0; i < enumerators.size(); ++i) {
+					GodotBluetoothEnumerator enumerator = enumerators.get(i);
+					if (enumerator == null) {
+						continue;
+					}
+					enumerator.onPower();
+				}
+			}
+		}
+	}
+
+	public boolean getPower() {
+		return power.get();
 	}
 
 	public boolean isSupported(boolean p_role) {
@@ -571,5 +604,55 @@ public class GodotBluetooth {
 			Log.d(TAG, "Old enumerator @ " + p_enumerator_id);
 		}
 		return success;
+	}
+
+	public ArrayList<GodotBluetoothAdvertiser> getAdvertisers() {
+		ArrayList<GodotBluetoothAdvertiser> advertisers = new ArrayList<GodotBluetoothAdvertiser>();
+		lock.lock();
+		try {
+			Set<Map.Entry<Integer, GodotBluetoothAdvertiser>> entries = this.advertisers.entrySet();
+			if (entries != null) {
+				Iterator<Map.Entry<Integer, GodotBluetoothAdvertiser>> iterator = entries.iterator();
+				if (iterator != null) {
+					while (iterator.hasNext()) {
+						Map.Entry<Integer, GodotBluetoothAdvertiser> entry = iterator.next();
+						if (entry == null) {
+							continue;
+						}
+						advertisers.add(entry.getValue());
+					}
+				}
+			}
+		} catch (Exception exception) {
+			GodotLib.printStackTrace(exception);
+		} finally {
+			lock.unlock();
+		}
+		return advertisers;
+	}
+
+	public ArrayList<GodotBluetoothEnumerator> getEnumerators() {
+		ArrayList<GodotBluetoothEnumerator> enumerators = new ArrayList<GodotBluetoothEnumerator>();
+		lock.lock();
+		try {
+			Set<Map.Entry<Integer, GodotBluetoothEnumerator>> entries = this.enumerators.entrySet();
+			if (entries != null) {
+				Iterator<Map.Entry<Integer, GodotBluetoothEnumerator>> iterator = entries.iterator();
+				if (iterator != null) {
+					while (iterator.hasNext()) {
+						Map.Entry<Integer, GodotBluetoothEnumerator> entry = iterator.next();
+						if (entry == null) {
+							continue;
+						}
+						enumerators.add(entry.getValue());
+					}
+				}
+			}
+		} catch (Exception exception) {
+			GodotLib.printStackTrace(exception);
+		} finally {
+			lock.unlock();
+		}
+		return enumerators;
 	}
 }

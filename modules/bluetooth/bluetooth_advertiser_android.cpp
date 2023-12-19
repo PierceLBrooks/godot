@@ -178,29 +178,37 @@ std::function<jvalret()> BluetoothAdvertiserAndroid::on_java_callback(int p_even
             break;
         case BluetoothAndroid::BluetoothEvent::BLUETOOTH_ADVERTISER_ON_ERROR: {
 #ifdef DEBUG_ENABLED
-            print_line("Error");
+                print_line("Error: "+p_arg->stringify().strip_edges());
 #endif
-#if 0
-            //on_error();
+                callback = [=]() {
+                    if (on_error()) {
+#ifdef DEBUG_ENABLED
+                        print_line("Error");
 #endif
+                        return _variant_to_jvalue(env, Variant::Type::BOOL, &truth, true);
+                    }
+                    return _variant_to_jvalue(env, Variant::Type::BOOL, &falsehood, true);
+                };
             }
             break;
         case BluetoothAndroid::BluetoothEvent::BLUETOOTH_ADVERTISER_ON_CONNECT: {
 #ifdef DEBUG_ENABLED
-            print_line("Connect");
+                print_line("Connect");
 #endif
 #if 0
-            //on_connect(p_arg->stringify().strip_edges());
+                //on_connect(p_arg->stringify().strip_edges());
 #endif
+                callback = [=](){return _variant_to_jvalue(env, Variant::Type::BOOL, &truth, true);};
             }
             break;
         case BluetoothAndroid::BluetoothEvent::BLUETOOTH_ADVERTISER_ON_DISCONNECT: {
 #ifdef DEBUG_ENABLED
-            print_line("Disconnect");
+                print_line("Disconnect");
 #endif
 #if 0
-            //on_disconnect(p_arg->stringify().strip_edges());
+                //on_disconnect(p_arg->stringify().strip_edges());
 #endif
+                callback = [=](){return _variant_to_jvalue(env, Variant::Type::BOOL, &truth, true);};
             }
             break;
         case BluetoothAndroid::BluetoothEvent::BLUETOOTH_ADVERTISER_ON_READ: {
@@ -223,7 +231,7 @@ std::function<jvalret()> BluetoothAdvertiserAndroid::on_java_callback(int p_even
                 callback = [=]() {
                     if (on_read(characteristic, atoi(request.utf8().get_data()), peer)) {
 #ifdef DEBUG_ENABLED
-                        print_line("Write");
+                        print_line("Read");
 #endif
                         return _variant_to_jvalue(env, Variant::Type::BOOL, &truth, true);
                     }
@@ -255,7 +263,31 @@ std::function<jvalret()> BluetoothAdvertiserAndroid::on_java_callback(int p_even
                 callback = [=]() {
                     if (on_write(characteristic, atoi(request.utf8().get_data()), peer, value)) {
 #ifdef DEBUG_ENABLED
-                        print_line("Read");
+                        print_line("Write");
+#endif
+                        return _variant_to_jvalue(env, Variant::Type::BOOL, &truth, true);
+                    }
+                    return _variant_to_jvalue(env, Variant::Type::BOOL, &falsehood, true);
+                };
+            }
+            break;
+        case BluetoothAndroid::BluetoothEvent::BLUETOOTH_ADVERTISER_ON_START_BROADCASTING: {
+                callback = [=]() {
+                    if (on_start()) {
+#ifdef DEBUG_ENABLED
+                        print_line("Start");
+#endif
+                        return _variant_to_jvalue(env, Variant::Type::BOOL, &truth, true);
+                    }
+                    return _variant_to_jvalue(env, Variant::Type::BOOL, &falsehood, true);
+                };
+            }
+            break;
+        case BluetoothAndroid::BluetoothEvent::BLUETOOTH_ADVERTISER_ON_STOP_BROADCASTING: {
+                callback = [=]() {
+                    if (on_stop()) {
+#ifdef DEBUG_ENABLED
+                        print_line("Stop");
 #endif
                         return _variant_to_jvalue(env, Variant::Type::BOOL, &truth, true);
                     }

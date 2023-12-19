@@ -304,7 +304,7 @@ public class GodotLib {
 	 * Use the core line printing facilities on exceptions.
 	 */
 	public static void printStackTrace(Throwable throwable) {
-		if (!"debug".equalsIgnoreCase(BuildConfig.BUILD_TYPE)) {
+		if (!"debug".contains(BuildConfig.BUILD_TYPE) && !"dev".contains(BuildConfig.BUILD_TYPE)) {
 			return;
 		}
 		if (throwable != null) {
