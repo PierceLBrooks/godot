@@ -42,6 +42,8 @@ import android.bluetooth.BluetoothGattService;
 import android.bluetooth.BluetoothManager;
 import android.bluetooth.BluetoothProfile;
 import android.bluetooth.BluetoothStatusCodes;
+import android.bluetooth.le.AdvertiseData;
+import android.bluetooth.le.AdvertiseSettings;
 import android.bluetooth.le.BluetoothLeAdvertiser;
 import android.os.Build;
 import android.util.Base64;
@@ -66,8 +68,11 @@ public class GodotBluetoothAdvertiser extends BluetoothGattServerCallback implem
 	private BluetoothManager manager;
 	private ReentrantLock lock;
 	private String name;
+	private AdvertiseData data;
+	private AdvertiseSettings settings;
 
 	public GodotBluetoothAdvertiser(GodotBluetooth p_bluetooth, int p_id) {
+		super();
 		bluetooth = p_bluetooth;
 		id = p_id;
 		lock = new ReentrantLock();
@@ -253,6 +258,10 @@ public class GodotBluetoothAdvertiser extends BluetoothGattServerCallback implem
 			return false;
 		}
 		lock.lock();
+		characteristics = null;
+		services = null;
+		data = null;
+		settings = null;
 		try {
 			BluetoothAdapter adapter = bluetooth.getAdapter(GodotBluetooth.BluetoothReason.ADVERTISING);
 			if (adapter == null) {
@@ -278,15 +287,16 @@ public class GodotBluetoothAdvertiser extends BluetoothGattServerCallback implem
 			}
 			name = (String)GodotLib.bluetoothCallback(GodotBluetooth.EVENT_GET_NAME, id, null);
 			if (name != null) {
+				if (name.length() > 8) {
+					name = name.substring(0, 8);
+				}
 				adapter.setName(name);
 			}
-			advertisement = new GodotBluetoothAdvertisement(this);
-			if (!advertisement.startAdvertising()) {
-				advertisement = null;
-				advertiser = null;
-				Log.w(TAG, "No advertisement!");
-				return false;
+			if (advertisement == null) {
+				advertisement = new GodotBluetoothAdvertisement(this);
 			}
+			data = advertisement.getData();
+			settings = advertisement.getSettings();
 			characteristics = advertisement.getCharacteristics();
 			services = advertisement.getServices();
 			if (characteristics == null || characteristics.isEmpty() || services == null || services.isEmpty()) {
@@ -297,6 +307,8 @@ public class GodotBluetoothAdvertiser extends BluetoothGattServerCallback implem
 				advertiser = null;
 				characteristics = null;
 				services = null;
+				data = null;
+				settings = null;
 				Log.w(TAG, "No characteristics!");
 				return false;
 			}
@@ -306,13 +318,36 @@ public class GodotBluetoothAdvertiser extends BluetoothGattServerCallback implem
 					advertisement.stopAdvertising();
 					advertisement = null;
 				}
+				if (server != null) {
+					server.close();
+					server = null;
+				}
 				advertiser = null;
 				characteristics = null;
 				services = null;
+				data = null;
+				settings = null;
 				Log.w(TAG, "No services!");
 				return false;
 			}
 			//services.remove(0);
+			if (!advertisement.startAdvertising()) {
+				if (advertisement != null) {
+					advertisement.stopAdvertising();
+					advertisement = null;
+				}
+				if (server != null) {
+					server.close();
+					server = null;
+				}
+				advertiser = null;
+				characteristics = null;
+				services = null;
+				data = null;
+				settings = null;
+				Log.w(TAG, "No advertisement!");
+				return false;
+			}
 			return true;
 		} catch (Exception exception) {
 			GodotLib.printStackTrace(exception);

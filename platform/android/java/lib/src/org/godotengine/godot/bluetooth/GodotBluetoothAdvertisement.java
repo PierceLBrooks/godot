@@ -61,6 +61,7 @@ public class GodotBluetoothAdvertisement extends AdvertiseCallback {
 	private HashMap<String, BluetoothGattService> services;
 
 	public GodotBluetoothAdvertisement(GodotBluetoothAdvertiser p_advertiser) {
+		super();
 		advertiser = p_advertiser;
 		data = null;
 		settings = null;
@@ -76,7 +77,7 @@ public class GodotBluetoothAdvertisement extends AdvertiseCallback {
 			AdvertiseData data = getData();
 			AdvertiseSettings settings = getSettings();
 			if (advertiser != null && data != null && settings != null) {
-				advertiser.startAdvertising(settings, data, this);
+				advertiser.startAdvertising(settings, (new AdvertiseData.Builder()).setIncludeDeviceName(false).build(), data, this);
 			} else {
 				success = false;
 			}
@@ -135,7 +136,7 @@ public class GodotBluetoothAdvertisement extends AdvertiseCallback {
 						manufacturerData = Arrays.copyOfRange(manufacturerData, 0, 8);
 					}
 					Log.w(TAG, "Company @ \""+company+"\" = "+Base64.encodeToString(manufacturerData, Base64.DEFAULT).trim());
-					builder.addManufacturerData((int)Short.parseShort(company, 16), Arrays.copyOfRange(manufacturerData, 2, manufacturerData.length - 2));
+					//builder.addManufacturerData((int)Short.parseShort(company, 16), Arrays.copyOfRange(manufacturerData, 2, manufacturerData.length - 2));
 				}
 			}
 			builder.setIncludeDeviceName(false); // don't include name, because if name size > 8 bytes, ADVERTISE_FAILED_DATA_TOO_LARGE
@@ -177,6 +178,10 @@ public class GodotBluetoothAdvertisement extends AdvertiseCallback {
 						permission |= BluetoothGattCharacteristic.PERMISSION_WRITE;
 					}
 					characteristics.add(new GodotBluetoothCharacteristic(services.get(j), new BluetoothGattCharacteristic(UUID.fromString(characteristic[i]), property, permission), permissions[i] != 0));
+					characteristics.get(characteristics.size() - 1).getCharacteristic().setValue(new byte[0]);
+					/*if (permissions[i] != 0) {
+						characteristics.get(characteristics.size() - 1).getCharacteristic().setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE);
+					}*/
 					services.get(j).addCharacteristic(characteristics.get(characteristics.size() - 1).getCharacteristic());
 				}
 			}

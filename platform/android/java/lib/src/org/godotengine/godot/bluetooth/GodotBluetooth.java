@@ -322,7 +322,7 @@ public class GodotBluetooth {
 					}
 				}
 			}
-			if (!power.get() || !adapter.isMultipleAdvertisementSupported()) {
+			if (!power.get() || (p_role && !adapter.isMultipleAdvertisementSupported())) {
 				return false;
 			}
 		}

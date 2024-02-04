@@ -334,6 +334,9 @@ public final class PermissionsUtil {
 	 * @return "true" if the permission is in the manifest file of the activity, "false" otherwise.
 	 */
 	public static boolean hasManifestPermission(Context context, String permission) {
+		if (context == null || permission == null) {
+			return false;
+		}
 		try {
 			for (String p : getManifestPermissions(context)) {
 				if (permission.equals(p))
@@ -341,7 +344,6 @@ public final class PermissionsUtil {
 			}
 		} catch (PackageManager.NameNotFoundException ignored) {
 		}
-
 		return false;
 	}
 
@@ -352,6 +354,9 @@ public final class PermissionsUtil {
 	 * @throws PackageManager.NameNotFoundException the exception is thrown when a given package, application, or component name cannot be found.
 	 */
 	private static String[] getManifestPermissions(Context context) throws PackageManager.NameNotFoundException {
+		if (context == null) {
+			return new String[0];
+		}
 		PackageManager packageManager = context.getPackageManager();
 		PackageInfo packageInfo = packageManager.getPackageInfo(context.getPackageName(), PackageManager.GET_PERMISSIONS);
 		if (packageInfo.requestedPermissions == null)
@@ -367,13 +372,23 @@ public final class PermissionsUtil {
 	 * @throws PackageManager.NameNotFoundException the exception is thrown when a given package, application, or component name cannot be found.
 	 */
 	private static PermissionInfo getPermissionInfo(Context context, String permission) throws PackageManager.NameNotFoundException {
+		if (context == null || permission == null) {
+			return null;
+		}
 		PackageManager packageManager = context.getPackageManager();
 		return packageManager.getPermissionInfo(permission, 0);
 	}
 
 	private static boolean isPermissionDangerous(Context context, String permission) throws PackageManager.NameNotFoundException {
-		PermissionInfo permissionInfo = getPermissionInfo(context, permission);
-		int protectionLevel = Build.VERSION.SDK_INT >= Build.VERSION_CODES.P ? permissionInfo.getProtection() : permissionInfo.protectionLevel;
-		return protectionLevel == PermissionInfo.PROTECTION_DANGEROUS;
+		try {
+			PermissionInfo permissionInfo = getPermissionInfo(context, permission);
+			int protectionLevel = Build.VERSION.SDK_INT >= Build.VERSION_CODES.P ? permissionInfo.getProtection() : permissionInfo.protectionLevel;
+			return protectionLevel == PermissionInfo.PROTECTION_DANGEROUS;
+		} catch (PackageManager.NameNotFoundException e) {
+			if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.R && permission.toUpperCase().contains("BLUETOOTH")) {
+				return false;
+			}
+			throw e;
+		}
 	}
 }

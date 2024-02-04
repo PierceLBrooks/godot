@@ -224,7 +224,7 @@ std::function<jvalret()> BluetoothEnumeratorAndroid::on_java_callback(int p_even
                             args.remove_at(args.size() - 1);
                             break;
                         }
-                    } while (!p_arg->iter_next(iter, valid) && valid);
+                    } while (p_arg->iter_next(iter, valid) && valid);
                 }
                 if (args.size() >= 4) {
                     peer += args.get(0).strip_edges();

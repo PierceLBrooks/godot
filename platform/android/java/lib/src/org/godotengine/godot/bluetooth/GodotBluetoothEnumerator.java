@@ -69,6 +69,7 @@ public class GodotBluetoothEnumerator extends ScanCallback {
 	private ReentrantLock lock;
 
 	public GodotBluetoothEnumerator(GodotBluetooth p_bluetooth, int p_id) {
+		super();
 		bluetooth = p_bluetooth;
 		id = p_id;
 		sought_services = null;
@@ -128,6 +129,7 @@ public class GodotBluetoothEnumerator extends ScanCallback {
 			lock.unlock();
 		}
 		if (peer != null) {
+			stopScanning();
 			success = peer.connect(bluetooth);
 		}
 		if (success) {
@@ -290,12 +292,16 @@ public class GodotBluetoothEnumerator extends ScanCallback {
 				if (record != null && device != null) {
 					String name = record.getDeviceName();
 					address = device.getAddress();
-					if (name != null && address != null) {
+					if (address != null) {
 						HashMap<String, Object> data = new HashMap<String, Object>();
 						SparseArray<byte[]> manufacturer = record.getManufacturerSpecificData();
 						argument = new Dictionary();
 						argument.put("address", address);
-						argument.put("name", name);
+						if (name != null) {
+							argument.put("name", name);
+						} else {
+							argument.put("name", "");
+						}
 						if (manufacturer != null) {
 							HashMap<String, String> encoding = new HashMap<String, String>();
 							for (int i = 0; i < manufacturer.size(); ++i) {
@@ -315,8 +321,19 @@ public class GodotBluetoothEnumerator extends ScanCallback {
 								argument.put("data", object.toString().strip());
 							}
 						}
+					} else {
+						Log.w(TAG, "No address!");
+					}
+				} else {
+					if (device == null) {
+						Log.w(TAG, "No device!");
+					}
+					if (record == null) {
+						Log.w(TAG, "No record!");
 					}
 				}
+			} else {
+				Log.w(TAG, "No result!");
 			}
 		} catch (Exception exception) {
 			GodotLib.printStackTrace(exception);
@@ -358,20 +375,20 @@ public class GodotBluetoothEnumerator extends ScanCallback {
 
 	@Override
 	public void onScanResult(int callbackType, ScanResult result) {
-		super.onScanResult(callbackType, result);
 		if (callbackType != ScanSettings.CALLBACK_TYPE_MATCH_LOST) {
 			onScanResult(result);
 		}
+		super.onScanResult(callbackType, result);
 	}
 
 	@Override
 	public void onBatchScanResults(List<ScanResult> results) {
-		super.onBatchScanResults(results);
 		if (results != null) {
 			for (int i = 0; i < results.size(); ++i) {
 				onScanResult(results.get(i));
 			}
 		}
+		super.onBatchScanResults(results);
 	}
 
 	@Override

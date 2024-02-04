@@ -71,6 +71,7 @@ public class GodotBluetoothPeer extends BluetoothGattCallback {
 	private HashMap<String, HashMap<String, GodotBluetoothCharacteristic>> characteristics;
 
 	public GodotBluetoothPeer(int p_id, BluetoothDevice p_device, boolean p_connectable) {
+		super();
 		id = p_id;
 		device = p_device;
 		connection = new AtomicBoolean(false);
@@ -87,7 +88,12 @@ public class GodotBluetoothPeer extends BluetoothGattCallback {
 		Activity activity = null;
 		if (gatt != null) {
 			Log.w(TAG, "Already gatting!");
-			return true;
+			int state = gatt.getConnectionState(device);
+			if (device != null && state == BluetoothProfile.STATE_CONNECTED) {
+				return true;
+			} else {
+				Log.w(TAG, "Still connecting! "+state);
+			}
 		}
 		if (!connectable) {
 			Log.w(TAG, "Not connectable!");
@@ -188,8 +194,18 @@ public class GodotBluetoothPeer extends BluetoothGattCallback {
 				if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
 					success = gatt.writeCharacteristic(characteristic.getCharacteristic());
 				} else {
+					if (characteristic.getCharacteristic().getWriteType() != BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE && (characteristic.getCharacteristic().getPermissions() & BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE) == 0) {
+						gatt.beginReliableWrite();
+					}
 					if (gatt.writeCharacteristic(characteristic.getCharacteristic(), Base64.decode(p_value, 0), BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT) == BluetoothStatusCodes.SUCCESS) {
 						success = true;
+					}
+					if (characteristic.getCharacteristic().getWriteType() != BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE && (characteristic.getCharacteristic().getPermissions() & BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE) == 0) {
+						if (success) {
+							gatt.executeReliableWrite();
+						} else {
+							gatt.abortReliableWrite();
+						}
 					}
 				}
 			}
@@ -235,7 +251,7 @@ public class GodotBluetoothPeer extends BluetoothGattCallback {
 		Dictionary event = new Dictionary();
 		super.onCharacteristicRead(gatt, characteristic, status);
 		if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
-			Log.i(TAG, "Read");
+			Log.i(TAG, "Read "+status);
 			try {
 				if (device != null) {
 					event.put("peer", device.getAddress());
@@ -264,7 +280,7 @@ public class GodotBluetoothPeer extends BluetoothGattCallback {
 		Boolean result = null;
 		Dictionary event = new Dictionary();
 		super.onCharacteristicWrite(gatt, characteristic, status);
-		Log.w(TAG, "Write");
+		Log.w(TAG, "Write "+status);
 		try {
 			if (device != null) {
 				event.put("peer", device.getAddress());
