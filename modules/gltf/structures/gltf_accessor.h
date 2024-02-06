@@ -49,10 +49,10 @@ private:
 	Vector<double> min;
 	Vector<double> max;
 	int sparse_count = 0;
-	int sparse_indices_buffer_view = 0;
+	GLTFBufferViewIndex sparse_indices_buffer_view = 0;
 	int sparse_indices_byte_offset = 0;
 	int sparse_indices_component_type = 0;
-	int sparse_values_buffer_view = 0;
+	GLTFBufferViewIndex sparse_values_buffer_view = 0;
 	int sparse_values_byte_offset = 0;
 
 protected:

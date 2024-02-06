@@ -58,11 +58,28 @@ class GLTFState : public Resource {
 	bool use_named_skin_binds = false;
 	bool use_khr_texture_transform = false;
 	bool discard_meshes_and_materials = false;
+	bool discard_skins_and_skeletons = false;
 	bool force_generate_tangents = false;
 	bool create_animations = true;
 	bool force_disable_compression = false;
 
 	int handle_binary_image = HANDLE_BINARY_EXTRACT_TEXTURES;
+
+	int appends = 0;
+	GLTFAccessorIndex accessor_index_offset = 0;
+	GLTFAnimationIndex animation_index_offset = 0;
+	GLTFBufferIndex buffer_index_offset = 0;
+	GLTFBufferViewIndex buffer_view_index_offset = 0;
+	GLTFCameraIndex camera_index_offset = 0;
+	GLTFImageIndex image_index_offset = 0;
+	GLTFLightIndex light_index_offset = 0;
+	GLTFMaterialIndex material_index_offset = 0;
+	GLTFMeshIndex mesh_index_offset = 0;
+	GLTFNodeIndex node_index_offset = 0;
+	GLTFSkeletonIndex skeleton_index_offset = 0;
+	GLTFSkinIndex skin_index_offset = 0;
+	GLTFTextureIndex texture_index_offset = 0;
+	GLTFTextureSamplerIndex texture_sampler_index_offset = 0;
 
 	Vector<Ref<GLTFNode>> nodes;
 	Vector<Vector<uint8_t>> buffers;

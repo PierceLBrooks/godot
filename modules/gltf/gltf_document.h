@@ -151,6 +151,9 @@ private:
 	Vector<Vector3> _decode_accessor_as_vec3(Ref<GLTFState> p_state,
 			const GLTFAccessorIndex p_accessor,
 			const bool p_for_vertex);
+	Vector<Vector4> _decode_accessor_as_vec4(Ref<GLTFState> p_state,
+		const GLTFAccessorIndex p_accessor,
+		const bool p_for_vertex);
 	Vector<Color> _decode_accessor_as_color(Ref<GLTFState> p_state,
 			const GLTFAccessorIndex p_accessor,
 			const bool p_for_vertex);
