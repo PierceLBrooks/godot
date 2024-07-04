@@ -35,7 +35,9 @@
 #include "scene/3d/importer_mesh_instance_3d.h"
 #include "scene/3d/mesh_instance_3d.h"
 #include "scene/3d/node_3d.h"
+#include "scene/3d/skeleton_3d.h"
 #include "scene/resources/3d/importer_mesh.h"
+#include "scene/resources/3d/skin.h"
 #include "scene/resources/mesh.h"
 #include "scene/resources/surface_tool.h"
 
@@ -227,6 +229,7 @@ static Error _parse_obj(const String &p_path, List<Ref<ImporterMesh>> &r_meshes,
 	Vector3 scale_mesh = p_scale_mesh;
 	Vector3 offset_mesh = p_offset_mesh;
 
+	HashMap<uint32_t, HashMap<String, float>> weights;
 	Vector<Vector3> vertices;
 	Vector<Vector3> normals;
 	Vector<Vector2> uvs;
@@ -295,6 +298,23 @@ static Error _parse_obj(const String &p_path, List<Ref<ImporterMesh>> &r_meshes,
 			nrm.y = v[2].to_float();
 			nrm.z = v[3].to_float();
 			normals.push_back(nrm);
+		} else if (l.begins_with("vw ")) {
+			//weight ( https://github.com/tinyobjloader/tinyobjloader/blob/v2.0.0rc13/tiny_obj_loader.h#L2696 )
+			Vector<String> v = l.split(" ", false);
+			ERR_FAIL_COND_V(v.size() < 4 || v.size() % 2 != 0, ERR_FILE_CORRUPT);
+			int idx = v[1].to_int();
+			ERR_FAIL_COND_V(idx < 0, ERR_FILE_CORRUPT);
+			if (!weights.has(idx)) {
+				weights[idx] = HashMap<String, float>();
+			}
+			for (int i = 2; i < v.size() - 1; i += 2) {
+				String bone = v[i];
+				float weight = v[i + 1].to_float();
+				weights[idx][bone] = weight;
+				if (weights[idx].size() > 4) {
+					surf_tool->set_skin_weight_count(SurfaceTool::SkinWeightCount::SKIN_8_WEIGHTS);
+				}
+			}
 		} else if (l.begins_with("f ")) {
 			//vertex
 
@@ -358,6 +378,16 @@ static Error _parse_obj(const String &p_path, List<Ref<ImporterMesh>> &r_meshes,
 					Vector3 vertex = vertices[vtx];
 					if (!colors.is_empty()) {
 						surf_tool->set_color(colors[vtx]);
+					}
+					if (!weights.is_empty() && weights.has(vtx)) {
+						Vector<int> bones;
+						Vector<float> weight;
+						for (HashMap<String, float>::Iterator itr = weights[vtx].begin(); itr; ++itr) {
+							bones.append(itr->key.to_int());
+							weight.append(itr->value);
+						}
+						surf_tool->set_bones(bones);
+						surf_tool->set_weights(weight);
 					}
 					surf_tool->set_smooth_group(smoothing ? smooth_group : no_smoothing_smooth_group);
 					surf_tool->add_vertex(vertex);
