@@ -204,7 +204,7 @@ static Error _parse_material_library(const String &p_path, HashMap<String, Ref<S
 	return OK;
 }
 
-static Error _parse_obj(const String &p_path, List<Ref<ImporterMesh>> &r_meshes, bool p_single_mesh, bool p_generate_tangents, bool p_optimize, Vector3 p_scale_mesh, Vector3 p_offset_mesh, bool p_disable_compression, List<String> *r_missing_deps) {
+static Error _parse_obj(const String &p_path, List<Ref<ImporterMesh>> &r_meshes, bool p_single_mesh, bool p_generate_tangents, bool p_optimize, Vector3 p_scale_mesh, Vector3 p_offset_mesh, bool p_disable_compression, List<String> *r_missing_deps, HashMap<uint32_t, HashMap<String, float>> &r_weights) {
 	Ref<FileAccess> f = FileAccess::open(p_path, FileAccess::READ);
 	ERR_FAIL_COND_V_MSG(f.is_null(), ERR_CANT_OPEN, vformat("Couldn't open OBJ file '%s', it may not exist or not be readable.", p_path));
 
@@ -531,13 +531,18 @@ static Error _parse_obj(const String &p_path, List<Ref<ImporterMesh>> &r_meshes,
 		r_meshes.push_back(mesh);
 	}
 
+	if (!weights.is_empty()) {
+		r_weights = HashMap<uint32_t, HashMap<String, float>>(weights);
+	}
+
 	return OK;
 }
 
 Node *EditorOBJImporter::import_scene(const String &p_path, uint32_t p_flags, const HashMap<StringName, Variant> &p_options, List<String> *r_missing_deps, Error *r_err) {
 	List<Ref<ImporterMesh>> meshes;
+	HashMap<uint32_t, HashMap<String, float>> weights;
 
-	Error err = _parse_obj(p_path, meshes, false, p_flags & IMPORT_GENERATE_TANGENT_ARRAYS, false, Vector3(1, 1, 1), Vector3(0, 0, 0), p_flags & IMPORT_FORCE_DISABLE_MESH_COMPRESSION, r_missing_deps);
+	Error err = _parse_obj(p_path, meshes, false, p_flags & IMPORT_GENERATE_TANGENT_ARRAYS, false, Vector3(1, 1, 1), Vector3(0, 0, 0), p_flags & IMPORT_FORCE_DISABLE_MESH_COMPRESSION, r_missing_deps, weights);
 
 	if (err != OK) {
 		if (r_err) {
@@ -554,6 +559,38 @@ Node *EditorOBJImporter::import_scene(const String &p_path, uint32_t p_flags, co
 		mi->set_name(m->get_name());
 		scene->add_child(mi, true);
 		mi->set_owner(scene);
+		if (!weights.is_empty()) {
+			Skeleton3D *skeleton = memnew(Skeleton3D);
+			Vector<String> bones;
+			Ref<Skin> skin;
+			skin.instantiate();
+			for (HashMap<uint32_t, HashMap<String, float>>::Iterator vtx = weights.begin(); vtx; ++vtx) {
+				for (HashMap<String, float>::Iterator itr = vtx->value.begin(); itr; ++itr) {
+					String bone = itr->key;
+					if (!bones.has(bone)) {
+						bones.append(bone);
+					}
+				}
+			}
+			bones.sort();
+			for (int i = 0; i < bones.size(); i++) {
+				String bone = bones[i];
+				int idx = skeleton->add_bone(bone);
+				skeleton->set_bone_rest(idx, Transform3D());
+				skeleton->set_bone_pose_position(idx, Vector3());
+				skeleton->set_bone_pose_rotation(idx, Quaternion());
+				skeleton->set_bone_pose_scale(idx, Vector3());
+				skin->add_bind(bone.to_int(), Transform3D());
+			}
+			scene->add_child(skeleton, true);
+			mi->get_parent()->remove_child(mi);
+			mi->set_owner(nullptr);
+			skeleton->add_child(mi, true);
+			mi->set_owner(scene);
+			mi->set_skin(skin);
+			mi->set_skeleton_path(mi->get_path_to(skeleton));
+			mi->set_transform(Transform3D());
+		}
 	}
 
 	if (r_err) {
@@ -618,8 +655,9 @@ bool ResourceImporterOBJ::get_option_visibility(const String &p_path, const Stri
 
 Error ResourceImporterOBJ::import(const String &p_source_file, const String &p_save_path, const HashMap<StringName, Variant> &p_options, List<String> *r_platform_variants, List<String> *r_gen_files, Variant *r_metadata) {
 	List<Ref<ImporterMesh>> meshes;
+	HashMap<uint32_t, HashMap<String, float>> weights;
 
-	Error err = _parse_obj(p_source_file, meshes, true, p_options["generate_tangents"], p_options["optimize_mesh"], p_options["scale_mesh"], p_options["offset_mesh"], p_options["force_disable_mesh_compression"], nullptr);
+	Error err = _parse_obj(p_source_file, meshes, true, p_options["generate_tangents"], p_options["optimize_mesh"], p_options["scale_mesh"], p_options["offset_mesh"], p_options["force_disable_mesh_compression"], nullptr, weights);
 
 	ERR_FAIL_COND_V(err != OK, err);
 	ERR_FAIL_COND_V(meshes.size() != 1, ERR_BUG);
