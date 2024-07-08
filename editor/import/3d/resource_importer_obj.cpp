@@ -36,13 +36,450 @@
 #include "scene/3d/mesh_instance_3d.h"
 #include "scene/3d/node_3d.h"
 #include "scene/3d/skeleton_3d.h"
+#include "scene/animation/animation_player.h"
 #include "scene/resources/3d/importer_mesh.h"
 #include "scene/resources/3d/skin.h"
+#include "scene/resources/animation.h"
 #include "scene/resources/mesh.h"
 #include "scene/resources/surface_tool.h"
 
+#define BVH_X_POSITION 1
+#define BVH_Y_POSITION 2
+#define BVH_Z_POSITION 3
+#define BVH_Z_ROTATION 4
+#define BVH_X_ROTATION 5
+#define BVH_Y_ROTATION 6
+
 uint32_t EditorOBJImporter::get_import_flags() const {
-	return IMPORT_SCENE;
+	return IMPORT_SCENE | IMPORT_ANIMATION;
+}
+
+static Error _parse_motion_library(const String &p_path, List<Skeleton3D *> &r_skeletons, AnimationPlayer **r_animation, List<String> *r_missing_deps) {
+	Ref<FileAccess> f = FileAccess::open(p_path, FileAccess::READ);
+	ERR_FAIL_COND_V_MSG(f.is_null(), ERR_CANT_OPEN, vformat("Couldn't open BVH file '%s', it may not exist or not be readable.", p_path));
+
+	bool motion = false;
+	int frame_count = -1;
+	double frame_time = 0.03333333;
+	HashMap<int, int> tracks;
+	HashMap<String, int> bone_names;
+	Vector<String> frames;
+	Vector<int> bones;
+	Vector<Vector3> offsets;
+	Vector<Vector<int>> channels;
+	Ref<Animation> animation;
+	Ref<AnimationLibrary> animation_library;
+	String animation_library_name = p_path.get_file().get_basename().strip_edges();
+	if (animation_library_name.contains(".")) {
+		animation_library_name = animation_library_name.substr(0, animation_library_name.find("."));
+	}
+	animation_library_name = AnimationLibrary::validate_library_name(animation_library_name);
+	if (r_animation != nullptr) {
+		if (*r_animation == nullptr) {
+			animation_library.instantiate();
+			*r_animation = memnew(AnimationPlayer);
+			(*r_animation)->add_animation_library(animation_library_name, animation_library);
+		} else {
+			List<StringName> libraries;
+			(*r_animation)->get_animation_library_list(&libraries);
+			for (int i = 0; i < libraries.size(); i++) {
+				String library_name = libraries.get(i);
+				if (library_name.is_empty()) {
+					continue;
+				}
+				animation_library = (*r_animation)->get_animation_library(animation_library_name);
+				if (animation_library.is_valid()) {
+					break;
+				}
+			}
+		}
+	}
+
+	int loops = 0;
+	while (true) {
+		String l = f->get_line().strip_edges();
+		//if (++loops % 100 == 0) print_verbose(String::num_int64(loops) + " BVH loops");
+		if (l.is_empty() && f->eof_reached()) {
+			break;
+		}
+		if (l.is_empty() || l.begins_with("#")) {
+			continue;
+		}
+
+		if (motion) {
+			if (l.begins_with("HIERARCHY")) {
+				motion = false;
+			} else if (l.begins_with("Frame Time: ")) {
+				Vector<String> s = l.split(":");
+				l = s[1].strip_edges();
+				frame_time = l.to_float();
+			} else if (l.begins_with("Frames: ")) {
+				Vector<String> s = l.split(":");
+				l = s[1].strip_edges();
+				frame_count = l.to_int();
+			} else {
+				frames.append(l);
+				if (frames.size() == frame_count) {
+					motion = false;
+				}
+			}
+			continue;
+		}
+
+		if (l.begins_with("HIERARCHY")) {
+			continue;
+		} else if (l.begins_with("ROOT")) {
+			String bone_name = "";
+			int bone = -1;
+			bones.clear();
+			offsets.clear();
+			channels.clear();
+			r_skeletons.push_back(memnew(Skeleton3D));
+			l = l.substr(5);
+			if (!l.is_empty()) {
+				bone_name += l;
+			} else {
+				bone_name += "ROOT";
+			}
+			if (!bone_name.is_empty()) {
+				if (bone_names.has(bone_name)) {
+					bone_names[bone_name] += 1;
+					bone_name += String::num_int64(bone_names[bone_name]);
+				} else {
+					bone_names[bone_name] = 1;
+				}
+				r_skeletons.back()->get()->set_name(bone_name);
+				bone = r_skeletons.back()->get()->add_bone(bone_name);
+			}
+			if (bone >= 0) {
+				bones.append(bone);
+				offsets.append(Vector3());
+				channels.append(Vector<int>({bones[bones.size() - 1]}));
+			}
+		} else if (l.begins_with("MOTION")) {
+			motion = true;
+			if (animation_library.is_valid() && animation.is_valid() && r_animation != nullptr && frames.size() == frame_count) {
+				if (!channels.is_empty() && !r_skeletons.is_empty()) {
+					tracks.clear();
+					for (int i = 0; i < channels.size(); i++) {
+						if (channels[i].size() < 2) {
+							continue;
+						}
+						tracks[channels[i][0]] = animation->add_track(Animation::TrackType::TYPE_POSITION_3D);
+						tracks[channels.size() + channels[i][0]] = animation->add_track(Animation::TrackType::TYPE_ROTATION_3D);
+					}
+					for (int i = 0; i < frame_count; i++) {
+						int bone_index = 0;
+						int channel_index = -1;
+						String frame = frames[i];
+						Vector<String> s;
+						if (frame.contains(" ")) {
+							s = frame.split(" ");
+						} else {
+							s = frame.split("\t");
+						}
+						for (int j = 0; j < s.size(); j++) {
+							channel_index++;
+							if (channel_index >= channels[bone_index].size() - 1 || channels[bone_index].size() < 2) {
+								do {
+									bone_index++;
+									if (bone_index >= channels.size()) {
+										break;
+									}
+								} while (channels[bone_index].size() < 2);
+								channel_index = 0;
+							}
+							if (bone_index < 0 || bone_index >= channels.size()) {
+								break;
+							}
+							Vector3 position;
+							Vector3 rotation;
+							String bone_name = r_skeletons.back()->get()->get_bone_name(channels[bone_index][0]);
+							int position_track = tracks[channels[bone_index][0]];
+							int rotation_track = tracks[channels.size() + channels[bone_index][0]];
+							switch (channels[bone_index][channel_index + 1]) {
+								case BVH_X_POSITION:
+								case BVH_Y_POSITION:
+								case BVH_Z_POSITION:
+									if (channel_index + 4 < channels[bone_index].size()) {
+										for (int k = j; k < j + 3 && k < s.size(); k++) {
+											switch (channels[bone_index][channel_index + 1 + (k - j)]) {
+												case BVH_X_POSITION:
+													position.x = s[k].to_float();
+													break;
+												case BVH_Y_POSITION:
+													position.y = s[k].to_float();
+													break;
+												case BVH_Z_POSITION:
+													position.z = s[k].to_float();
+													break;
+											}
+										}
+										animation->track_set_path(position_track, "" + r_skeletons.back()->get()->get_name() + ":" + bone_name);
+										animation->track_insert_key(position_track, frame_time * static_cast<double>(i), position);
+										j += 2;
+									}
+									break;
+								case BVH_X_ROTATION:
+								case BVH_Y_ROTATION:
+								case BVH_Z_ROTATION:
+									if (channel_index + 4 < channels[bone_index].size()) {
+										Quaternion identity;
+										Quaternion x;
+										Quaternion y;
+										Quaternion z;
+										for (int k = j; k < j + 3 && k < s.size(); k++) {
+											switch (channels[bone_index][channel_index + 1 + (k - j)]) {
+												case BVH_X_ROTATION:
+													rotation.x = s[k].to_float();
+													x = Quaternion(Vector3(1.0, 0.0, 0.0), rotation.x);
+													identity *= x;
+													break;
+												case BVH_Y_ROTATION:
+													rotation.y = s[k].to_float();
+													y = Quaternion(Vector3(0.0, 1.0, 0.0), rotation.y);
+													identity *= y;
+													break;
+												case BVH_Z_ROTATION:
+													rotation.z = s[k].to_float();
+													z = Quaternion(Vector3(0.0, 0.0, 1.0), rotation.z);
+													identity *= z;
+													break;
+											}
+										}
+										animation->track_set_path(rotation_track, "" + r_skeletons.back()->get()->get_name() + ":" + bone_name);
+										animation->track_insert_key(rotation_track, frame_time * static_cast<double>(i), rotation);
+										j += 2;
+									}
+									break;
+							}
+						}
+					}
+				}
+				if (!animation->get_name().is_empty()) {
+					animation_library_name = animation->get_name();
+				}
+				animation_library->add_animation(animation_library_name, animation);
+			}
+			animation.instantiate();
+			frame_count = -1;
+			frames.clear();
+			l = l.substr(7);
+			if (!l.is_empty()) {
+				animation->set_name(l);
+			} else {
+				animation->set_name("MOTION");
+			}
+		} else if (l.begins_with("End ")) {
+			ERR_FAIL_COND_V(r_skeletons.is_empty(), ERR_FILE_CORRUPT);
+			l = l.substr(4);
+			if (!l.is_empty()) {
+				if (bone_names.has(l)) {
+					bone_names[l] += 1;
+					l += String::num_int64(bone_names[l]);
+				} else {
+					bone_names[l] = 1;
+				}
+				bones.append(r_skeletons.back()->get()->add_bone(l));
+				offsets.append(Vector3());
+				channels.append(Vector<int>({bones[bones.size() - 1]}));
+			}
+		} else {
+			Vector<String> s;
+			if (l.contains(" ")) {
+				s = l.split(" ");
+			} else {
+				s = l.split("\t");
+			}
+			if (s.size() > 1) {
+				if (s[0].casecmp_to("OFFSET") == 0) {
+					ERR_FAIL_COND_V(s.size() < 4, ERR_FILE_CORRUPT);
+					Vector3 offset;
+					offset.x = s[1].to_float();
+					offset.y = s[2].to_float();
+					offset.z = s[3].to_float();
+					offsets.append(offset);
+				} else if (s[0].casecmp_to("CHANNELS") == 0) {
+					int channel_count = s[1].to_int();
+					ERR_FAIL_COND_V(s.size() < channel_count + 2 || bones.is_empty(), ERR_FILE_CORRUPT);
+					Vector<int> channel;
+					channel.append(bones[bones.size() - 1]);
+					for (int i = 0; i < channel_count; i++) {
+						String channel_name = s[i + 2].strip_edges();
+						if (channel_name.casecmp_to("Xposition") == 0) {
+							channel.append(BVH_X_POSITION);
+						} else if (channel_name.casecmp_to("Yposition") == 0) {
+							channel.append(BVH_Y_POSITION);
+						} else if (channel_name.casecmp_to("Zposition") == 0) {
+							channel.append(BVH_Z_POSITION);
+						} else if (channel_name.casecmp_to("Xrotation") == 0) {
+							channel.append(BVH_X_ROTATION);
+						} else if (channel_name.casecmp_to("Yrotation") == 0) {
+							channel.append(BVH_Y_ROTATION);
+						} else if (channel_name.casecmp_to("Zrotation") == 0) {
+							channel.append(BVH_Z_ROTATION);
+						} else {
+							channel_name.clear();
+						}
+						ERR_FAIL_COND_V(channel_name.is_empty(), ERR_FILE_CORRUPT);
+					}
+					ERR_FAIL_COND_V(channel.size() < 2, ERR_FILE_CORRUPT);
+					if (channels.is_empty()) {
+						channels.append(channel);
+					} else if (channels[channels.size() - 1].is_empty()) {
+						channels.remove_at(channels.size() - 1);
+						channels.append(channel);
+					}
+				} else if (s[0].casecmp_to("JOINT") == 0) {
+					ERR_FAIL_COND_V(r_skeletons.is_empty() || bones.is_empty(), ERR_FILE_CORRUPT);
+					int parent = bones[bones.size() - 1];
+					String bone_name = s[1];
+					if (bone_names.has(bone_name)) {
+						bone_names[bone_name] += 1;
+						bone_name += String::num_int64(bone_names[bone_name]);
+					} else {
+						bone_names[bone_name] = 1;
+					}
+					bones.append(r_skeletons.back()->get()->add_bone(bone_name));
+					channels.append(Vector<int>({bones[bones.size() - 1]}));
+					r_skeletons.back()->get()->set_bone_parent(bones[bones.size() - 1], parent);
+				}
+			} else {
+				if (l.casecmp_to("{") == 0) {
+					// TODO
+				} else if (l.casecmp_to("}") == 0) {
+					ERR_FAIL_COND_V(r_skeletons.is_empty() || bones.is_empty() || offsets.is_empty() || channels.is_empty(), ERR_FILE_CORRUPT);
+					int bone = bones[bones.size() - 1];
+					Vector3 offset = offsets[offsets.size() - 1];
+					Vector<int> channel = channels[channels.size() - 1];
+					bones.remove_at(bones.size() - 1);
+					offsets.remove_at(offsets.size() - 1);
+					//channels.remove_at(channels.size() - 1);
+					r_skeletons.back()->get()->set_bone_rest(bone, Transform3D(Basis(), offset));
+				}
+			}
+		}
+	}
+
+	if (animation_library.is_valid() && animation.is_valid() && r_animation != nullptr && frames.size() == frame_count) {
+		if (!channels.is_empty() && !r_skeletons.is_empty()) {
+			tracks.clear();
+			for (int i = 0; i < channels.size(); i++) {
+				if (channels[i].size() < 2) {
+					continue;
+				}
+				tracks[channels[i][0]] = animation->add_track(Animation::TrackType::TYPE_POSITION_3D);
+				tracks[channels.size() + channels[i][0]] = animation->add_track(Animation::TrackType::TYPE_ROTATION_3D);
+			}
+			for (int i = 0; i < frame_count; i++) {
+				int bone_index = 0;
+				int channel_index = -1;
+				String frame = frames[i];
+				Vector<String> s;
+				if (frame.contains(" ")) {
+					s = frame.split(" ");
+				} else {
+					s = frame.split("\t");
+				}
+				for (int j = 0; j < s.size(); j++) {
+					channel_index++;
+					if (channel_index >= channels[bone_index].size() - 1 || channels[bone_index].size() < 2) {
+						do {
+							bone_index++;
+							if (bone_index >= channels.size()) {
+								break;
+							}
+						} while (channels[bone_index].size() < 2);
+						channel_index = 0;
+					}
+					if (bone_index < 0 || bone_index >= channels.size()) {
+						break;
+					}
+					Vector3 position;
+					Vector3 rotation;
+					String bone_name = r_skeletons.back()->get()->get_bone_name(channels[bone_index][0]);
+					int position_track = tracks[channels[bone_index][0]];
+					int rotation_track = tracks[channels.size() + channels[bone_index][0]];
+					switch (channels[bone_index][channel_index + 1]) {
+						case BVH_X_POSITION:
+						case BVH_Y_POSITION:
+						case BVH_Z_POSITION:
+							if (channel_index + 4 < channels[bone_index].size()) {
+								for (int k = j; k < j + 3 && k < s.size(); k++) {
+									switch (channels[bone_index][channel_index + 1 + (k - j)]) {
+										case BVH_X_POSITION:
+											position.x = s[k].to_float();
+											break;
+										case BVH_Y_POSITION:
+											position.y = s[k].to_float();
+											break;
+										case BVH_Z_POSITION:
+											position.z = s[k].to_float();
+											break;
+									}
+								}
+								animation->track_set_path(position_track, "" + r_skeletons.back()->get()->get_name() + ":" + bone_name);
+								animation->track_insert_key(position_track, frame_time * static_cast<double>(i), position);
+								j += 2;
+							}
+							break;
+						case BVH_X_ROTATION:
+						case BVH_Y_ROTATION:
+						case BVH_Z_ROTATION:
+							if (channel_index + 4 < channels[bone_index].size()) {
+								Quaternion identity;
+								Quaternion x;
+								Quaternion y;
+								Quaternion z;
+								for (int k = j; k < j + 3 && k < s.size(); k++) {
+									switch (channels[bone_index][channel_index + 1 + (k - j)]) {
+										case BVH_X_ROTATION:
+											rotation.x = s[k].to_float();
+											x = Quaternion(Vector3(1.0, 0.0, 0.0), rotation.x);
+											identity *= x;
+											break;
+										case BVH_Y_ROTATION:
+											rotation.y = s[k].to_float();
+											y = Quaternion(Vector3(0.0, 1.0, 0.0), rotation.y);
+											identity *= y;
+											break;
+										case BVH_Z_ROTATION:
+											rotation.z = s[k].to_float();
+											z = Quaternion(Vector3(0.0, 0.0, 1.0), rotation.z);
+											identity *= z;
+											break;
+									}
+								}
+								animation->track_set_path(rotation_track, "" + r_skeletons.back()->get()->get_name() + ":" + bone_name);
+								animation->track_insert_key(rotation_track, frame_time * static_cast<double>(i), identity);
+								j += 2;
+							}
+							break;
+					}
+				}
+			}
+		}
+		if (!animation->get_name().is_empty()) {
+			animation_library_name = animation->get_name();
+		}
+		animation_library->add_animation(animation_library_name, animation);
+		/*List<StringName> animations;
+		animation_library->get_animation_list(&animations);
+		for (int i = 0; i < animations.size(); i++) {
+			Vector<int> duds;
+			animation = animation_library->get_animation(animations.get(i));
+			for (int j = 0; j < animation->get_track_count(); j++) {
+				if (animation->track_get_path(j).is_empty()) {
+					duds.append(j);
+				}
+			}
+			for (int j = 0; j < duds.size(); j++) {
+				animation->remove_track(duds[j]);
+			}
+		}*/
+	}
+
+	return OK;
 }
 
 static Error _parse_material_library(const String &p_path, HashMap<String, Ref<StandardMaterial3D>> &material_map, List<String> *r_missing_deps) {
@@ -52,8 +489,13 @@ static Error _parse_material_library(const String &p_path, HashMap<String, Ref<S
 	Ref<StandardMaterial3D> current;
 	String current_name;
 	String base_path = p_path.get_base_dir();
+	int loops = 0;
 	while (true) {
 		String l = f->get_line().strip_edges();
+		//if (++loops % 100 == 0) print_verbose(String::num_int64(loops) + " MTL loops");
+		if (l.begins_with("#")) {
+			continue;
+		}
 
 		if (l.begins_with("newmtl ")) {
 			//vertex
@@ -204,7 +646,7 @@ static Error _parse_material_library(const String &p_path, HashMap<String, Ref<S
 	return OK;
 }
 
-static Error _parse_obj(const String &p_path, List<Ref<ImporterMesh>> &r_meshes, bool p_single_mesh, bool p_generate_tangents, bool p_optimize, Vector3 p_scale_mesh, Vector3 p_offset_mesh, bool p_disable_compression, List<String> *r_missing_deps, HashMap<uint32_t, HashMap<String, float>> &r_weights) {
+static Error _parse_obj(const String &p_path, List<Ref<ImporterMesh>> &r_meshes, bool p_single_mesh, bool p_generate_tangents, bool p_optimize, Vector3 p_scale_mesh, Vector3 p_offset_mesh, bool p_disable_compression, List<String> *r_missing_deps, HashMap<uint32_t, HashMap<String, float>> &r_weights, List<Skeleton3D *> &r_skeletons, AnimationPlayer **r_animation) {
 	Ref<FileAccess> f = FileAccess::open(p_path, FileAccess::READ);
 	ERR_FAIL_COND_V_MSG(f.is_null(), ERR_CANT_OPEN, vformat("Couldn't open OBJ file '%s', it may not exist or not be readable.", p_path));
 
@@ -237,11 +679,13 @@ static Error _parse_obj(const String &p_path, List<Ref<ImporterMesh>> &r_meshes,
 	const String default_name = "Mesh";
 	String name = default_name;
 
+	Vector<String> motion_map;
 	HashMap<String, HashMap<String, Ref<StandardMaterial3D>>> material_map;
 
 	Ref<SurfaceTool> surf_tool = memnew(SurfaceTool);
 	surf_tool->begin(Mesh::PRIMITIVE_TRIANGLES);
 
+	String current_motion_library;
 	String current_material_library;
 	String current_material;
 	String current_group;
@@ -249,14 +693,19 @@ static Error _parse_obj(const String &p_path, List<Ref<ImporterMesh>> &r_meshes,
 	bool smoothing = true;
 	const uint32_t no_smoothing_smooth_group = (uint32_t)-1;
 
+	int loops = 0;
 	while (true) {
 		String l = f->get_line().strip_edges();
+		//if (++loops % 100 == 0) print_verbose(String::num_int64(loops) + " OBJ loops");
 		while (l.length() && l[l.length() - 1] == '\\') {
 			String add = f->get_line().strip_edges();
 			l += add;
 			if (add.is_empty()) {
 				break;
 			}
+		}
+		if (l.begins_with("#")) {
+			continue;
 		}
 
 		if (l.begins_with("v ")) {
@@ -383,7 +832,13 @@ static Error _parse_obj(const String &p_path, List<Ref<ImporterMesh>> &r_meshes,
 						Vector<int> bones;
 						Vector<float> weight;
 						for (HashMap<String, float>::Iterator itr = weights[vtx].begin(); itr; ++itr) {
-							bones.append(itr->key.to_int());
+							if (itr->key.is_numeric()) {
+								bones.append(itr->key.to_int());
+							} else if (!r_skeletons.is_empty()) {
+								bones.append(r_skeletons.back()->get()->find_bone(itr->key));
+							} else {
+								continue;
+							}
 							weight.append(itr->value);
 						}
 						surf_tool->set_bones(bones);
@@ -524,6 +979,19 @@ static Error _parse_obj(const String &p_path, List<Ref<ImporterMesh>> &r_meshes,
 					material_map[current_material_library] = lib;
 				}
 			}
+		} else if (l.begins_with("bvhlib ")) { //parse motion
+
+			current_motion_library = l.replace("bvhlib", "").strip_edges();
+			if (!motion_map.has(current_motion_library)) {
+				String lib_path = current_motion_library;
+				if (lib_path.is_relative_path()) {
+					lib_path = p_path.get_base_dir().path_join(current_motion_library);
+				}
+				Error err = _parse_motion_library(lib_path, r_skeletons, r_animation, r_missing_deps);
+				if (err == OK) {
+					motion_map.append(current_motion_library);
+				}
+			}
 		}
 	}
 
@@ -541,8 +1009,10 @@ static Error _parse_obj(const String &p_path, List<Ref<ImporterMesh>> &r_meshes,
 Node *EditorOBJImporter::import_scene(const String &p_path, uint32_t p_flags, const HashMap<StringName, Variant> &p_options, List<String> *r_missing_deps, Error *r_err) {
 	List<Ref<ImporterMesh>> meshes;
 	HashMap<uint32_t, HashMap<String, float>> weights;
+	List<Skeleton3D *> skeletons;
+	AnimationPlayer *animation = nullptr;
 
-	Error err = _parse_obj(p_path, meshes, false, p_flags & IMPORT_GENERATE_TANGENT_ARRAYS, false, Vector3(1, 1, 1), Vector3(0, 0, 0), p_flags & IMPORT_FORCE_DISABLE_MESH_COMPRESSION, r_missing_deps, weights);
+	Error err = _parse_obj(p_path, meshes, false, p_flags & IMPORT_GENERATE_TANGENT_ARRAYS, false, Vector3(1, 1, 1), Vector3(0, 0, 0), p_flags & IMPORT_FORCE_DISABLE_MESH_COMPRESSION, r_missing_deps, weights, skeletons, &animation);
 
 	if (err != OK) {
 		if (r_err) {
@@ -559,12 +1029,11 @@ Node *EditorOBJImporter::import_scene(const String &p_path, uint32_t p_flags, co
 		mi->set_name(m->get_name());
 		scene->add_child(mi, true);
 		mi->set_owner(scene);
-		if (!weights.is_empty()) {
-			Skeleton3D *skeleton = memnew(Skeleton3D);
+		if (!weights.is_empty() && !skeletons.is_empty()) {
+			Skeleton3D *skeleton = skeletons.front()->get();
 			Vector<String> bones;
 			Ref<Skin> skin;
-			skin.instantiate();
-			for (HashMap<uint32_t, HashMap<String, float>>::Iterator vtx = weights.begin(); vtx; ++vtx) {
+			/*for (HashMap<uint32_t, HashMap<String, float>>::Iterator vtx = weights.begin(); vtx; ++vtx) {
 				for (HashMap<String, float>::Iterator itr = vtx->value.begin(); itr; ++itr) {
 					String bone = itr->key;
 					if (!bones.has(bone)) {
@@ -580,8 +1049,8 @@ Node *EditorOBJImporter::import_scene(const String &p_path, uint32_t p_flags, co
 				skeleton->set_bone_pose_position(idx, Vector3());
 				skeleton->set_bone_pose_rotation(idx, Quaternion());
 				skeleton->set_bone_pose_scale(idx, Vector3());
-				skin->add_bind(bone.to_int(), Transform3D());
-			}
+			}*/
+			skin = skeleton->create_skin_from_rest_transforms(true);
 			scene->add_child(skeleton, true);
 			mi->get_parent()->remove_child(mi);
 			mi->set_owner(nullptr);
@@ -590,6 +1059,9 @@ Node *EditorOBJImporter::import_scene(const String &p_path, uint32_t p_flags, co
 			mi->set_skin(skin);
 			mi->set_skeleton_path(mi->get_path_to(skeleton));
 			mi->set_transform(Transform3D());
+			if (animation != nullptr) {
+				scene->add_child(animation, true);
+			}
 		}
 	}
 
@@ -656,8 +1128,10 @@ bool ResourceImporterOBJ::get_option_visibility(const String &p_path, const Stri
 Error ResourceImporterOBJ::import(const String &p_source_file, const String &p_save_path, const HashMap<StringName, Variant> &p_options, List<String> *r_platform_variants, List<String> *r_gen_files, Variant *r_metadata) {
 	List<Ref<ImporterMesh>> meshes;
 	HashMap<uint32_t, HashMap<String, float>> weights;
+	List<Skeleton3D *> skeletons;
+	AnimationPlayer *animation = nullptr;
 
-	Error err = _parse_obj(p_source_file, meshes, true, p_options["generate_tangents"], p_options["optimize_mesh"], p_options["scale_mesh"], p_options["offset_mesh"], p_options["force_disable_mesh_compression"], nullptr, weights);
+	Error err = _parse_obj(p_source_file, meshes, true, p_options["generate_tangents"], p_options["optimize_mesh"], p_options["scale_mesh"], p_options["offset_mesh"], p_options["force_disable_mesh_compression"], nullptr, weights, skeletons, &animation);
 
 	ERR_FAIL_COND_V(err != OK, err);
 	ERR_FAIL_COND_V(meshes.size() != 1, ERR_BUG);

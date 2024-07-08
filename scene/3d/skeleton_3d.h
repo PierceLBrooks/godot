@@ -256,7 +256,7 @@ public:
 
 	void localize_rests(); // Used for loaders and tools.
 
-	Ref<Skin> create_skin_from_rest_transforms();
+	Ref<Skin> create_skin_from_rest_transforms(bool use_named_skin_binds = false);
 
 	Ref<SkinReference> register_skin(const Ref<Skin> &p_skin);
 

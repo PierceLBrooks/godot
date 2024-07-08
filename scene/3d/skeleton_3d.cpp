@@ -784,7 +784,7 @@ void Skeleton3D::_skin_changed() {
 	_make_dirty();
 }
 
-Ref<Skin> Skeleton3D::create_skin_from_rest_transforms() {
+Ref<Skin> Skeleton3D::create_skin_from_rest_transforms(bool use_named_skin_binds) {
 	Ref<Skin> skin;
 
 	skin.instantiate();
@@ -819,6 +819,9 @@ Ref<Skin> Skeleton3D::create_skin_from_rest_transforms() {
 	for (int i = 0; i < len; i++) {
 		// The inverse is what is actually required.
 		skin->set_bind_bone(i, i);
+		if (use_named_skin_binds) {
+			skin->set_bind_name(i, get_bone_name(i));
+		}
 		skin->set_bind_pose(i, skin->get_bind_pose(i).affine_inverse());
 	}
 
