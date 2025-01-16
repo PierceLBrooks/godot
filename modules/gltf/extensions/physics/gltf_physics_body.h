@@ -32,6 +32,7 @@
 #define GLTF_PHYSICS_BODY_H
 
 #include "scene/3d/physics/physics_body_3d.h"
+#include "scene/2d/physics/physics_body_2d.h"
 
 // GLTFPhysicsBody is an intermediary between Godot's physics body nodes
 // and the OMI_physics_body extension.
@@ -99,6 +100,9 @@ public:
 
 	static Ref<GLTFPhysicsBody> from_node(const CollisionObject3D *p_body_node);
 	CollisionObject3D *to_node() const;
+
+	static Ref<GLTFPhysicsBody> from_node_2d(const CollisionObject2D *p_body_node);
+	CollisionObject2D *to_node_2d() const;
 
 	static Ref<GLTFPhysicsBody> from_dictionary(const Dictionary p_dictionary);
 	Dictionary to_dictionary() const;

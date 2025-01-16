@@ -32,6 +32,8 @@
 
 #include "scene/3d/physics/area_3d.h"
 #include "scene/3d/physics/static_body_3d.h"
+#include "scene/2d/physics/area_2d.h"
+#include "scene/2d/physics/static_body_2d.h"
 
 // Import process.
 Error GLTFDocumentExtensionPhysics::import_preflight(Ref<GLTFState> p_state, Vector<String> p_extensions) {
@@ -205,38 +207,51 @@ CollisionObject3D *_get_ancestor_collision_object(Node *p_scene_parent) {
 
 Node3D *_generate_shape_node_and_body_if_needed(Ref<GLTFState> p_state, Ref<GLTFNode> p_gltf_node, Ref<GLTFPhysicsShape> p_physics_shape, CollisionObject3D *p_col_object, bool p_is_trigger) {
 	// If we need to generate a body node, do so.
-	CollisionObject3D *body_node = nullptr;
+	Node *body_node = nullptr;
+	bool is_2d = false;
 	if (p_is_trigger || p_physics_shape->get_is_trigger()) {
 		// If the shape wants to be a trigger but it doesn't
 		// have an Area3D parent, we need to make one.
 		if (!Object::cast_to<Area3D>(p_col_object)) {
 			body_node = memnew(Area3D);
+		} else if (!Object::cast_to<Area2D>(p_col_object)) {
+			body_node = memnew(Area2D);
+			is_2d = true;
 		}
 	} else {
 		if (!Object::cast_to<PhysicsBody3D>(p_col_object)) {
 			body_node = memnew(StaticBody3D);
+		} else if (!Object::cast_to<PhysicsBody2D>(p_col_object)) {
+			body_node = memnew(StaticBody2D);
+			is_2d = true;
 		}
 	}
 	// Generate the shape node.
 	_setup_shape_mesh_resource_from_index_if_needed(p_state, p_physics_shape);
-	CollisionShape3D *shape_node = p_physics_shape->to_node(true);
+	Node *shape_node = is_2d ? Object::cast_to<CollisionShape2D>(p_physics_shape->to_node_2d(true)) : Object::cast_to<CollisionShape2D>(p_physics_shape->to_node(true));
 	if (body_node) {
 		shape_node->set_name(p_gltf_node->get_name() + "Shape");
 		body_node->add_child(shape_node);
-		return body_node;
+		if (Object::cast_to<Node3D>(body_node)) {
+			return Object::cast_to<Node3D>(body_node);
+		}
+		return nullptr;
 	}
-	return shape_node;
+	if (Object::cast_to<Node3D>(shape_node)) {
+		return Object::cast_to<Node3D>(shape_node);
+	}
+	return nullptr;
 }
 
 // Either add the child to the parent, or return the child if there is no parent.
-Node3D *_add_physics_node_to_given_node(Node3D *p_current_node, Node3D *p_child, Ref<GLTFNode> p_gltf_node) {
+Node *_add_physics_node_to_given_node(Node *p_current_node, Node *p_child, Ref<GLTFNode> p_gltf_node) {
 	if (!p_current_node) {
 		return p_child;
 	}
 	String suffix;
-	if (Object::cast_to<CollisionShape3D>(p_child)) {
+	if (Object::cast_to<CollisionShape3D>(p_child) || Object::cast_to<CollisionShape2D>(p_child)) {
 		suffix = "Shape";
-	} else if (Object::cast_to<Area3D>(p_child)) {
+	} else if (Object::cast_to<Area3D>(p_child) || Object::cast_to<Area2D>(p_child)) {
 		suffix = "Trigger";
 	} else {
 		suffix = "Collider";
@@ -285,7 +300,7 @@ Node3D *GLTFDocumentExtensionPhysics::generate_scene_node(Ref<GLTFState> p_state
 		return _generate_shape_with_body(p_state, p_gltf_node, gltf_physics_shape, nullptr);
 	}
 #endif // DISABLE_DEPRECATED
-	Node3D *ret = nullptr;
+	Node *ret = nullptr;
 	CollisionObject3D *ancestor_col_obj = nullptr;
 	Ref<GLTFPhysicsShape> gltf_physics_collider_shape = p_gltf_node->get_additional_data(StringName("GLTFPhysicsColliderShape"));
 	Ref<GLTFPhysicsShape> gltf_physics_trigger_shape = p_gltf_node->get_additional_data(StringName("GLTFPhysicsTriggerShape"));
@@ -334,7 +349,10 @@ Node3D *GLTFDocumentExtensionPhysics::generate_scene_node(Ref<GLTFState> p_state
 		Node3D *child = _generate_shape_node_and_body_if_needed(p_state, p_gltf_node, gltf_physics_collider_shape, ancestor_col_obj, false);
 		ret = _add_physics_node_to_given_node(ret, child, p_gltf_node);
 	}
-	return ret;
+	if (cast_to<Node3D>(ret)) {
+		return Object::cast_to<Node3D>(ret);
+	}
+	return nullptr;
 }
 
 // Export process.
@@ -407,6 +425,30 @@ void GLTFDocumentExtensionPhysics::convert_scene_node(Ref<GLTFState> p_state, Re
 	} else if (cast_to<CollisionObject3D>(p_scene_node)) {
 		CollisionObject3D *godot_body = Object::cast_to<CollisionObject3D>(p_scene_node);
 		p_gltf_node->set_additional_data(StringName("GLTFPhysicsBody"), GLTFPhysicsBody::from_node(godot_body));
+	} else if (cast_to<CollisionShape2D>(p_scene_node)) {
+		CollisionShape2D *godot_shape = Object::cast_to<CollisionShape2D>(p_scene_node);
+		Ref<GLTFPhysicsShape> gltf_shape = GLTFPhysicsShape::from_node_2d(godot_shape);
+		ERR_FAIL_COND_MSG(gltf_shape.is_null(), "GLTF Physics: Could not convert CollisionShape3D to GLTFPhysicsShape. Does it have a valid Shape3D?");
+		{
+			Ref<ImporterMesh> importer_mesh = gltf_shape->get_importer_mesh();
+			if (importer_mesh.is_valid()) {
+				gltf_shape->set_mesh_index(_get_or_insert_mesh_in_state(p_state, importer_mesh));
+			}
+		}
+		CollisionObject3D *ancestor_col_obj = _get_ancestor_collision_object(p_scene_node->get_parent());
+		if (cast_to<Area3D>(ancestor_col_obj)) {
+			p_gltf_node->set_additional_data(StringName("GLTFPhysicsTriggerShape"), gltf_shape);
+			// Write explicit member shape nodes to the ancestor compound trigger node.
+			TypedArray<GLTFNode> state_nodes = p_state->get_nodes();
+			GLTFNodeIndex self_index = state_nodes.size(); // The current p_gltf_node will be inserted next.
+			Array compound_trigger_nodes = _get_ancestor_compound_trigger_nodes(p_state, p_state->get_nodes(), ancestor_col_obj);
+			compound_trigger_nodes.push_back(double(self_index));
+		} else {
+			p_gltf_node->set_additional_data(StringName("GLTFPhysicsColliderShape"), gltf_shape);
+		}
+	} else if (cast_to<CollisionObject2D>(p_scene_node)) {
+		CollisionObject2D *godot_body = Object::cast_to<CollisionObject2D>(p_scene_node);
+		p_gltf_node->set_additional_data(StringName("GLTFPhysicsBody"), GLTFPhysicsBody::from_node_2d(godot_body));
 	}
 }
 

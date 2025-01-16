@@ -35,6 +35,11 @@
 #include "scene/3d/physics/character_body_3d.h"
 #include "scene/3d/physics/static_body_3d.h"
 #include "scene/3d/physics/vehicle_body_3d.h"
+#include "scene/2d/physics/animatable_body_2d.h"
+#include "scene/2d/physics/area_2d.h"
+#include "scene/2d/physics/character_body_2d.h"
+#include "scene/2d/physics/static_body_2d.h"
+#include "scene/2d/physics/rigid_body_2d.h"
 
 void GLTFPhysicsBody::_bind_methods() {
 	ClassDB::bind_static_method("GLTFPhysicsBody", D_METHOD("from_node", "body_node"), &GLTFPhysicsBody::from_node);
@@ -245,6 +250,70 @@ CollisionObject3D *GLTFPhysicsBody::to_node() const {
 		}
 		case PhysicsBodyType::TRIGGER: {
 			Area3D *body = memnew(Area3D);
+			return body;
+		}
+	}
+	// Unreachable, the switch cases handle all values the enum can take.
+	// Omitting this works on Clang but not GCC or MSVC. If reached, it's UB.
+	return nullptr;
+}
+
+Ref<GLTFPhysicsBody> GLTFPhysicsBody::from_node_2d(const CollisionObject2D *p_body_node) {
+	Ref<GLTFPhysicsBody> physics_body;
+	physics_body.instantiate();
+	ERR_FAIL_NULL_V_MSG(p_body_node, physics_body, "Tried to create a GLTFPhysicsBody from a CollisionObject2D node, but the given node was null.");
+	if (cast_to<CharacterBody2D>(p_body_node)) {
+		physics_body->body_type = PhysicsBodyType::CHARACTER;
+	} else if (cast_to<AnimatableBody2D>(p_body_node)) {
+		physics_body->body_type = PhysicsBodyType::ANIMATABLE;
+	} else if (cast_to<RigidBody2D>(p_body_node)) {
+		const RigidBody2D *body = cast_to<const RigidBody2D>(p_body_node);
+		physics_body->mass = body->get_mass();
+		physics_body->linear_velocity = Vector3(body->get_linear_velocity().x, body->get_linear_velocity().y, 0.0);
+		physics_body->angular_velocity = Vector3(body->get_angular_velocity(), 0.0, 0.0);
+		physics_body->center_of_mass = Vector3(body->get_center_of_mass().x, body->get_center_of_mass().y, 0.0);
+		physics_body->inertia_diagonal = Vector3(body->get_inertia(), 0.0, 0.0);
+		if (body->get_center_of_mass() != Vector2()) {
+			WARN_PRINT("GLTFPhysicsBody: This rigid body has a center of mass offset from the origin, which will be ignored when exporting to GLTF.");
+		}
+		physics_body->body_type = PhysicsBodyType::RIGID;
+	} else if (cast_to<StaticBody2D>(p_body_node)) {
+		physics_body->body_type = PhysicsBodyType::STATIC;
+	} else if (cast_to<Area2D>(p_body_node)) {
+		physics_body->body_type = PhysicsBodyType::TRIGGER;
+	}
+	return physics_body;
+}
+
+CollisionObject2D *GLTFPhysicsBody::to_node_2d() const {
+	switch (body_type) {
+		case PhysicsBodyType::CHARACTER: {
+			CharacterBody2D *body = memnew(CharacterBody2D);
+			return body;
+		}
+		case PhysicsBodyType::ANIMATABLE: {
+			AnimatableBody2D *body = memnew(AnimatableBody2D);
+			return body;
+		}
+		case PhysicsBodyType::VEHICLE: {
+			WARN_PRINT("GLTFPhysicsBody: Cannot create a 2D vehicle.");
+		}
+		case PhysicsBodyType::RIGID: {
+			RigidBody2D *body = memnew(RigidBody2D);
+			body->set_mass(mass);
+			body->set_linear_velocity(Vector2(linear_velocity.x, linear_velocity.y));
+			body->set_angular_velocity(angular_velocity.x);
+			body->set_inertia(inertia_diagonal.x);
+			body->set_center_of_mass_mode(RigidBody2D::CENTER_OF_MASS_MODE_CUSTOM);
+			body->set_center_of_mass(Vector2(center_of_mass.x, center_of_mass.y));
+			return body;
+		}
+		case PhysicsBodyType::STATIC: {
+			StaticBody2D *body = memnew(StaticBody2D);
+			return body;
+		}
+		case PhysicsBodyType::TRIGGER: {
+			Area2D *body = memnew(Area2D);
 			return body;
 		}
 	}

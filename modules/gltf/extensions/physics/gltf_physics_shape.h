@@ -34,6 +34,7 @@
 #include "../../gltf_defines.h"
 
 #include "scene/3d/physics/collision_shape_3d.h"
+#include "scene/2d/physics/collision_shape_2d.h"
 
 class ImporterMesh;
 
@@ -82,6 +83,9 @@ public:
 
 	static Ref<GLTFPhysicsShape> from_node(const CollisionShape3D *p_shape_node);
 	CollisionShape3D *to_node(bool p_cache_shapes = false);
+
+	static Ref<GLTFPhysicsShape> from_node_2d(const CollisionShape2D *p_shape_node);
+	CollisionShape2D *to_node_2d(bool p_cache_shapes = false);
 
 	static Ref<GLTFPhysicsShape> from_resource(const Ref<Shape3D> &p_shape_resource);
 	Ref<Shape3D> to_resource(bool p_cache_shapes = false);

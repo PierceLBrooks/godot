@@ -33,6 +33,7 @@
 #include "../../gltf_state.h"
 
 #include "core/math/convex_hull.h"
+#include "scene/2d/physics/area_2d.h"
 #include "scene/3d/physics/area_3d.h"
 #include "scene/resources/3d/box_shape_3d.h"
 #include "scene/resources/3d/capsule_shape_3d.h"
@@ -174,8 +175,29 @@ Ref<GLTFPhysicsShape> GLTFPhysicsShape::from_node(const CollisionShape3D *p_godo
 	return gltf_shape;
 }
 
+Ref<GLTFPhysicsShape> GLTFPhysicsShape::from_node_2d(const CollisionShape2D *p_godot_shape_node) {
+	Ref<GLTFPhysicsShape> gltf_shape;
+	ERR_FAIL_NULL_V_MSG(p_godot_shape_node, gltf_shape, "Tried to create a GLTFPhysicsShape from a CollisionShape2D node, but the given node was null.");
+	Ref<Shape2D> shape_resource = p_godot_shape_node->get_shape();
+	ERR_FAIL_COND_V_MSG(shape_resource.is_null(), gltf_shape, "Tried to create a GLTFPhysicsShape from a CollisionShape2D node, but the given node had a null shape.");
+	gltf_shape = from_resource(shape_resource);
+	// Check if the shape is part of a trigger.
+	Node *parent = p_godot_shape_node->get_parent();
+	if (cast_to<const Area2D>(parent)) {
+		gltf_shape->set_is_trigger(true);
+	}
+	return gltf_shape;
+}
+
 CollisionShape3D *GLTFPhysicsShape::to_node(bool p_cache_shapes) {
 	CollisionShape3D *godot_shape_node = memnew(CollisionShape3D);
+	to_resource(p_cache_shapes); // Sets `_shape_cache`.
+	godot_shape_node->set_shape(_shape_cache);
+	return godot_shape_node;
+}
+
+CollisionShape2D *GLTFPhysicsShape::to_node_2d(bool p_cache_shapes) {
+	CollisionShape2D *godot_shape_node = memnew(CollisionShape2D);
 	to_resource(p_cache_shapes); // Sets `_shape_cache`.
 	godot_shape_node->set_shape(_shape_cache);
 	return godot_shape_node;
