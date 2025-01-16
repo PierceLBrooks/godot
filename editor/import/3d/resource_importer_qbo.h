@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  resource_importer_obj.h                                               */
+/*  resource_importer_qbo.h                                               */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,29 +28,25 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef RESOURCE_IMPORTER_OBJ_H
-#define RESOURCE_IMPORTER_OBJ_H
+#ifndef RESOURCE_IMPORTER_QBO_H
+#define RESOURCE_IMPORTER_QBO_H
 
 #include "resource_importer_scene.h"
 
-class OBJ {
-public:
-	static Error _parse_material_library(const String &p_path, HashMap<String, Ref<StandardMaterial3D>> &material_map, List<String> *r_missing_deps);
-};
-
-class EditorOBJImporter : public EditorSceneFormatImporter {
-	GDCLASS(EditorOBJImporter, EditorSceneFormatImporter);
+class EditorQBOImporter : public EditorSceneFormatImporter {
+	GDCLASS(EditorQBOImporter, EditorSceneFormatImporter);
 
 public:
 	virtual uint32_t get_import_flags() const override;
 	virtual void get_extensions(List<String> *r_extensions) const override;
 	virtual Node *import_scene(const String &p_path, uint32_t p_flags, const HashMap<StringName, Variant> &p_options, List<String> *r_missing_deps, Error *r_err = nullptr) override;
 
-	EditorOBJImporter();
+	EditorQBOImporter();
 };
 
-class ResourceImporterOBJ : public ResourceImporter {
-	GDCLASS(ResourceImporterOBJ, ResourceImporter);
+#if 0
+class ResourceImporterQBO : public ResourceImporter {
+	GDCLASS(ResourceImporterQBO, ResourceImporter);
 
 public:
 	virtual String get_importer_name() const override;
@@ -71,7 +67,8 @@ public:
 	// Threaded import can currently cause deadlocks, see GH-48265.
 	virtual bool can_import_threaded() const override { return false; }
 
-	ResourceImporterOBJ();
+	ResourceImporterQBO();
 };
+#endif
 
-#endif // RESOURCE_IMPORTER_OBJ_H
+#endif // RESOURCE_IMPORTER_QBO_H

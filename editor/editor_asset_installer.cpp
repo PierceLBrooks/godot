@@ -644,6 +644,7 @@ void EditorAssetInstaller::_notification(int p_what) {
 				extension_icon_map["atlastex"] = get_editor_theme_icon(SNAME("AtlasTexture"));
 				// By default, OBJ files are imported as Mesh resources rather than PackedScenes.
 				extension_icon_map["obj"] = get_editor_theme_icon(SNAME("MeshItem"));
+				extension_icon_map["qbo"] = get_editor_theme_icon(SNAME("PackedScene"));
 
 				extension_icon_map["txt"] = get_editor_theme_icon(SNAME("TextFile"));
 				extension_icon_map["md"] = get_editor_theme_icon(SNAME("TextFile"));

@@ -114,6 +114,7 @@
 #include "editor/history_dock.h"
 #include "editor/import/3d/editor_import_collada.h"
 #include "editor/import/3d/resource_importer_obj.h"
+#include "editor/import/3d/resource_importer_qbo.h"
 #include "editor/import/3d/resource_importer_scene.h"
 #include "editor/import/3d/scene_import_settings.h"
 #include "editor/import/audio_stream_import_settings.h"
@@ -6784,6 +6785,12 @@ EditorNode::EditorNode() {
 		import_obj.instantiate();
 		ResourceFormatImporter::get_singleton()->add_importer(import_obj);
 
+#if 0
+		Ref<ResourceImporterQBO> import_qbo;
+		import_qbo.instantiate();
+		ResourceFormatImporter::get_singleton()->add_importer(import_qbo);
+#endif
+
 		Ref<ResourceImporterShaderFile> import_shader_file;
 		import_shader_file.instantiate();
 		ResourceFormatImporter::get_singleton()->add_importer(import_shader_file);
@@ -6802,6 +6809,10 @@ EditorNode::EditorNode() {
 			Ref<EditorOBJImporter> import_obj2;
 			import_obj2.instantiate();
 			ResourceImporterScene::add_scene_importer(import_obj2);
+
+			Ref<EditorQBOImporter> import_qbo2;
+			import_qbo2.instantiate();
+			ResourceImporterScene::add_scene_importer(import_qbo2);
 
 			Ref<EditorSceneFormatImporterESCN> import_escn;
 			import_escn.instantiate();

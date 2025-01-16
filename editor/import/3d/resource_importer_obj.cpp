@@ -43,7 +43,7 @@ uint32_t EditorOBJImporter::get_import_flags() const {
 	return IMPORT_SCENE;
 }
 
-static Error _parse_material_library(const String &p_path, HashMap<String, Ref<StandardMaterial3D>> &material_map, List<String> *r_missing_deps) {
+Error OBJ::_parse_material_library(const String &p_path, HashMap<String, Ref<StandardMaterial3D>> &material_map, List<String> *r_missing_deps) {
 	Ref<FileAccess> f = FileAccess::open(p_path, FileAccess::READ);
 	ERR_FAIL_COND_V_MSG(f.is_null(), ERR_CANT_OPEN, vformat("Couldn't open MTL file '%s', it may not exist or not be readable.", p_path));
 
@@ -494,7 +494,7 @@ static Error _parse_obj(const String &p_path, List<Ref<ImporterMesh>> &r_meshes,
 				if (lib_path.is_relative_path()) {
 					lib_path = p_path.get_base_dir().path_join(current_material_library);
 				}
-				Error err = _parse_material_library(lib_path, lib, r_missing_deps);
+				Error err = OBJ::_parse_material_library(lib_path, lib, r_missing_deps);
 				if (err == OK) {
 					material_map[current_material_library] = lib;
 				}
