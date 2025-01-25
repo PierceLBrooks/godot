@@ -95,12 +95,15 @@ static Error _parse_motion(Ref<FileAccess> f, List<Skeleton3D *> &r_skeletons, A
 				}
 			}
 		}
+	} else if (OS::get_singleton()->has_feature("debug")) {
+		print_verbose("NO ANIMATION");
 	}
 
 	int loops = 0;
 	int blanks = 0;
 	while (true) {
 		String l = f->get_line().strip_edges();
+		//print_verbose(l);
 		if (++loops % 100 == 0 && OS::get_singleton()->has_feature("debug")) {
 			print_verbose(String::num_int64(loops) + " BVH loops");
 		}
@@ -217,7 +220,7 @@ static Error _parse_motion(Ref<FileAccess> f, List<Skeleton3D *> &r_skeletons, A
 								case BVH_X_POSITION:
 								case BVH_Y_POSITION:
 								case BVH_Z_POSITION:
-									if (channel_index + 4 < channels[bone_index].size()) {
+									if (channel_index + 3 < channels[bone_index].size()) {
 										for (int k = j; k < j + 3 && k < s.size(); k++) {
 											switch (channels[bone_index][channel_index + 1 + (k - j)]) {
 												case BVH_X_POSITION:
@@ -234,13 +237,16 @@ static Error _parse_motion(Ref<FileAccess> f, List<Skeleton3D *> &r_skeletons, A
 										animation->track_set_path(position_track, "" + r_skeletons.back()->get()->get_name() + ":" + bone_name);
 										insertion = animation->track_insert_key(position_track, frame_time * static_cast<double>(i), position);
 										j += 2;
+										channel_index += 2;
+									} else {
+										//print_verbose(String::num_int64(channel_index) + " " + String::num_int64(channels[bone_index].size()));
 									}
 									break;
 								case BVH_X_ROTATION:
 								case BVH_Y_ROTATION:
 								case BVH_Z_ROTATION:
 								case BVH_W_ROTATION:
-									if (channel_index + 5 < channels[bone_index].size()) {
+									if (channel_index + 4 < channels[bone_index].size()) {
 										for (int k = j; k < j + 4 && k < s.size(); k++) {
 											switch (channels[bone_index][channel_index + 1 + (k - j)]) {
 												case BVH_X_ROTATION:
@@ -258,13 +264,19 @@ static Error _parse_motion(Ref<FileAccess> f, List<Skeleton3D *> &r_skeletons, A
 											}
 										}
 										animation->track_set_path(rotation_track, "" + r_skeletons.back()->get()->get_name() + ":" + bone_name);
-										insertion = animation->track_insert_key(rotation_track, frame_time * static_cast<double>(i), rotation);
+										insertion = animation->track_insert_key(rotation_track, frame_time * static_cast<double>(i), rotation.normalized());
 										j += 3;
+										channel_index += 3;
+									} else {
+										//print_verbose(String::num_int64(channel_index) + " " + String::num_int64(channels[bone_index].size()));
 									}
+									break;
+								default:
+									//print_verbose(String::num_int64(position_track) + " " + String::num_int64(rotation_track) + bone_name + " @ " + String::num_int64(channel_index));
 									break;
 							}
 							if (insertion < 0 && OS::get_singleton()->has_feature("debug")) {
-								print_verbose(String::num_int64(insertion) + " BVH track inseration");
+								//print_verbose(String::num_int64(insertion) + " BVH track insertion");
 							}
 						}
 					}
@@ -272,7 +284,11 @@ static Error _parse_motion(Ref<FileAccess> f, List<Skeleton3D *> &r_skeletons, A
 				if (!animation->get_name().is_empty()) {
 					animation_library_name = animation->get_name();
 				}
+				animation->set_step(frame_time);
 				animation_library->add_animation(animation_library_name, animation);
+				if (r_animation != nullptr) {
+					(*r_animation)->set_assigned_animation(animation_library->get_name() + "/" + animation->get_name());
+				}
 			}
 			animation.instantiate();
 			frame_count = -1;
@@ -282,9 +298,6 @@ static Error _parse_motion(Ref<FileAccess> f, List<Skeleton3D *> &r_skeletons, A
 				animation->set_name(l.strip_edges());
 			} else {
 				animation->set_name("MOTION");
-			}
-			if (r_animation != nullptr) {
-				(*r_animation)->set_assigned_animation(animation_library->get_name() + "/" + animation->get_name());
 			}
 		} else if (l.begins_with("End ")) {
 			ERR_FAIL_COND_V(r_skeletons.is_empty(), ERR_FILE_CORRUPT);
@@ -322,6 +335,7 @@ static Error _parse_motion(Ref<FileAccess> f, List<Skeleton3D *> &r_skeletons, A
 					channel.append(bones[bones.size() - 1]);
 					for (int i = 0; i < channel_count; i++) {
 						String channel_name = s[i + 2].strip_edges();
+						//print_verbose(channel_name);
 						if (channel_name.casecmp_to("Xposition") == 0) {
 							channel.append(BVH_X_POSITION);
 						} else if (channel_name.casecmp_to("Yposition") == 0) {
@@ -344,7 +358,7 @@ static Error _parse_motion(Ref<FileAccess> f, List<Skeleton3D *> &r_skeletons, A
 					ERR_FAIL_COND_V(channel.size() < 2, ERR_FILE_CORRUPT);
 					if (channels.is_empty()) {
 						channels.append(channel);
-					} else if (channels[channels.size() - 1].is_empty()) {
+					} else if (channels[channels.size() - 1].size() < 2) {
 						channels.remove_at(channels.size() - 1);
 						channels.append(channel);
 					}
@@ -379,11 +393,12 @@ static Error _parse_motion(Ref<FileAccess> f, List<Skeleton3D *> &r_skeletons, A
 		}
 	}
 
-	print_verbose(String::num_int64(frames.size())+" "+String::num_int64(frame_count));
+	//print_verbose(String::num_int64(frames.size())+" "+String::num_int64(frame_count));
 	if (animation_library.is_valid() && animation.is_valid() && r_animation != nullptr && frames.size() == frame_count) {
 		if (!channels.is_empty() && !r_skeletons.is_empty()) {
 			tracks.clear();
 			for (int i = 0; i < channels.size(); i++) {
+				//print_verbose(channels[i]);
 				if (channels[i].size() < 2) {
 					continue;
 				}
@@ -424,7 +439,7 @@ static Error _parse_motion(Ref<FileAccess> f, List<Skeleton3D *> &r_skeletons, A
 						case BVH_X_POSITION:
 						case BVH_Y_POSITION:
 						case BVH_Z_POSITION:
-							if (channel_index + 4 < channels[bone_index].size()) {
+							if (channel_index + 3 < channels[bone_index].size()) {
 								for (int k = j; k < j + 3 && k < s.size(); k++) {
 									switch (channels[bone_index][channel_index + 1 + (k - j)]) {
 										case BVH_X_POSITION:
@@ -441,13 +456,16 @@ static Error _parse_motion(Ref<FileAccess> f, List<Skeleton3D *> &r_skeletons, A
 								animation->track_set_path(position_track, "" + r_skeletons.back()->get()->get_name() + ":" + bone_name);
 								insertion = animation->track_insert_key(position_track, frame_time * static_cast<double>(i), position);
 								j += 2;
+								channel_index += 2;
+							} else {
+								//print_verbose(String::num_int64(channel_index) + " " + String::num_int64(channels[bone_index].size()));
 							}
 							break;
 						case BVH_X_ROTATION:
 						case BVH_Y_ROTATION:
 						case BVH_Z_ROTATION:
 						case BVH_W_ROTATION:
-							if (channel_index + 5 < channels[bone_index].size()) {
+							if (channel_index + 4 < channels[bone_index].size()) {
 								for (int k = j; k < j + 4 && k < s.size(); k++) {
 									switch (channels[bone_index][channel_index + 1 + (k - j)]) {
 										case BVH_X_ROTATION:
@@ -465,13 +483,19 @@ static Error _parse_motion(Ref<FileAccess> f, List<Skeleton3D *> &r_skeletons, A
 									}
 								}
 								animation->track_set_path(rotation_track, "" + r_skeletons.back()->get()->get_name() + ":" + bone_name);
-								insertion = animation->track_insert_key(rotation_track, frame_time * static_cast<double>(i), rotation);
-								j += 2;
+								insertion = animation->track_insert_key(rotation_track, frame_time * static_cast<double>(i), rotation.normalized());
+								j += 3;
+								channel_index += 3;
+							} else {
+								//print_verbose(String::num_int64(channel_index) + " " + String::num_int64(channels[bone_index].size()));
 							}
+							break;
+						default:
+							//print_verbose(String::num_int64(position_track) + " " + String::num_int64(rotation_track) + bone_name + " @ " + String::num_int64(channel_index));
 							break;
 					}
 					if (insertion < 0 && OS::get_singleton()->has_feature("debug")) {
-						print_verbose(String::num_int64(insertion) + " BVH track inseration");
+						//print_verbose(String::num_int64(insertion) + " BVH track insertion");
 					}
 				}
 			}
@@ -479,8 +503,10 @@ static Error _parse_motion(Ref<FileAccess> f, List<Skeleton3D *> &r_skeletons, A
 		if (!animation->get_name().is_empty()) {
 			animation_library_name = animation->get_name();
 		}
+		animation->set_step(frame_time);
 		animation_library->add_animation(animation_library_name, animation);
-		/*List<StringName> animations;
+		(*r_animation)->set_assigned_animation(animation_library->get_name() + "/" + animation->get_name());
+		List<StringName> animations;
 		animation_library->get_animation_list(&animations);
 		for (int i = 0; i < animations.size(); i++) {
 			Vector<int> duds;
@@ -491,9 +517,12 @@ static Error _parse_motion(Ref<FileAccess> f, List<Skeleton3D *> &r_skeletons, A
 				}
 			}
 			for (int j = 0; j < duds.size(); j++) {
+				for (int k = j + 1; k < duds.size(); k++) {
+					duds.set(k, duds[k] - 1);
+				}
 				animation->remove_track(duds[j]);
 			}
-		}*/
+		}
 	}
 
 	return OK;
@@ -532,6 +561,13 @@ static Error _parse_qbo(const String &p_path, List<Ref<ImporterMesh>> &r_meshes,
 
 	Error err = _parse_motion(f, r_skeletons, r_animation);
 	ERR_FAIL_COND_V_MSG(err != OK, err, vformat("Couldn't parse QBO file '%s', it may be corrupt.", p_path));
+	if (r_animation != nullptr) {
+		List<StringName> animations;
+		(*r_animation)->get_animation_list(&animations);
+		for (int i = 0; i < animations.size(); ++i) {
+			print_verbose(animations.get(i));
+		}
+	}
 
 	while (true) {
 		String l = f->get_line().strip_edges();
@@ -847,7 +883,7 @@ Node *EditorQBOImporter::import_scene(const String &p_path, uint32_t p_flags, co
 	List<Skeleton3D *> skeletons;
 	AnimationPlayer *animation = nullptr;
 
-	Error err = _parse_qbo(p_path, meshes, false, p_flags & IMPORT_GENERATE_TANGENT_ARRAYS, false, Vector3(1, 1, 1), Vector3(0, 0, 0), p_flags & IMPORT_FORCE_DISABLE_MESH_COMPRESSION, r_missing_deps, skeletons, &animation);
+	Error err = _parse_qbo(p_path, meshes, false, p_flags & IMPORT_GENERATE_TANGENT_ARRAYS, false, Vector3(1, 1, 1), Vector3(0, 0, 0), p_flags & IMPORT_FORCE_DISABLE_MESH_COMPRESSION, r_missing_deps, skeletons, (p_flags & IMPORT_ANIMATION) ? &animation : nullptr);
 
 	if (err != OK) {
 		if (r_err) {
@@ -862,19 +898,25 @@ Node *EditorQBOImporter::import_scene(const String &p_path, uint32_t p_flags, co
 		ImporterMeshInstance3D *mi = memnew(ImporterMeshInstance3D);
 		mi->set_mesh(m);
 		mi->set_name(m->get_name());
-		scene->add_child(mi, true);
-		mi->set_owner(scene);
-		for (Skeleton3D *s : skeletons) {
-			Ref<Skin> skin = s->create_skin_from_rest_transforms();
-			scene->add_child(s, true);
-			s->set_owner(scene);
-			mi->get_parent()->remove_child(mi);
-			mi->set_owner(nullptr);
-			s->add_child(mi, true);
-			mi->set_owner(s);
-			mi->set_skin(skin);
-			mi->set_skeleton_path(mi->get_path_to(s));
-			mi->set_transform(Transform3D());
+		if (p_flags & IMPORT_ANIMATION) {
+			for (Skeleton3D *s : skeletons) {
+				Ref<Skin> skin = s->create_skin_from_rest_transforms();
+				if (!skin.is_valid()) {
+					break;
+				}
+				scene->add_child(s, true);
+				s->set_owner(scene);
+				s->add_child(mi, true);
+				mi->set_owner(s);
+				mi->set_skin(skin);
+				mi->set_skeleton_path(mi->get_path_to(s));
+				mi->set_transform(Transform3D());
+				break;
+			}
+		}
+		if (!mi->get_skin().is_valid()) {
+			scene->add_child(mi, true);
+			mi->set_owner(scene);
 		}
 	}
 	if (animation != nullptr) {
