@@ -62,9 +62,12 @@ static Error _parse_motion(Ref<FileAccess> f, List<Skeleton3D *> &r_skeletons, A
 	int frame_count = -1;
 	double frame_time = 0.03333333;
 	HashMap<int, int> tracks;
+	HashMap<int, int> parents;
+	HashMap<int, int> children;
 	HashMap<String, int> bone_names;
 	Vector<String> frames;
 	Vector<int> bones;
+	Vector<Quaternion> orientations;
 	Vector<Vector3> offsets;
 	Vector<Vector<int>> channels;
 	Ref<Animation> animation;
@@ -95,8 +98,6 @@ static Error _parse_motion(Ref<FileAccess> f, List<Skeleton3D *> &r_skeletons, A
 				}
 			}
 		}
-	} else if (OS::get_singleton()->has_feature("debug")) {
-		print_verbose("NO ANIMATION");
 	}
 
 	int loops = 0;
@@ -151,6 +152,7 @@ static Error _parse_motion(Ref<FileAccess> f, List<Skeleton3D *> &r_skeletons, A
 			int bone = -1;
 			bones.clear();
 			offsets.clear();
+			orientations.clear();
 			channels.clear();
 			r_skeletons.push_back(memnew(Skeleton3D));
 			l = l.substr(5);
@@ -171,6 +173,7 @@ static Error _parse_motion(Ref<FileAccess> f, List<Skeleton3D *> &r_skeletons, A
 			}
 			if (bone >= 0) {
 				bones.append(bone);
+				orientations.append(Quaternion());
 				offsets.append(Vector3());
 				channels.append(Vector<int>({bones[bones.size() - 1]}));
 			}
@@ -184,11 +187,11 @@ static Error _parse_motion(Ref<FileAccess> f, List<Skeleton3D *> &r_skeletons, A
 							continue;
 						}
 						tracks[channels[i][0]] = animation->add_track(Animation::TrackType::TYPE_POSITION_3D);
-						tracks[channels.size() + channels[i][0]] = animation->add_track(Animation::TrackType::TYPE_ROTATION_3D);
+						tracks[r_skeletons.back()->get()->get_bone_count() + channels[i][0]] = animation->add_track(Animation::TrackType::TYPE_ROTATION_3D);
 					}
 					for (int i = 0; i < frame_count; i++) {
 						int bone_index = 0;
-						int channel_index = -1;
+						int channel_index = 0;
 						String frame = frames[i];
 						Vector<String> s;
 						if (frame.contains(" ")) {
@@ -198,14 +201,17 @@ static Error _parse_motion(Ref<FileAccess> f, List<Skeleton3D *> &r_skeletons, A
 						}
 						for (int j = 0; j < s.size(); j++) {
 							channel_index++;
-							if (channel_index >= channels[bone_index].size() - 1 || channels[bone_index].size() < 2) {
+							if (channel_index >= channels[bone_index].size() || channels[bone_index].size() < 2) {
 								do {
 									bone_index++;
 									if (bone_index >= channels.size()) {
 										break;
 									}
 								} while (channels[bone_index].size() < 2);
-								channel_index = 0;
+								channel_index = 1;
+								if (bone_index >= channels.size()) {
+									break;
+								}
 							}
 							if (bone_index < 0 || bone_index >= channels.size()) {
 								break;
@@ -214,65 +220,71 @@ static Error _parse_motion(Ref<FileAccess> f, List<Skeleton3D *> &r_skeletons, A
 							Quaternion rotation;
 							String bone_name = r_skeletons.back()->get()->get_bone_name(channels[bone_index][0]);
 							int position_track = tracks[channels[bone_index][0]];
-							int rotation_track = tracks[channels.size() + channels[bone_index][0]];
+							int rotation_track = tracks[r_skeletons.back()->get()->get_bone_count() + channels[bone_index][0]];
 							int insertion = -1;
-							switch (channels[bone_index][channel_index + 1]) {
+							switch (channels[bone_index][channel_index]) {
 								case BVH_X_POSITION:
 								case BVH_Y_POSITION:
 								case BVH_Z_POSITION:
-									if (channel_index + 3 < channels[bone_index].size()) {
+									if (channel_index + 2 < channels[bone_index].size()) {
+										position = Vector3();
 										for (int k = j; k < j + 3 && k < s.size(); k++) {
-											switch (channels[bone_index][channel_index + 1 + (k - j)]) {
+											switch (channels[bone_index][channel_index + (k - j)]) {
 												case BVH_X_POSITION:
-													position.x = s[k].to_float();
+													position.x = s[k].strip_edges().to_float();
 													break;
 												case BVH_Y_POSITION:
-													position.y = s[k].to_float();
+													position.y = s[k].strip_edges().to_float();
 													break;
 												case BVH_Z_POSITION:
-													position.z = s[k].to_float();
+													position.z = s[k].strip_edges().to_float();
 													break;
 											}
 										}
+										animation->track_set_imported(position_track, true);
 										animation->track_set_path(position_track, "" + r_skeletons.back()->get()->get_name() + ":" + bone_name);
-										insertion = animation->track_insert_key(position_track, frame_time * static_cast<double>(i), position);
+										//insertion = animation->position_track_insert_key(position_track, frame_time * static_cast<double>(i), position);
 										j += 2;
 										channel_index += 2;
+										//print_verbose(position);
 									} else {
-										//print_verbose(String::num_int64(channel_index) + " " + String::num_int64(channels[bone_index].size()));
+										print_verbose("poselse" + String::num_int64(channel_index) + " " + String::num_int64(channels[bone_index].size()));
 									}
 									break;
 								case BVH_X_ROTATION:
 								case BVH_Y_ROTATION:
 								case BVH_Z_ROTATION:
 								case BVH_W_ROTATION:
-									if (channel_index + 4 < channels[bone_index].size()) {
+									if (channel_index + 3 < channels[bone_index].size()) {
+										rotation = Quaternion();
 										for (int k = j; k < j + 4 && k < s.size(); k++) {
-											switch (channels[bone_index][channel_index + 1 + (k - j)]) {
+											switch (channels[bone_index][channel_index + (k - j)]) {
 												case BVH_X_ROTATION:
-													rotation.x = s[k].to_float();
+													rotation.x = s[k].strip_edges().to_float();
 													break;
 												case BVH_Y_ROTATION:
-													rotation.y = s[k].to_float();
+													rotation.y = s[k].strip_edges().to_float();
 													break;
 												case BVH_Z_ROTATION:
-													rotation.z = s[k].to_float();
+													rotation.z = s[k].strip_edges().to_float();
 													break;
 												case BVH_W_ROTATION:
-													rotation.w = s[k].to_float();
+													rotation.w = s[k].strip_edges().to_float();
 													break;
 											}
 										}
+										animation->track_set_imported(rotation_track, true);
 										animation->track_set_path(rotation_track, "" + r_skeletons.back()->get()->get_name() + ":" + bone_name);
-										insertion = animation->track_insert_key(rotation_track, frame_time * static_cast<double>(i), rotation.normalized());
+										insertion = animation->rotation_track_insert_key(rotation_track, frame_time * static_cast<double>(i), rotation);
 										j += 3;
 										channel_index += 3;
+										//print_verbose(rotation);
 									} else {
-										//print_verbose(String::num_int64(channel_index) + " " + String::num_int64(channels[bone_index].size()));
+										print_verbose("rotelse" + String::num_int64(channel_index) + " " + String::num_int64(channels[bone_index].size()));
 									}
 									break;
 								default:
-									//print_verbose(String::num_int64(position_track) + " " + String::num_int64(rotation_track) + bone_name + " @ " + String::num_int64(channel_index));
+									print_verbose(String::num_int64(position_track) + " " + String::num_int64(rotation_track) + bone_name + " @ " + String::num_int64(channel_index));
 									break;
 							}
 							if (insertion < 0 && OS::get_singleton()->has_feature("debug")) {
@@ -310,8 +322,13 @@ static Error _parse_motion(Ref<FileAccess> f, List<Skeleton3D *> &r_skeletons, A
 					bone_names[l] = 1;
 				}
 				bones.append(r_skeletons.back()->get()->add_bone(l));
+				orientations.append(Quaternion());
 				offsets.append(Vector3());
 				channels.append(Vector<int>({bones[bones.size() - 1]}));
+				if (bones.size() > 1) {
+					r_skeletons.back()->get()->set_bone_parent(bones[bones.size() - 1], bones[bones.size() - 2]);
+					parents[bones[bones.size() - 1]] = bones[bones.size() - 2];
+				}
 			}
 		} else {
 			Vector<String> s;
@@ -327,7 +344,28 @@ static Error _parse_motion(Ref<FileAccess> f, List<Skeleton3D *> &r_skeletons, A
 					offset.x = s[1].to_float();
 					offset.y = s[2].to_float();
 					offset.z = s[3].to_float();
-					offsets.append(offset);
+					//offset = Vector3();
+					if (offsets.is_empty()) {
+						offsets.append(offset);
+					} else {
+						offsets.set(offsets.size() - 1, offset);
+					}
+				} else if (s[0].casecmp_to("ORIENT") == 0) {
+					ERR_FAIL_COND_V(s.size() < 5, ERR_FILE_CORRUPT);
+					Quaternion orientation;
+					orientation.x = s[1].to_float();
+					orientation.y = s[2].to_float();
+					orientation.z = s[3].to_float();
+					orientation.w = s[4].to_float();
+					if (!orientation.is_normalized()) {
+						print_verbose("UNNORMALIZED ORIENTATION!!!")
+					}
+					//orientation = Quaternion();
+					if (orientations.is_empty()) {
+						orientations.append(orientation);
+					} else {
+						orientations.set(orientations.size() - 1, orientation);
+					}
 				} else if (s[0].casecmp_to("CHANNELS") == 0) {
 					int channel_count = s[1].to_int();
 					ERR_FAIL_COND_V(s.size() < channel_count + 2 || bones.is_empty(), ERR_FILE_CORRUPT);
@@ -368,26 +406,56 @@ static Error _parse_motion(Ref<FileAccess> f, List<Skeleton3D *> &r_skeletons, A
 					String bone_name = s[1];
 					if (bone_names.has(bone_name)) {
 						bone_names[bone_name] += 1;
+						if (bone_name.ends_with("_")) {
+							bone_name += "_";
+						}
 						bone_name += String::num_int64(bone_names[bone_name]);
 					} else {
 						bone_names[bone_name] = 1;
 					}
 					bones.append(r_skeletons.back()->get()->add_bone(bone_name));
+					orientations.append(Quaternion());
+					offsets.append(Vector3());
 					channels.append(Vector<int>({bones[bones.size() - 1]}));
 					r_skeletons.back()->get()->set_bone_parent(bones[bones.size() - 1], parent);
+					parents[bones[bones.size() - 1]] = parent;
 				}
 			} else {
 				if (l.casecmp_to("{") == 0) {
-					// TODO
+					int child = 0;
+					if (!bones.is_empty() && parents.has(bones[bones.size() - 1])) {
+						if (children.has(parents[bones[bones.size() - 1]])) {
+							children[parents[bones[bones.size() - 1]]] += 1;
+						} else {
+							children[parents[bones[bones.size() - 1]]] = 1;
+						}
+						child += children[parents[bones[bones.size() - 1]]];
+					}
+					print_verbose(r_skeletons.back()->get()->get_bone_name(parents[bones[bones.size() - 1]]) + " -> " + String::num_int64(child));
 				} else if (l.casecmp_to("}") == 0) {
-					ERR_FAIL_COND_V(r_skeletons.is_empty() || bones.is_empty() || offsets.is_empty() || channels.is_empty(), ERR_FILE_CORRUPT);
+					ERR_FAIL_COND_V(r_skeletons.is_empty() || bones.is_empty() || offsets.is_empty() || orientations.is_empty() || channels.is_empty(), ERR_FILE_CORRUPT);
 					int bone = bones[bones.size() - 1];
+					Transform3D rest;
+					Quaternion rotation;
+					Vector3 scale = Vector3(1.0, 1.0, 1.0);
 					Vector3 offset = offsets[offsets.size() - 1];
-					Vector<int> channel = channels[channels.size() - 1];
+					Quaternion orientation = orientations[orientations.size() - 1];
 					bones.remove_at(bones.size() - 1);
 					offsets.remove_at(offsets.size() - 1);
-					//channels.remove_at(channels.size() - 1);
-					r_skeletons.back()->get()->set_bone_rest(bone, Transform3D(Basis(), offset));
+					orientations.remove_at(orientations.size() - 1);
+					rest.basis.set_quaternion_scale(rotation, scale);
+					rest.origin = offset;
+					if (bone < r_skeletons.back()->get()->get_bone_count()) {
+						print_verbose(r_skeletons.back()->get()->get_bone_name(bone) + " @ " + String::num_int64(bone) + " = " + String(offset));
+						r_skeletons.back()->get()->set_bone_rest(bone, rest);
+						//r_skeletons.back()->get()->set_bone_pose_position(bone, offset);
+						r_skeletons.back()->get()->set_bone_pose_rotation(bone, orientation);
+						r_skeletons.back()->get()->set_bone_pose_scale(bone, scale);
+					} else {
+						print_verbose(r_skeletons.back()->get()->get_bone_name(bone) + " @ " + String::num_int64(bone));
+					}
+					print_verbose(String::num_int64(bones.size()));
+					//r_skeletons.back()->get()->set_bone_rest(bone, Transform3D(Basis(), offset));
 				}
 			}
 		}
@@ -403,11 +471,11 @@ static Error _parse_motion(Ref<FileAccess> f, List<Skeleton3D *> &r_skeletons, A
 					continue;
 				}
 				tracks[channels[i][0]] = animation->add_track(Animation::TrackType::TYPE_POSITION_3D);
-				tracks[channels.size() + channels[i][0]] = animation->add_track(Animation::TrackType::TYPE_ROTATION_3D);
+				tracks[r_skeletons.back()->get()->get_bone_count() + channels[i][0]] = animation->add_track(Animation::TrackType::TYPE_ROTATION_3D);
 			}
 			for (int i = 0; i < frame_count; i++) {
 				int bone_index = 0;
-				int channel_index = -1;
+				int channel_index = 0;
 				String frame = frames[i];
 				Vector<String> s;
 				if (frame.contains(" ")) {
@@ -417,14 +485,17 @@ static Error _parse_motion(Ref<FileAccess> f, List<Skeleton3D *> &r_skeletons, A
 				}
 				for (int j = 0; j < s.size(); j++) {
 					channel_index++;
-					if (channel_index >= channels[bone_index].size() - 1 || channels[bone_index].size() < 2) {
+					if (channel_index >= channels[bone_index].size() || channels[bone_index].size() < 2) {
 						do {
 							bone_index++;
 							if (bone_index >= channels.size()) {
 								break;
 							}
 						} while (channels[bone_index].size() < 2);
-						channel_index = 0;
+						channel_index = 1;
+						if (bone_index >= channels.size()) {
+							break;
+						}
 					}
 					if (bone_index < 0 || bone_index >= channels.size()) {
 						break;
@@ -433,69 +504,75 @@ static Error _parse_motion(Ref<FileAccess> f, List<Skeleton3D *> &r_skeletons, A
 					Quaternion rotation;
 					String bone_name = r_skeletons.back()->get()->get_bone_name(channels[bone_index][0]);
 					int position_track = tracks[channels[bone_index][0]];
-					int rotation_track = tracks[channels.size() + channels[bone_index][0]];
+					int rotation_track = tracks[r_skeletons.back()->get()->get_bone_count() + channels[bone_index][0]];
 					int insertion = -1;
 					switch (channels[bone_index][channel_index + 1]) {
 						case BVH_X_POSITION:
 						case BVH_Y_POSITION:
 						case BVH_Z_POSITION:
-							if (channel_index + 3 < channels[bone_index].size()) {
+							if (channel_index + 2 < channels[bone_index].size()) {
+								position = Vector3();
 								for (int k = j; k < j + 3 && k < s.size(); k++) {
-									switch (channels[bone_index][channel_index + 1 + (k - j)]) {
+									switch (channels[bone_index][channel_index + (k - j)]) {
 										case BVH_X_POSITION:
-											position.x = s[k].to_float();
+											position.x = s[k].strip_edges().to_float();
 											break;
 										case BVH_Y_POSITION:
-											position.y = s[k].to_float();
+											position.y = s[k].strip_edges().to_float();
 											break;
 										case BVH_Z_POSITION:
-											position.z = s[k].to_float();
+											position.z = s[k].strip_edges().to_float();
 											break;
 									}
 								}
+								animation->track_set_imported(position_track, true);
 								animation->track_set_path(position_track, "" + r_skeletons.back()->get()->get_name() + ":" + bone_name);
-								insertion = animation->track_insert_key(position_track, frame_time * static_cast<double>(i), position);
+								//insertion = animation->position_track_insert_key(position_track, frame_time * static_cast<double>(i), position);
 								j += 2;
 								channel_index += 2;
+								//print_verbose(position);
 							} else {
-								//print_verbose(String::num_int64(channel_index) + " " + String::num_int64(channels[bone_index].size()));
+								print_verbose("poselse" + String::num_int64(channel_index) + " " + String::num_int64(channels[bone_index].size()));
 							}
 							break;
 						case BVH_X_ROTATION:
 						case BVH_Y_ROTATION:
 						case BVH_Z_ROTATION:
 						case BVH_W_ROTATION:
-							if (channel_index + 4 < channels[bone_index].size()) {
+							if (channel_index + 3 < channels[bone_index].size()) {
+								rotation = Quaternion();
 								for (int k = j; k < j + 4 && k < s.size(); k++) {
-									switch (channels[bone_index][channel_index + 1 + (k - j)]) {
+									switch (channels[bone_index][channel_index + (k - j)]) {
 										case BVH_X_ROTATION:
-											rotation.x = s[k].to_float();
+											rotation.x = s[k].strip_edges().to_float();
 											break;
 										case BVH_Y_ROTATION:
-											rotation.y = s[k].to_float();
+											rotation.y = s[k].strip_edges().to_float();
 											break;
 										case BVH_Z_ROTATION:
-											rotation.z = s[k].to_float();
+											rotation.z = s[k].strip_edges().to_float();
 											break;
 										case BVH_W_ROTATION:
-											rotation.w = s[k].to_float();
+											rotation.w = s[k].strip_edges().to_float();
 											break;
 									}
 								}
+								animation->track_set_imported(rotation_track, true);
 								animation->track_set_path(rotation_track, "" + r_skeletons.back()->get()->get_name() + ":" + bone_name);
-								insertion = animation->track_insert_key(rotation_track, frame_time * static_cast<double>(i), rotation.normalized());
+								insertion = animation->rotation_track_insert_key(rotation_track, frame_time * static_cast<double>(i), rotation);
 								j += 3;
 								channel_index += 3;
+								//print_verbose(rotation);
 							} else {
-								//print_verbose(String::num_int64(channel_index) + " " + String::num_int64(channels[bone_index].size()));
+								print_verbose("rotelse" + String::num_int64(channel_index) + " " + String::num_int64(channels[bone_index].size()));
 							}
 							break;
 						default:
-							//print_verbose(String::num_int64(position_track) + " " + String::num_int64(rotation_track) + bone_name + " @ " + String::num_int64(channel_index));
+							print_verbose(String::num_int64(position_track) + " " + String::num_int64(rotation_track) + bone_name + " @ " + String::num_int64(channel_index));
 							break;
 					}
 					if (insertion < 0 && OS::get_singleton()->has_feature("debug")) {
-						//print_verbose(String::num_int64(insertion) + " BVH track insertion");
+						//rint_verbose(String::num_int64(insertion) + " BVH track insertion");
 					}
 				}
 			}
