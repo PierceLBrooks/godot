@@ -173,7 +173,7 @@ Error QBODocument::_parse_qbo_data(Ref<FileAccess> f, Ref<GLTFState> p_state, ui
 					Ref<GLTFNode> node = p_state->nodes[p_state->nodes.size() - 1];
 					Transform3D t = node->get_xform();
 					t.basis = Basis(rot);
-					node->set_xform(t);
+					//node->set_xform(t);
 					print_verbose(vformat("Node %d '%s' orientation set to: %s",
 							p_state->nodes.size() - 1,
 							node->get_name(),
@@ -232,6 +232,7 @@ Error QBODocument::_parse_qbo_data(Ref<FileAccess> f, Ref<GLTFState> p_state, ui
 						parts[3].to_float());
 				normals.push_back(normal);
 			} else if (l.begins_with("vw ")) {
+				String joints_str = "(";
 				Vector<String> parts = l.split(" ");
 				int vert_index = parts[1].to_int() - 1;
 				Vector4i joints = Vector4i(0, 0, 0, 0);
@@ -243,19 +244,29 @@ Error QBODocument::_parse_qbo_data(Ref<FileAccess> f, Ref<GLTFState> p_state, ui
 						break;
 					}
 
-					String bone_name = parts[i];
 					float weight = parts[i + 1].to_float();
 
 					String original_bone_name = parts[i];
 					if (bone_name_map.has(original_bone_name)) {
+						joints_str += original_bone_name;
 						joints[count] = bone_name_map[original_bone_name] + 1;
 						weights[count] = weight;
 						count++;
+						if (count < 4) {
+							joints_str += ", ";
+						}
 					} else {
 						ERR_PRINT(vformat("ERROR: Vertex %d references unknown bone '%s'",
 								vert_index, original_bone_name));
 					}
 				}
+				for (int i = count; i < 4; i++) {
+					joints_str += "-1";
+					if (i + 1 < 4) {
+						joints_str += ", ";
+					}
+				}
+				joints_str += ")";
 
 				float total = weights.x + weights.y + weights.z + weights.w;
 				if (total > 0) {
@@ -267,7 +278,7 @@ Error QBODocument::_parse_qbo_data(Ref<FileAccess> f, Ref<GLTFState> p_state, ui
 				print_verbose(vformat("Vertex %d weights: %s (joints: %s)",
 						vert_index,
 						String(weights),
-						String(joints)));
+						joints_str));
 			} else if (l.begins_with("f ")) {
 				Vector<String> face_verts = l.substr(2).split(" ");
 				for (int vert_idx = face_verts.size() - 1; vert_idx >= 0; vert_idx--) {
@@ -340,6 +351,7 @@ Error QBODocument::_parse_qbo_data(Ref<FileAccess> f, Ref<GLTFState> p_state, ui
 	print_verbose("\n--- Node Hierarchy Validation ---");
 	for (GLTFNodeIndex i = 0; i < p_state->nodes.size(); i++) {
 		Ref<GLTFNode> node = p_state->nodes[i];
+		node->set_additional_data("GODOT_rest_transform", node->get_xform());
 		GLTFNodeIndex parent = node->get_parent();
 		if (parent != -1) {
 			if (parent < 0 || parent >= p_state->nodes.size()) {
@@ -381,7 +393,7 @@ Error QBODocument::_parse_qbo_data(Ref<FileAccess> f, Ref<GLTFState> p_state, ui
 				float rot_w = frame[data_idx++].to_float();
 				Quaternion rotation(rot_x, rot_y, rot_z, rot_w);
 
-				double time = frame_idx * frame_time;
+				double time = frame_time * frame_idx;
 				GLTFAnimation::NodeTrack &track = current_animation->get_node_tracks()[node_idx];
 				track.position_track.times.push_back(time);
 				track.position_track.values.push_back(position);
@@ -413,11 +425,12 @@ Error QBODocument::_parse_qbo_data(Ref<FileAccess> f, Ref<GLTFState> p_state, ui
 	}
 
 	if (surf_tool->get_vertex_array().size() > 0) {
-		print_verbose(vformat("\n--- Mesh Details ---\nVertices: %d\nNormals: %d\nUVs: %d\nColors: %d",
+		print_verbose(vformat("\n--- Mesh Details ---\nVertices: %d\nNormals: %d\nUVs: %d\nColors: %d\nWeights: %d",
 				vertices.size(),
 				normals.size(),
 				uvs.size(),
-				colors.size()));
+				colors.size(),
+				joint_weights_map.size()));
 
 		if (normals.is_empty()) {
 			print_verbose("Generating normals...");
@@ -541,7 +554,7 @@ Error QBODocument::_parse_qbo_data(Ref<FileAccess> f, Ref<GLTFState> p_state, ui
 			p_state->get_import_as_skeleton_bones() ? p_state->root_nodes : Vector<GLTFNodeIndex>());
 	ERR_FAIL_COND_V(err != OK, ERR_PARSE_ERROR);
 
-	err = SkinTool::_create_skins(p_state->skins, p_state->nodes, p_state->use_named_skin_binds, p_state->unique_names);
+	//err = SkinTool::_create_skins(p_state->skins, p_state->nodes, p_state->use_named_skin_binds, p_state->unique_names);
 	ERR_FAIL_COND_V(err != OK, ERR_PARSE_ERROR);
 
 	return OK;
