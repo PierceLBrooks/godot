@@ -616,7 +616,7 @@ static Error _parse_qbo(const String &p_path, List<Ref<ImporterMesh>> &r_meshes,
 	Vector3 scale_mesh = p_scale_mesh;
 	Vector3 offset_mesh = p_offset_mesh;
 
-	HashMap<uint32_t, HashMap<String, float>> weights;
+	Vector<HashMap<String, float>> weights;
 	Vector<Vector3> vertices;
 	Vector<Vector3> normals;
 	Vector<Vector2> uvs;
@@ -698,27 +698,24 @@ static Error _parse_qbo(const String &p_path, List<Ref<ImporterMesh>> &r_meshes,
 		} else if (l.begins_with("vw ")) {
 			//weight ( https://github.com/tinyobjloader/tinyobjloader/blob/v2.0.0rc13/tiny_obj_loader.h#L2696 )
 			Vector<String> v = l.split(" ", false);
-			ERR_FAIL_COND_V(r_skeletons.is_empty() || v.size() < 4 || v.size() % 2 != 0, ERR_FILE_CORRUPT);
-			int idx = v[1].to_int() - 1;
-			ERR_FAIL_COND_V(idx < 0, ERR_FILE_CORRUPT);
-			if (!weights.has(idx)) {
-				weights[idx] = HashMap<String, float>();
-			}
-			for (int i = 2; i < v.size() - 1; i += 2) {
-				String bone = v[i];
-				float weight = v[i + 1].to_float();
-				weights[idx][bone] = weight;
+			ERR_FAIL_COND_V(r_skeletons.is_empty() || v.size() < 3 || v.size() % 2 == 0, ERR_FILE_CORRUPT);
+			HashMap<String, float> weight;
+			for (int i = 1; i < v.size() - 1; i += 2) {
+				String b = v[i];
+				float w = v[i + 1].to_float();
+				weight[b] = w;
 				for (int j = 0; j < r_skeletons.size(); j++) {
-					if (r_skeletons.get(j)->find_bone(bone) > -1) {
-						bone.clear();
+					if (r_skeletons.get(j)->find_bone(b) > -1) {
+						b.clear();
 						break;
 					}
 				}
-				ERR_FAIL_COND_V(!bone.is_empty(), ERR_FILE_CORRUPT);
-				if (weights[idx].size() > 4) {
+				ERR_FAIL_COND_V(!b.is_empty(), ERR_FILE_CORRUPT);
+				if (weight.size() > 4) {
 					surf_tool->set_skin_weight_count(SurfaceTool::SkinWeightCount::SKIN_8_WEIGHTS);
 				}
 			}
+			weights.push_back(weight);
 		} else if (l.begins_with("f ")) {
 			//vertex
 
@@ -744,7 +741,7 @@ static Error _parse_qbo(const String &p_path, List<Ref<ImporterMesh>> &r_meshes,
 						idx = 1 ^ idx;
 					}
 
-					if (face[idx].size() == 3) {
+					if (face[idx].size() >= 3) {
 						int norm = face[idx][2].to_int() - 1;
 						if (norm < 0) {
 							norm += normals.size() + 1;
@@ -779,14 +776,23 @@ static Error _parse_qbo(const String &p_path, List<Ref<ImporterMesh>> &r_meshes,
 					}
 					ERR_FAIL_INDEX_V(vtx, vertices.size(), ERR_FILE_CORRUPT);
 
+					int w = weights.size();
+					if (face[idx].size() > 3) {
+						w = face[idx][3].to_int() - 1;
+						if (w < 0) {
+							w += weights.size() + 1;
+						}
+						ERR_FAIL_INDEX_V(w, weights.size(), ERR_FILE_CORRUPT);
+					}
+
 					Vector3 vertex = vertices[vtx];
 					if (!colors.is_empty()) {
 						surf_tool->set_color(colors[vtx]);
 					}
-					if (!weights.is_empty() && weights.has(vtx)) {
+					if (!weights.is_empty() && w < weights.size()) {
 						Vector<int> bones;
 						Vector<float> weight;
-						for (HashMap<String, float>::Iterator itr = weights[vtx].begin(); itr; ++itr) {
+						for (HashMap<String, float>::Iterator itr = weights.get(w).begin(); itr; ++itr) {
 							if (itr->key.is_numeric()) {
 								bones.append(itr->key.to_int());
 							} else if (!r_skeletons.is_empty()) {
@@ -803,7 +809,13 @@ static Error _parse_qbo(const String &p_path, List<Ref<ImporterMesh>> &r_meshes,
 						if (!bones.is_empty()) {
 							surf_tool->set_bones(bones);
 							surf_tool->set_weights(weight);
+						} else {
+							surf_tool->set_bones(Vector<int>());
+							surf_tool->set_weights(Vector<float>());
 						}
+					} else {
+						surf_tool->set_bones(Vector<int>());
+						surf_tool->set_weights(Vector<float>());
 					}
 					surf_tool->set_smooth_group(smoothing ? smooth_group : no_smoothing_smooth_group);
 					surf_tool->add_vertex(vertex);
