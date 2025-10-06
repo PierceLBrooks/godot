@@ -234,6 +234,13 @@ static Error _parse_obj(const String &p_path, List<Ref<ImporterMesh>> &r_meshes,
 	Ref<SurfaceTool> surf_tool = memnew(SurfaceTool);
 	surf_tool->begin(Mesh::PRIMITIVE_TRIANGLES);
 
+	Ref<SurfaceTool> surf_tool_lines = memnew(SurfaceTool);
+	surf_tool_lines->begin(Mesh::PRIMITIVE_LINES);
+
+	int line = 0;
+	int lines = 0;
+	int lines_total = 0;
+
 	String current_material_library;
 	String current_material;
 	String current_group;
@@ -244,6 +251,7 @@ static Error _parse_obj(const String &p_path, List<Ref<ImporterMesh>> &r_meshes,
 	bool uses_uvs = false;
 
 	while (true) {
+		//print_verbose(String::num_int64(line++));
 		String l = f->get_line().strip_edges();
 		while (l.length() && l[l.length() - 1] == '\\') {
 			String add = f->get_line().strip_edges();
@@ -292,6 +300,34 @@ static Error _parse_obj(const String &p_path, List<Ref<ImporterMesh>> &r_meshes,
 			nrm.y = v[2].to_float();
 			nrm.z = v[3].to_float();
 			normals.push_back(nrm);
+		} else if (l.begins_with("l ")) {
+			Vector<String> v = l.split(" ", false);
+			ERR_FAIL_COND_V(v.size() < 3, ERR_FILE_CORRUPT);
+			for (int i = 2; i < v.size(); i++) {
+				int vtx = v[i-1].to_int() - 1;
+				if (vtx < 0) {
+					vtx += vertices.size() + 1;
+				}
+				ERR_FAIL_INDEX_V(vtx, vertices.size(), ERR_FILE_CORRUPT);
+				Vector3 vertex = vertices[vtx];
+				if (!colors.is_empty()) {
+					surf_tool_lines->set_color(colors[vtx]);
+				}
+				surf_tool_lines->add_vertex(vertex);
+
+				vtx = v[i].to_int() - 1;
+				if (vtx < 0) {
+					vtx += vertices.size() + 1;
+				}
+				ERR_FAIL_INDEX_V(vtx, vertices.size(), ERR_FILE_CORRUPT);
+				vertex = vertices[vtx];
+				if (!colors.is_empty()) {
+					surf_tool_lines->set_color(colors[vtx]);
+				}
+				surf_tool_lines->add_vertex(vertex);
+			}
+			lines += 1;
+			lines_total += 1;
 		} else if (l.begins_with("f ")) {
 			//vertex
 
@@ -400,17 +436,23 @@ static Error _parse_obj(const String &p_path, List<Ref<ImporterMesh>> &r_meshes,
 			}
 
 			//groups are too annoying
-			if (surf_tool->get_vertex_array().size()) {
+			bool nonlines = false;
+			if (surf_tool->get_vertex_array().size() > 0) {
+				nonlines = true;
+			}
+			if (nonlines || lines > 0) {
 				//another group going on, commit it
-				if (normals.is_empty()) {
-					surf_tool->generate_normals();
-				}
+				if (nonlines) {
+					if (normals.is_empty()) {
+						surf_tool->generate_normals();
+					}
 
-				if (generate_tangents && uses_uvs) {
-					surf_tool->generate_tangents();
-				}
+					if (generate_tangents && uses_uvs) {
+						surf_tool->generate_tangents();
+					}
 
-				surf_tool->index();
+					surf_tool->index();
+				}
 
 				print_verbose("OBJ: Current material library " + current_material_library + " has " + itos(material_map.has(current_material_library)));
 				print_verbose("OBJ: Current material " + current_material + " has " + itos(material_map.has(current_material_library) && material_map[current_material_library].has(current_material)));
@@ -420,41 +462,68 @@ static Error _parse_obj(const String &p_path, List<Ref<ImporterMesh>> &r_meshes,
 					if (!colors.is_empty()) {
 						material->set_flag(StandardMaterial3D::FLAG_SRGB_VERTEX_COLOR, true);
 					}
-					surf_tool->set_material(material);
+					if (nonlines) {
+						surf_tool->set_material(material);
+					}
+					if (lines > 0) {
+						surf_tool_lines->set_material(material);
+					}
 				}
 
-				Array array = surf_tool->commit_to_arrays();
+				Array array;
 
-				if (mesh_flags & RS::ARRAY_FLAG_COMPRESS_ATTRIBUTES && generate_tangents && uses_uvs) {
-					// Compression is enabled, so let's validate that the normals and generated tangents are correct.
-					Vector<Vector3> norms = array[Mesh::ARRAY_NORMAL];
-					Vector<float> tangents = array[Mesh::ARRAY_TANGENT];
-					ERR_FAIL_COND_V(tangents.is_empty(), ERR_FILE_CORRUPT);
-					for (int vert = 0; vert < norms.size(); vert++) {
-						Vector3 tan = Vector3(tangents[vert * 4 + 0], tangents[vert * 4 + 1], tangents[vert * 4 + 2]);
-						if (std::abs(tan.dot(norms[vert])) > 0.0001) {
-							// Tangent is not perpendicular to the normal, so we can't use compression.
-							mesh_flags &= ~RS::ARRAY_FLAG_COMPRESS_ATTRIBUTES;
+				if (nonlines) {
+					array = surf_tool->commit_to_arrays();
+
+					if (mesh_flags & RS::ARRAY_FLAG_COMPRESS_ATTRIBUTES && generate_tangents && uses_uvs) {
+						// Compression is enabled, so let's validate that the normals and generated tangents are correct.
+						Vector<Vector3> norms = array[Mesh::ARRAY_NORMAL];
+						Vector<float> tangents = array[Mesh::ARRAY_TANGENT];
+						ERR_FAIL_COND_V(tangents.is_empty(), ERR_FILE_CORRUPT);
+						for (int vert = 0; vert < norms.size(); vert++) {
+							Vector3 tan = Vector3(tangents[vert * 4 + 0], tangents[vert * 4 + 1], tangents[vert * 4 + 2]);
+							if (std::abs(tan.dot(norms[vert])) > 0.0001) {
+								// Tangent is not perpendicular to the normal, so we can't use compression.
+								mesh_flags &= ~RS::ARRAY_FLAG_COMPRESS_ATTRIBUTES;
+							}
 						}
 					}
+
+					mesh->add_surface(Mesh::PRIMITIVE_TRIANGLES, array, TypedArray<Array>(), Dictionary(), material, name, mesh_flags);
+
+					print_verbose("OBJ: Added surface: " + mesh->get_surface_name(mesh->get_surface_count() - 1));
+
+					if (!current_material.is_empty()) {
+						if (mesh->get_surface_count() >= 1) {
+							mesh->set_surface_name(mesh->get_surface_count() - 1, current_material.get_basename());
+						}
+					} else if (!current_group.is_empty()) {
+						if (mesh->get_surface_count() >= 1) {
+							mesh->set_surface_name(mesh->get_surface_count() - 1, current_group);
+						}
+					}
+
+					surf_tool->clear();
+					surf_tool->begin(Mesh::PRIMITIVE_TRIANGLES);
 				}
 
-				mesh->add_surface(Mesh::PRIMITIVE_TRIANGLES, array, TypedArray<Array>(), Dictionary(), material, name, mesh_flags);
-
-				print_verbose("OBJ: Added surface :" + mesh->get_surface_name(mesh->get_surface_count() - 1));
-
-				if (!current_material.is_empty()) {
-					if (mesh->get_surface_count() >= 1) {
-						mesh->set_surface_name(mesh->get_surface_count() - 1, current_material.get_basename());
+				if (lines > 0) {
+					array = surf_tool_lines->commit_to_arrays();
+					mesh->add_surface(Mesh::PRIMITIVE_LINES, array, TypedArray<Array>(), Dictionary(), material, "__" + name + "_Line_" + String::num_int64(lines_total), 0);
+					if (!current_material.is_empty()) {
+						if (mesh->get_surface_count() >= 1) {
+							mesh->set_surface_name(mesh->get_surface_count() - 1, current_material.get_basename());
+						}
+					} else if (!current_group.is_empty()) {
+						if (mesh->get_surface_count() >= 1) {
+							mesh->set_surface_name(mesh->get_surface_count() - 1, current_group);
+						}
 					}
-				} else if (!current_group.is_empty()) {
-					if (mesh->get_surface_count() >= 1) {
-						mesh->set_surface_name(mesh->get_surface_count() - 1, current_group);
-					}
+					print_verbose("OBJ: Added surface: " + mesh->get_surface_name(mesh->get_surface_count() - 1));
+					surf_tool_lines->clear();
+					surf_tool_lines->begin(Mesh::PRIMITIVE_LINES);
+					lines = 0;
 				}
-
-				surf_tool->clear();
-				surf_tool->begin(Mesh::PRIMITIVE_TRIANGLES);
 				uses_uvs = false;
 			}
 
