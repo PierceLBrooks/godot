@@ -237,9 +237,13 @@ static Error _parse_obj(const String &p_path, List<Ref<ImporterMesh>> &r_meshes,
 	Ref<SurfaceTool> surf_tool_lines = memnew(SurfaceTool);
 	surf_tool_lines->begin(Mesh::PRIMITIVE_LINES);
 
-	int line = 0;
+	Ref<SurfaceTool> surf_tool_points = memnew(SurfaceTool);
+	surf_tool_points->begin(Mesh::PRIMITIVE_POINTS);
+
 	int lines = 0;
 	int lines_total = 0;
+	int points = 0;
+	int points_total = 0;
 
 	String current_material_library;
 	String current_material;
@@ -300,6 +304,23 @@ static Error _parse_obj(const String &p_path, List<Ref<ImporterMesh>> &r_meshes,
 			nrm.y = v[2].to_float();
 			nrm.z = v[3].to_float();
 			normals.push_back(nrm);
+		} else if (l.begins_with("p ")) {
+			Vector<String> v = l.split(" ", false);
+			ERR_FAIL_COND_V(v.size() < 2, ERR_FILE_CORRUPT);
+			for (int i = 1; i < v.size(); i++) {
+				int vtx = v[i].to_int() - 1;
+				if (vtx < 0) {
+					vtx += vertices.size() + 1;
+				}
+				ERR_FAIL_INDEX_V(vtx, vertices.size(), ERR_FILE_CORRUPT);
+				Vector3 vertex = vertices[vtx];
+				if (!colors.is_empty()) {
+					surf_tool_points->set_color(colors[vtx]);
+				}
+				surf_tool_points->add_vertex(vertex);
+			}
+			points += 1;
+			points_total += 1;
 		} else if (l.begins_with("l ")) {
 			Vector<String> v = l.split(" ", false);
 			ERR_FAIL_COND_V(v.size() < 3, ERR_FILE_CORRUPT);
@@ -440,7 +461,7 @@ static Error _parse_obj(const String &p_path, List<Ref<ImporterMesh>> &r_meshes,
 			if (surf_tool->get_vertex_array().size() > 0) {
 				nonlines = true;
 			}
-			if (nonlines || lines > 0) {
+			if (nonlines || lines > 0 || points > 0) {
 				//another group going on, commit it
 				if (nonlines) {
 					if (normals.is_empty()) {
@@ -468,11 +489,18 @@ static Error _parse_obj(const String &p_path, List<Ref<ImporterMesh>> &r_meshes,
 					if (lines > 0) {
 						surf_tool_lines->set_material(material);
 					}
+					if (points > 0) {
+						surf_tool_points->set_material(material);
+					}
 				}
 
 				Array array;
 
 				if (nonlines) {
+#ifdef DEBUG_ENABLED
+					mesh->set_meta(StringName("surface" + String::num_int64(mesh->get_surface_count()) + "_vertexCount"), String::num_int64(surf_tool->get_vertex_array().size()));
+					mesh->set_meta(StringName("surface" + String::num_int64(mesh->get_surface_count()) + "_aabb"), String(surf_tool->get_aabb()));
+#endif
 					array = surf_tool->commit_to_arrays();
 
 					if (mesh_flags & RS::ARRAY_FLAG_COMPRESS_ATTRIBUTES && generate_tangents && uses_uvs) {
@@ -508,6 +536,10 @@ static Error _parse_obj(const String &p_path, List<Ref<ImporterMesh>> &r_meshes,
 				}
 
 				if (lines > 0) {
+#ifdef DEBUG_ENABLED
+					mesh->set_meta(StringName("surface" + String::num_int64(mesh->get_surface_count()) + "_vertexCount"), String::num_int64(surf_tool_lines->get_vertex_array().size()));
+					mesh->set_meta(StringName("surface" + String::num_int64(mesh->get_surface_count()) + "_aabb"), String(surf_tool_lines->get_aabb()));
+#endif
 					array = surf_tool_lines->commit_to_arrays();
 					mesh->add_surface(Mesh::PRIMITIVE_LINES, array, TypedArray<Array>(), Dictionary(), material, "__" + name + "_Line_" + String::num_int64(lines_total), 0);
 					if (!current_material.is_empty()) {
@@ -523,6 +555,27 @@ static Error _parse_obj(const String &p_path, List<Ref<ImporterMesh>> &r_meshes,
 					surf_tool_lines->clear();
 					surf_tool_lines->begin(Mesh::PRIMITIVE_LINES);
 					lines = 0;
+				}
+				if (points > 0) {
+#ifdef DEBUG_ENABLED
+					mesh->set_meta(StringName("surface" + String::num_int64(mesh->get_surface_count()) + "_vertexCount"), String::num_int64(surf_tool_points->get_vertex_array().size()));
+					mesh->set_meta(StringName("surface" + String::num_int64(mesh->get_surface_count()) + "_aabb"), String(surf_tool_points->get_aabb()));
+#endif
+					array = surf_tool_points->commit_to_arrays();
+					mesh->add_surface(Mesh::PRIMITIVE_POINTS, array, TypedArray<Array>(), Dictionary(), material, "__" + name + "_Point_" + String::num_int64(points_total), 0);
+					if (!current_material.is_empty()) {
+						if (mesh->get_surface_count() >= 1) {
+							mesh->set_surface_name(mesh->get_surface_count() - 1, current_material.get_basename());
+						}
+					} else if (!current_group.is_empty()) {
+						if (mesh->get_surface_count() >= 1) {
+							mesh->set_surface_name(mesh->get_surface_count() - 1, current_group);
+						}
+					}
+					print_verbose("OBJ: Added surface: " + mesh->get_surface_name(mesh->get_surface_count() - 1));
+					surf_tool_points->clear();
+					surf_tool_points->begin(Mesh::PRIMITIVE_POINTS);
+					points = 0;
 				}
 				uses_uvs = false;
 			}
@@ -634,12 +687,25 @@ Node *EditorOBJImporter::import_scene(const String &p_path, uint32_t p_flags, co
 
 	Node3D *scene = memnew(Node3D);
 
+	int idx = 0;
 	for (Ref<ImporterMesh> m : meshes) {
 		ImporterMeshInstance3D *mi = memnew(ImporterMeshInstance3D);
+#ifdef DEBUG_ENABLED
+		List<StringName> meta_keys;
+		m->get_meta_list(&meta_keys);
+		for (const StringName &key : meta_keys) {
+			String meta = "obj_mesh" + String::num_int64(idx) + "_" + key;
+			mi->set_meta(StringName(meta), m->get_meta(key));
+		}
+#endif
 		mi->set_mesh(m);
 		mi->set_name(m->get_name());
 		scene->add_child(mi, true);
 		mi->set_owner(scene);
+#ifdef DEBUG_ENABLED
+		scene->merge_meta_from(mi);
+#endif
+		idx += 1;
 	}
 
 	if (r_err) {
@@ -740,7 +806,11 @@ Error ResourceImporterOBJ::import(ResourceUID::ID p_source_id, const String &p_s
 
 	String save_path = p_save_path + ".mesh";
 
-	err = ResourceSaver::save(meshes.front()->get()->get_mesh(), save_path);
+	Ref<ArrayMesh> mesh = meshes.front()->get()->get_mesh();
+#ifdef DEBUG_ENABLED
+	mesh->merge_meta_from(*meshes.front()->get());
+#endif
+	err = ResourceSaver::save(mesh, save_path);
 
 	ERR_FAIL_COND_V_MSG(err != OK, err, "Cannot save Mesh to file '" + save_path + "'.");
 
