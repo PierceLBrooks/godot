@@ -70,6 +70,10 @@ template <typename T>
 class Ref;
 template <typename T>
 class BitField;
+template <typename T>
+class TypedArray;
+template <typename K, typename V>
+class TypedDictionary;
 
 struct PropertyInfo;
 struct MethodInfo;
@@ -495,6 +499,10 @@ public:
 	_FORCE_INLINE_ operator T() const { return static_cast<T>(operator int64_t()); }
 	template <typename T>
 	_FORCE_INLINE_ operator BitField<T>() const { return static_cast<T>(operator uint64_t()); }
+	template <typename T>
+	_FORCE_INLINE_ operator TypedArray<T>() const { return operator Array(); }
+	template <typename K, typename V>
+	_FORCE_INLINE_ operator TypedDictionary<K, V>() const { return operator Dictionary(); }
 
 	Object *get_validated_object() const;
 	Object *get_validated_object_with_check(bool &r_previously_freed) const;
@@ -565,6 +573,12 @@ public:
 	template <typename T>
 	_FORCE_INLINE_ Variant(BitField<T> p_bitfield) :
 			Variant(static_cast<uint64_t>(p_bitfield)) {}
+	template <typename T>
+	_FORCE_INLINE_ Variant(const TypedArray<T> &p_typed_array) :
+			Variant(static_cast<const Array &>(p_typed_array)) {}
+	template <typename K, typename V>
+	_FORCE_INLINE_ Variant(const TypedDictionary<K, V> &p_typed_dictionary) :
+			Variant(static_cast<const Dictionary &>(p_typed_dictionary)) {}
 
 	// If this changes the table in variant_op must be updated
 	enum Operator {
@@ -884,12 +898,9 @@ Vector<Variant> varray(VarArgs... p_args) {
 	return Vector<Variant>{ p_args... };
 }
 
-struct VariantHasher {
-	static _FORCE_INLINE_ uint32_t hash(const Variant &p_variant) { return p_variant.hash(); }
-};
-
-struct VariantComparator {
-	static _FORCE_INLINE_ bool compare(const Variant &p_lhs, const Variant &p_rhs) { return p_lhs.hash_compare(p_rhs); }
+template <>
+struct HashMapComparatorDefault<Variant> {
+	static bool compare(const Variant &p_lhs, const Variant &p_rhs) { return p_lhs.hash_compare(p_rhs); }
 };
 
 struct StringLikeVariantComparator {

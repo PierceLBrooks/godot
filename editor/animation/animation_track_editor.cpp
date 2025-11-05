@@ -2177,7 +2177,7 @@ void AnimationTrackEdit::_notification(int p_what) {
 					}
 					text_color.a *= 0.7;
 				} else if (node) {
-					Ref<Texture2D> icon = EditorNode::get_singleton()->get_object_icon(node, "Node");
+					Ref<Texture2D> icon = EditorNode::get_singleton()->get_object_icon(node);
 					const Vector2 icon_size = Vector2(1, 1) * get_theme_constant(SNAME("class_icon_size"), EditorStringName(Editor));
 
 					icon_rect = Rect2(Point2(ofs, (get_size().height - check->get_height()) / 2).round(), icon->get_size());
@@ -5110,7 +5110,7 @@ void AnimationTrackEditor::_update_tracks() {
 				if (root) {
 					Node *n = root->get_node_or_null(base_path);
 					if (n) {
-						icon = EditorNode::get_singleton()->get_object_icon(n, "Node");
+						icon = EditorNode::get_singleton()->get_object_icon(n);
 						name = n->get_name();
 						tooltip = String(root->get_path_to(n));
 					}
@@ -7852,6 +7852,14 @@ AnimationTrackEditor::AnimationTrackEditor() {
 	box_selection_container->set_clip_contents(true);
 	timeline_vbox->add_child(box_selection_container);
 
+	bezier_edit = memnew(AnimationBezierTrackEdit);
+	timeline_vbox->add_child(bezier_edit);
+	bezier_edit->set_editor(this);
+	bezier_edit->set_timeline(timeline);
+	bezier_edit->hide();
+	bezier_edit->set_v_size_flags(SIZE_EXPAND_FILL);
+	bezier_edit->connect("timeline_changed", callable_mp(this, &AnimationTrackEditor::_timeline_changed));
+
 	marker_edit = memnew(AnimationMarkerEdit);
 	timeline->get_child(0)->add_child(marker_edit);
 	marker_edit->set_editor(this);
@@ -7860,6 +7868,7 @@ AnimationTrackEditor::AnimationTrackEditor() {
 	marker_edit->set_anchors_and_offsets_preset(Control::LayoutPreset::PRESET_FULL_RECT);
 	marker_edit->connect(SceneStringName(draw), callable_mp(this, &AnimationTrackEditor::_redraw_groups));
 	marker_edit->connect(SceneStringName(draw), callable_mp(this, &AnimationTrackEditor::_redraw_tracks));
+	marker_edit->connect(SceneStringName(draw), callable_mp((CanvasItem *)bezier_edit, &CanvasItem::queue_redraw));
 
 	scroll = memnew(ScrollContainer);
 	box_selection_container->add_child(scroll);
@@ -7874,14 +7883,6 @@ AnimationTrackEditor::AnimationTrackEditor() {
 
 	scroll->get_v_scroll_bar()->connect(SceneStringName(value_changed), callable_mp(this, &AnimationTrackEditor::_v_scroll_changed));
 	scroll->get_h_scroll_bar()->connect(SceneStringName(value_changed), callable_mp(this, &AnimationTrackEditor::_h_scroll_changed));
-
-	bezier_edit = memnew(AnimationBezierTrackEdit);
-	timeline_vbox->add_child(bezier_edit);
-	bezier_edit->set_editor(this);
-	bezier_edit->set_timeline(timeline);
-	bezier_edit->hide();
-	bezier_edit->set_v_size_flags(SIZE_EXPAND_FILL);
-	bezier_edit->connect("timeline_changed", callable_mp(this, &AnimationTrackEditor::_timeline_changed));
 
 	timeline_vbox->set_custom_minimum_size(Size2(0, 150) * EDSCALE);
 
@@ -8279,10 +8280,10 @@ AnimationTrackEditor::AnimationTrackEditor() {
 	transition_selection->set_auto_translate_mode(AUTO_TRANSLATE_MODE_DISABLED); // Translation context is needed.
 	ease_selection = memnew(OptionButton);
 	ease_selection->set_accessibility_name(TTRC("Ease Type:"));
-	ease_selection->add_item(TTR("In", "Ease Type"), Tween::EASE_IN);
-	ease_selection->add_item(TTR("Out", "Ease Type"), Tween::EASE_OUT);
-	ease_selection->add_item(TTR("InOut", "Ease Type"), Tween::EASE_IN_OUT);
-	ease_selection->add_item(TTR("OutIn", "Ease Type"), Tween::EASE_OUT_IN);
+	ease_selection->add_item(TTR("Ease In", "Ease Type"), Tween::EASE_IN);
+	ease_selection->add_item(TTR("Ease Out", "Ease Type"), Tween::EASE_OUT);
+	ease_selection->add_item(TTR("Ease In-Out", "Ease Type"), Tween::EASE_IN_OUT);
+	ease_selection->add_item(TTR("Ease Out-In", "Ease Type"), Tween::EASE_OUT_IN);
 	ease_selection->select(Tween::EASE_IN_OUT); // Default
 	ease_selection->set_auto_translate_mode(AUTO_TRANSLATE_MODE_DISABLED); // Translation context is needed.
 	ease_fps = memnew(SpinBox);
