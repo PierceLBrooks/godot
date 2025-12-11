@@ -616,7 +616,7 @@ static Error _parse_qbo(const String &p_path, List<Ref<ImporterMesh>> &r_meshes,
 	Vector3 scale_mesh = p_scale_mesh;
 	Vector3 offset_mesh = p_offset_mesh;
 
-	Vector<HashMap<String, float>> weights;
+	List<HashMap<String, float>> weights;
 	Vector<Vector3> vertices;
 	Vector<Vector3> normals;
 	Vector<Vector2> uvs;
@@ -698,9 +698,9 @@ static Error _parse_qbo(const String &p_path, List<Ref<ImporterMesh>> &r_meshes,
 		} else if (l.begins_with("vw ")) {
 			//weight ( https://github.com/tinyobjloader/tinyobjloader/blob/v2.0.0rc13/tiny_obj_loader.h#L2696 )
 			Vector<String> v = l.split(" ", false);
-			ERR_FAIL_COND_V(r_skeletons.is_empty() || v.size() < 3 || v.size() % 2 == 0, ERR_FILE_CORRUPT);
+			ERR_FAIL_COND_V(r_skeletons.is_empty() || v.size() < 3 || v.size() % 2 != 0, ERR_FILE_CORRUPT);
 			HashMap<String, float> weight;
-			for (int i = 1; i < v.size() - 1; i += 2) {
+			for (int i = 2; i < v.size() - 1; i += 2) {
 				String b = v[i];
 				float w = v[i + 1].to_float();
 				weight[b] = w;
@@ -776,23 +776,14 @@ static Error _parse_qbo(const String &p_path, List<Ref<ImporterMesh>> &r_meshes,
 					}
 					ERR_FAIL_INDEX_V(vtx, vertices.size(), ERR_FILE_CORRUPT);
 
-					int w = weights.size();
-					if (face[idx].size() > 3) {
-						w = face[idx][3].to_int() - 1;
-						if (w < 0) {
-							w += weights.size() + 1;
-						}
-						ERR_FAIL_INDEX_V(w, weights.size(), ERR_FILE_CORRUPT);
-					}
-
 					Vector3 vertex = vertices[vtx];
 					if (!colors.is_empty()) {
 						surf_tool->set_color(colors[vtx]);
 					}
-					if (!weights.is_empty() && w < weights.size()) {
+					if (!weights.is_empty() && vtx < weights.size() && !weights.get(vtx).is_empty()) {
 						Vector<int> bones;
 						Vector<float> weight;
-						for (HashMap<String, float>::Iterator itr = weights.get(w).begin(); itr; ++itr) {
+						for (HashMap<String, float>::Iterator itr = weights.get(vtx).begin(); itr; ++itr) {
 							if (itr->key.is_numeric()) {
 								bones.append(itr->key.to_int());
 							} else if (!r_skeletons.is_empty()) {
@@ -1029,7 +1020,7 @@ EditorQBOImporter::EditorQBOImporter() {
 
 ////////////////////////////////////////////////////
 
-#if 0
+#if 1
 String ResourceImporterQBO::get_importer_name() const {
 	return "quaternion_bvh_obj";
 }
@@ -1074,7 +1065,7 @@ bool ResourceImporterQBO::get_option_visibility(const String &p_path, const Stri
 	return true;
 }
 
-Error ResourceImporterQBO::import(const String &p_source_file, const String &p_save_path, const HashMap<StringName, Variant> &p_options, List<String> *r_platform_variants, List<String> *r_gen_files, Variant *r_metadata) {
+Error ResourceImporterQBO::import(ResourceUID::ID p_source_id, const String &p_source_file, const String &p_save_path, const HashMap<StringName, Variant> &p_options, List<String> *r_platform_variants, List<String> *r_gen_files, Variant *r_metadata) {
 	List<Ref<ImporterMesh>> meshes;
 	List<Skeleton3D *> skeletons;
 	AnimationPlayer *animation = nullptr;

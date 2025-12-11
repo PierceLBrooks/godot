@@ -7726,7 +7726,7 @@ EditorNode::EditorNode() {
 		import_obj.instantiate();
 		ResourceFormatImporter::get_singleton()->add_importer(import_obj);
 
-#if 0
+#if 1
 		Ref<ResourceImporterQBO> import_qbo;
 		import_qbo.instantiate();
 		ResourceFormatImporter::get_singleton()->add_importer(import_qbo);
