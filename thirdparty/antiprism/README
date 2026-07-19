@@ -1,0 +1,135 @@
+Antiprism
+=========
+
+Notes for Antiprism 0.33
+------------------------
+
+Minor release with bug fixes and small improvements. Changes by Roger
+Kaufman and Adrian Rossiter. See the NEWS file for more details.
+
+Please look out for bugs and other issues, and report them on the
+Antiprism discussion group
+
+   https://groups.google.com/g/antiprism
+
+Adrian.
+
+Adrian Rossiter <adrian@antiprism.com>
+http://antiprism.com/adrian
+
+
+General
+-------
+
+Antiprism is a collection of programs for generating, manipulating,
+transforming and viewing polyhedra
+
+   http://www.antiprism.com/
+
+This is a beta release. The programs have not had wide use
+and probably contain a number of bugs. Please let me know
+if you come across any bugs, or anything not working as
+documented.
+
+Antiprism is available as source code
+
+   http://www.antiprism.com/files/antiprism-0.27.tar.gz
+
+Ubuntu packages
+
+   https://launchpad.net/~antiprism/+archive/ubuntu/ppa
+
+Windows 64-bit and 32-bit installers
+
+   http://www.antiprism.com/files/antiprism-0.27_w64_install.exe
+   http://www.antiprism.com/files/antiprism-0.27_w32_install.exe
+
+In Windows, the DOS Box started from the Antiprism Shell menu
+item is configured and ready to run the Antiprism programs.
+
+If required, the ANTIPRISM_DATA environment variable may be
+set to the path of the 'data' directory in the install directory.
+
+
+Building
+--------
+
+These are instructions for building from a source tarball (see
+README.git for building fron the Antiprism Git Repository). They
+are not needed to run the Windows executables.
+
+Antiprism uses the Autotools build system. The programs can be
+built with
+
+   ./configure
+   make
+
+and installed with
+
+   sudo make install-strip
+
+See the INSTALL.txt file for more details.
+
+If there are errors relating to shared libraries when the
+installed programs are run, it may be necessary to run
+
+   sudo ldconfig
+
+The Antiview viewer depends on GLUT. A GLUT package suitable for
+developing against must be installed in order to build Antiview,
+otherwise the build and install will not include this program.
+
+On a Debian-based system you could install Freeglut
+
+   sudo apt-get install freeglut3-dev
+
+If building against a locally installed GLUT package, ensure that
+the headers are in a GL subdirectory. If building against OpenGLUT
+or Freeglut but using their own names for headers and libraries
+(rather than the usual GLUT names) run configure with --with-openglut
+or --with-freeglut. To build against FLTK with GLUT compatibility, run
+configure with --with-fltkglut.
+
+Cygwin
+------
+For a non-X version of Antiview (only tested on a system without
+X development packages installed), first build and install Freeglut
+from source, then set LDFLAGS="-L/usr/local/lib" when running the
+Antiprism configure script. For an X version of Antiview, install
+the X development packages and run configure with "--with-x=yes".
+It should be possible to build native Windows binaries by cross-
+compiling using the tools provided by Cygwin, otherwise, use the
+MSYS build environment.
+
+Mac OS X
+--------
+Run configure with "--with-x=no".
+
+
+Git Code Repository
+-------------------
+
+The Git repository contains the latest development code
+
+   https://github.com/antiprism/antiprism
+
+See README.git for further details.
+
+
+Note to Developers
+------------------
+
+README.git contains information for developers.
+
+All the Antiprism source code is supplied under a permissive licence.
+
+The aim of using permissive licensing is to promote the development of
+new polyhedron software by making it convenient to reuse the Antiprism
+source code in other projects.
+
+Please, support this aim. If you incorporate Antiprism source code
+into your own project and make any improvements that could reasonably
+be incorporated back into the Antiprism project, like bug fixes,
+optimisations or new features, then please contribute your changes
+for inclusion back into Antiprism under a permissive (preferably
+MIT) licence.
