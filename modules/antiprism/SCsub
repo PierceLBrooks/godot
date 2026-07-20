@@ -1,0 +1,127 @@
+#!/usr/bin/env python
+from misc.utility.scons_hints import *
+import version
+
+Import("env")
+Import("env_modules")
+
+env_antiprism = env_modules.Clone()
+
+# Thirdparty source files
+
+thirdparty_obj = []
+
+if env["builtin_antiprism"]:
+    thirdparty_dir = "#thirdparty/antiprism/base/"
+    thirdparty_sources = [
+        "boundbox.cc",
+        "c_hull.cc",
+        "canonical.cc",
+        "color.cc",
+        "coloring.cc",
+        "colormap.cc",
+        "crds_read.cc",
+        "displaypoly.cc",
+        "dual.cc",
+        "faces.cc",
+        "geodesic.cc",
+        "geometry.cc",
+        "geometryinfo.cc",
+        "geometryutils.cc",
+        "getopt.cc",
+        "iteration.cc",
+        "johnson.cc",
+        "mathutils.cc",
+        "muparser/muParser.cc",
+        "muparser/muParserBase.cc",
+        "muparser/muParserBytecode.cc",
+        "muparser/muParserCallback.cc",
+        "muparser/muParserDLL.cc",
+        "muparser/muParserError.cc",
+        "muparser/muParserInt.cc",
+        "muparser/muParserTokenReader.cc",
+        "named_cols.cc",
+        "normal.cc",
+        "off_read.cc",
+        "off_write.cc",
+        "planar.cc",
+        "polygon.cc",
+        "povwriter.cc",
+        "programopts.cc",
+        "prop_col.cc",
+        "qhull/geom_r.cc",
+        "qhull/geom2_r.cc",
+        "qhull/global_r.cc",
+        "qhull/io_r.cc",
+        "qhull/libqhull_r.cc",
+        "qhull/mem_r.cc",
+        "qhull/merge_r.cc",
+        "qhull/poly_r.cc",
+        "qhull/poly2_r.cc",
+        "qhull/qset_r.cc",
+        "qhull/random_r.cc",
+        "qhull/rboxlib_r.cc",
+        "qhull/stat_r.cc",
+        "qhull/user_r.cc",
+        "qhull/usermem_r.cc",
+        "qhull/userprintf_r.cc",
+        "qhull/userprintf_rbox_r.cc",
+        "scene.cc",
+        "skilling.cc",
+        "sort_merge.cc",
+        "status.cc",
+        "std_polys.cc",
+        "stellations.cc",
+        "symmetry.cc",
+        "tesselator/dict.cc",
+        "tesselator/geom.cc",
+        "tesselator/memalloc.cc",
+        "tesselator/mesh.cc",
+        "tesselator/normal.cc",
+        "tesselator/priorityq.cc",
+        "tesselator/render.cc",
+        "tesselator/sweep.cc",
+        "tesselator/tess.cc",
+        "tesselator/tessmono.cc",
+        "timer.cc",
+        "trans.cc",
+        "trans3d.cc",
+        "trans4d.cc",
+        "triangulate.cc",
+        "uniform.cc",
+        "utils_parser.cc",
+        "utils.cc",
+        "vec_utils_cent.cc",
+        "vec_utils_norm.cc",
+        "vec_utils.cc",
+        "vec3d.cc",
+        "vec4d.cc",
+        "vrmlwriter.cc",
+        "wythoff_ops.cc",
+        "wythoff_tiling.cc",
+        "wythoff.cc",
+        "zonohedron.cc",
+    ]
+    thirdparty_sources = [thirdparty_dir + file for file in thirdparty_sources]
+
+    env_antiprism.Prepend(CPPPATH=[thirdparty_dir, thirdparty_dir + "qhull/", thirdparty_dir + "tesselator/", thirdparty_dir + "muparser/"])
+    if env["platform"] == "windows":
+        env_antiprism.Prepend(CPPDEFINES=["USLEEP=2", "UTIMER=2", "SUPDIR=\\\"C:\\\\\"", "VERSION=\\\"%i.%i.%i\\\"" % (version.major, version.minor, version.patch)])
+    else:
+        env_antiprism.Prepend(CPPDEFINES=["USLEEP=1", "UTIMER=1", "SUPDIR=\\\"/\\\"", "VERSION=\\\"%i.%i.%i\\\"" % (version.major, version.minor, version.patch)])
+
+    env_thirdparty = env_antiprism.Clone()
+    env_thirdparty.disable_warnings()
+    env_thirdparty.add_source_files(thirdparty_obj, thirdparty_sources)
+    env.modules_sources += thirdparty_obj
+
+
+# Godot source files
+
+module_obj = []
+
+env_antiprism.add_source_files(module_obj, "*.cpp")
+env.modules_sources += module_obj
+
+# Needed to force rebuilding the module files when the thirdparty library is updated.
+env.Depends(module_obj, thirdparty_obj)

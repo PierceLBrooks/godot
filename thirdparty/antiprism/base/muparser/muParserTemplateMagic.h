@@ -115,26 +115,26 @@ namespace mu
   template<>                                     \
   struct MathImpl<TYPE>                          \
   {                                              \
-    static TYPE Sin(TYPE)          { throw ParserError(_T("unimplemented function.")); } \
-    static TYPE Cos(TYPE)          { throw ParserError(_T("unimplemented function.")); } \
-    static TYPE Tan(TYPE)          { throw ParserError(_T("unimplemented function.")); } \
-    static TYPE ASin(TYPE)         { throw ParserError(_T("unimplemented function.")); } \
-    static TYPE ACos(TYPE)         { throw ParserError(_T("unimplemented function.")); } \
-    static TYPE ATan(TYPE)         { throw ParserError(_T("unimplemented function.")); } \
-    static TYPE ATan2(TYPE, TYPE)  { throw ParserError(_T("unimplemented function.")); } \
-    static TYPE Sinh(TYPE)         { throw ParserError(_T("unimplemented function.")); } \
-    static TYPE Cosh(TYPE)         { throw ParserError(_T("unimplemented function.")); } \
-    static TYPE Tanh(TYPE)         { throw ParserError(_T("unimplemented function.")); } \
-    static TYPE ASinh(TYPE)        { throw ParserError(_T("unimplemented function.")); } \
-    static TYPE ACosh(TYPE)        { throw ParserError(_T("unimplemented function.")); } \
-    static TYPE ATanh(TYPE)        { throw ParserError(_T("unimplemented function.")); } \
-    static TYPE Log(TYPE)          { throw ParserError(_T("unimplemented function.")); } \
-    static TYPE Log2(TYPE)         { throw ParserError(_T("unimplemented function.")); } \
-    static TYPE Log10(TYPE)        { throw ParserError(_T("unimplemented function.")); } \
-    static TYPE Exp(TYPE)          { throw ParserError(_T("unimplemented function.")); } \
-    static TYPE Abs(TYPE)          { throw ParserError(_T("unimplemented function.")); } \
-    static TYPE Sqrt(TYPE)         { throw ParserError(_T("unimplemented function.")); } \
-    static TYPE Rint(TYPE)         { throw ParserError(_T("unimplemented function.")); } \
+    static TYPE Sin(TYPE)          { abort(); } \
+    static TYPE Cos(TYPE)          { abort(); } \
+    static TYPE Tan(TYPE)          { abort(); } \
+    static TYPE ASin(TYPE)         { abort(); } \
+    static TYPE ACos(TYPE)         { abort(); } \
+    static TYPE ATan(TYPE)         { abort(); } \
+    static TYPE ATan2(TYPE, TYPE)  { abort(); } \
+    static TYPE Sinh(TYPE)         { abort(); } \
+    static TYPE Cosh(TYPE)         { abort(); } \
+    static TYPE Tanh(TYPE)         { abort(); } \
+    static TYPE ASinh(TYPE)        { abort(); } \
+    static TYPE ACosh(TYPE)        { abort(); } \
+    static TYPE ATanh(TYPE)        { abort(); } \
+    static TYPE Log(TYPE)          { abort(); } \
+    static TYPE Log2(TYPE)         { abort(); } \
+    static TYPE Log10(TYPE)        { abort(); } \
+    static TYPE Exp(TYPE)          { abort(); } \
+    static TYPE Abs(TYPE)          { abort(); } \
+    static TYPE Sqrt(TYPE)         { abort(); } \
+    static TYPE Rint(TYPE)         { abort(); } \
     static TYPE Sign(TYPE v)          { return (TYPE)((v<0) ? -1 : (v>0) ? 1 : 0);     } \
     static TYPE Pow(TYPE v1, TYPE v2) { return (TYPE)std::pow((double)v1, (double)v2); } \
   };

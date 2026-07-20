@@ -98,7 +98,7 @@ namespace mu
   value_type Parser::Sum(const value_type *a_afArg, int a_iArgc)
   { 
     if (!a_iArgc)	
-      throw exception_type(_T("too few arguments for function sum."));
+      abort(); //throw exception_type(_T("too few arguments for function sum."));
 
     value_type fRes=0;
     for (int i=0; i<a_iArgc; ++i) fRes += a_afArg[i];
@@ -113,7 +113,7 @@ namespace mu
   value_type Parser::Avg(const value_type *a_afArg, int a_iArgc)
   { 
     if (!a_iArgc)	
-      throw exception_type(_T("too few arguments for function sum."));
+      abort(); //throw exception_type(_T("too few arguments for function sum."));
 
     value_type fRes=0;
     for (int i=0; i<a_iArgc; ++i) fRes += a_afArg[i];
@@ -129,7 +129,7 @@ namespace mu
   value_type Parser::Min(const value_type *a_afArg, int a_iArgc)
   { 
     if (!a_iArgc)	
-      throw exception_type(_T("too few arguments for function min."));
+      abort(); //throw exception_type(_T("too few arguments for function min."));
 
     value_type fRes=a_afArg[0];
     for (int i=0; i<a_iArgc; ++i) 
@@ -147,7 +147,7 @@ namespace mu
   value_type Parser::Max(const value_type *a_afArg, int a_iArgc)
   { 
     if (!a_iArgc)	
-      throw exception_type(_T("too few arguments for function min."));
+      abort(); //throw exception_type(_T("too few arguments for function min."));
 
     value_type fRes=a_afArg[0];
     for (int i=0; i<a_iArgc; ++i) fRes = std::max(fRes, a_afArg[i]);

@@ -90,11 +90,7 @@
     #define MUP_ASSERT(COND)                         \
             if (!(COND))                             \
             {                                        \
-              stringstream_type ss;                  \
-              ss << _T("Assertion \"") _T(#COND) _T("\" failed: ") \
-                 << __FILE__ << _T(" line ")         \
-                 << __LINE__ << _T(".");             \
-              throw ParserError( ss.str() );         \
+              abort();                               \
             }
 #else
   #define MUP_FAIL(MSG)

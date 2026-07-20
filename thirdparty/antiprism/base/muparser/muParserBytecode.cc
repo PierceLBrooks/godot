@@ -161,7 +161,7 @@ namespace mu
 
 #if defined(MUP_MATH_EXCEPTIONS)
         if (y==0)
-          throw ParserError(ecDIV_BY_ZERO);
+          abort(); //throw ParserError(ecDIV_BY_ZERO);
 #endif
 
         x = x / y;   
@@ -459,7 +459,7 @@ namespace mu
   const SToken* ParserByteCode::GetBase() const
   {
     if (m_vRPN.size()==0)
-      throw ParserError(ecINTERNAL_ERROR);
+      abort(); //throw ParserError(ecINTERNAL_ERROR);
     else
       return &m_vRPN[0];
   }
