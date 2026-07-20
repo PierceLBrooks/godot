@@ -104,7 +104,7 @@ value_type ParserInt::Min(const value_type* a_afArg, int a_iArgc)
 value_type ParserInt::Max(const value_type* a_afArg, int a_iArgc)
 { 
   if (!a_iArgc)	
-    abort(); //throw ParserError(_T("too few arguments for function min."));
+    abort(); //throw ParserError(_T("too few arguments for function max."));
 
   value_type fRes=a_afArg[0];
   for (int i=0; i<a_iArgc; ++i) 
